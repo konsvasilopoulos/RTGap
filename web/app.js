@@ -12,7 +12,8 @@
   function normProto(p, ignored) {
     ignored = ignored || [];
     if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('not a protocol');
-    const out = { name: String(p.name || '').slice(0, 120), constraints: {}, sites: {} };
+    const out = { name: String(p.name || '').slice(0, 120), constraints: {}, sites: {}, guidance: p.guidance === 'rcr5_draft' ? 'rcr5_draft' : 'rcr2019' };
+    if (p.guidance && !['rcr2019', 'rcr5_draft'].includes(p.guidance)) ignored.push('guidance');
     for (const k of Object.keys(p.constraints || {})) {
       if (k === 'chemo_dates') { ignored.push('constraints.chemo_dates'); continue; }
       if (!(k in RT.CONSTRAINT_DEFAULTS)) { ignored.push('constraints.' + k); continue; }
@@ -66,7 +67,7 @@
   function baseState(over) {
     const s = Object.assign({ v: 3, lang: 'el', pdfLang: null, title: '', caseRef: '', calcBy: '', checkedBy: '', site: 'hn_scc', category: 'auto',
       start: '2026-10-05', multi: false, n: 35, d: 2, phases: [{ name: 'SIB', n: 35, levels: [{ name: 'PTV70', d: 2 }, { name: 'PTV63', d: 1.8 }, { name: 'PTV56', d: 1.6 }] }], primary: '',
-      weekdays: [0, 1, 2, 3, 4], holidays: true, closed: [], missed: [], unavailable: [], resume: '', cause: '', brachy: { on: false, fx: [] }, extra: [], errors: [], pc: { on: false, from: '', n: null, d: null }, given: { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }, scen: false, scenDays: 10, mark: 'missed', c: C0(), sel: null }, over || {});
+      weekdays: [0, 1, 2, 3, 4], holidays: true, closed: [], missed: [], unavailable: [], resume: '', cause: '', brachy: { on: false, fx: [] }, guidance: proto ? proto.guidance : 'rcr2019', extra: [], errors: [], pc: { on: false, from: '', n: null, d: null }, given: { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }, scen: false, scenDays: 10, mark: 'missed', c: C0(), sel: null }, over || {});
     const d = siteDefaults(s.site);
     if (!s.tumour) s.tumour = d.tumour;
     if (!s.oars) s.oars = d.oars;
@@ -95,7 +96,7 @@
   const parseRatio = (v) => { if (typeof v === 'number') return v; const parts = String(v == null ? '' : v).split('/').map((x) => num(x)).filter((x) => x != null); return parts.length > 1 ? parts : (parts.length ? parts[0] : 1); };
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
   let state = EXAMPLES.hn_sib();
-  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; } } } catch (e) { /* storage unavailable */ }
+  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; } } } catch (e) { /* storage unavailable */ }
   let tr = I.make(state.lang), model = null;
   const persist = () => { try { localStorage.setItem('rtgap.state', JSON.stringify(state)); } catch (e) { /* ignore */ } };
 
@@ -135,6 +136,7 @@
     if (s.category !== 'auto') out.rules = { category: s.category === 'none' ? null : +s.category };
     else { const ov = protoSite(s.site); if (ov) { const r = {}; for (const k of SITE_RULE_KEYS) if (ov[k] != null) r[k] = ov[k]; if (Object.keys(r).length) out.rules = r; } }
     if (proto) out.audit = { protocol: proto.name || '–' };
+    if (s.guidance === 'rcr5_draft') out.guidance = 'rcr5_draft';
     if (s.scen && s.missed.length) out.scenarios = { days: s.scenDays || 10 };
     return out;
   }
@@ -163,6 +165,7 @@
     if (g.outage_start && s.resume) { const os = RT.parseDate(g.outage_start), r = RT.parseDate(s.resume); for (let d = os; d < r; d++) if (RT.weekday(d) < 5 && !s.missed.includes(RT.iso(d))) s.missed.push(RT.iso(d)); }
     const c = cfg.constraints || cfg.options || {};
     s.c = Object.assign({}, RT.CONSTRAINT_DEFAULTS, { chemo_dates: [] });     // a case file is self-contained
+    s.guidance = cfg.guidance === 'rcr5_draft' ? 'rcr5_draft' : 'rcr2019';
     for (const k of Object.keys(c)) if (k in RT.CONSTRAINT_DEFAULTS) s.c[k] = k === 'chemo_dates' ? c[k].map((d) => String(d).slice(0, 10)) : c[k];
     const cat = cfg.rules && 'category' in cfg.rules ? cfg.rules.category : ('category' in cfg ? cfg.category : undefined);
     if (cat !== undefined) s.category = cat == null ? 'none' : String(cat);
@@ -266,12 +269,12 @@
   }
   function deptSum() {
     const c = state.c, L = tr.t, y = (b) => (b ? '✓' : '✗');
-    let s = (proto ? (proto.name || L('proto_unnamed')) + (constraintsDiff(c, C0()).length ? ' *' : '') + ' · ' : '') + tr.wd2[5] + ' ' + y(c.allow_saturday) + ' · ' + tr.wd2[6] + ' ' + y(c.allow_sunday) + ' · BID ' + y(c.allow_bid) + ' · ' + L('sum_dose') + ' ' + y(c.allow_dose_change);
+    let s = (proto ? (proto.name || L('proto_unnamed')) + (constraintsDiff(c, C0()).length || state.guidance !== proto.guidance ? ' *' : '') + ' · ' : '') + (state.guidance === 'rcr5_draft' ? L('guid_short5') : 'RCR 2019') + ' · ' + tr.wd2[5] + ' ' + y(c.allow_saturday) + ' · ' + tr.wd2[6] + ' ' + y(c.allow_sunday) + ' · BID ' + y(c.allow_bid) + ' · ' + L('sum_dose') + ' ' + y(c.allow_dose_change);
     s += ' · ' + (c.max_tumour_deficit_pct != null && c.max_late_increase_pct != null ? L('sum_tol') + ' ' + c.max_tumour_deficit_pct + '%\u00a0/\u00a0' + c.max_late_increase_pct + '%' : L('sum_notol'));
     return s;
   }
   function protoStatus() {
-    const L = tr.t, diff = proto ? constraintsDiff(state.c, C0()) : [];
+    const L = tr.t, diff = proto ? constraintsDiff(state.c, C0()).concat(state.guidance !== proto.guidance ? ['guidance'] : []) : [];
     const status = !proto ? L('proto_none_hint') : (diff.length ? L('proto_differs') + ' (' + diff.length + ')' : L('proto_matches'));
     return esc(status) + (proto && diff.length ? ` <button type="button" class="linkbtn" data-act="proto-apply">${esc(L('proto_apply'))}</button>` : '');
   }
@@ -296,7 +299,7 @@
     const catPill = rules ? (rules.category ? `<span class="pill c${rules.category}">${esc(L('cat'))} ${rules.category}</span>` : `<span class="pill plain">${esc(L('cat'))}: ${esc(L('cat_none'))}</span>`) : '';
     const allow = rules && rules.max != null ? `<span class="pill plain">${esc(L('allowance'))}: ${esc(L('ideal'))} ≤ ${rules.ideal} · ${esc(L('max'))} ≤ ${rules.max} ${esc(L('days'))}</span>` : '';
     const ott = rules && rules.maxOTT ? `<span class="pill plain">${esc(L('ott_cap'))} ≤ ${rules.maxOTT} ${esc(L('days'))}</span>` : '';
-    const noacc = rules && rules.noAccel ? `<span class="pill c2">${esc(L('no_accel'))}</span>` : '';
+    const noacc = (rules && rules.noAccel ? `<span class="pill c2">${esc(L('no_accel'))}</span>` : '') + (rules && rules.guidance === 'rcr5_draft' ? `<span class="pill c2">${esc(L('guid_short5'))}</span>` : '') + (rules && rules.noDoseComp ? `<span class="pill c2">${esc(L('no_dose_comp'))}</span>` : '') + (rules && rules.targetOTT ? `<span class="pill plain">${esc(L('ott_target'))} ≤ ${rules.targetOTT} ${esc(L('days'))}</span>` : '');
     const srcMap = { RCR19: 'RCR19', RCR5d: 'RCR5d', START: 'START', VB20: 'VB20' };
     const srcRefs = refs((site.sources || []).map((x) => srcMap[x]).filter(Boolean));
     const notes = tr.siteNotes(s.site, site);
@@ -362,7 +365,9 @@
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
     </details>
-    <details class="card fold" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}<p class="hint">${esc(L('dept_hint'))}</p>
+    <details class="card fold" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
+      <label class="f"><span>${esc(L('guid_label'))}${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></label>
+      ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
       <div class="fields" style="margin-top:12px">${fld(L('c_tolT'), 'c.max_tumour_deficit_pct', c.max_tumour_deficit_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}${fld(L('c_tolL'), 'c.max_late_increase_pct', c.max_late_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}</div>
@@ -497,6 +502,7 @@
     lines.push(L('missed_n') + ': ' + (p.missed.length ? p.missed.map(tr.dshort).join(', ') : '–') + (p.rules.gapCause ? ' · ' + L('cause_' + p.rules.gapCause) : ''));
     if (p.doseErrors.length) lines.push(L('err_title') + ': ' + p.doseErrors.map((e) => tr.dshort(e.day) + ' ' + tr.f2(e.actual) + ' Gy (' + L('planned_c').toLowerCase() + ' ' + tr.f2(e.intended) + ')').join(', '));
     if (p.planChange) lines.push(L('pc_title') + ': ' + tr.dshort(p.planChange.from) + ', ' + p.planChange.n + ' × ' + p.planChange.d + ' Gy');
+    lines.push(L('guid_label') + ': ' + L('guid_' + (p.rules.guidance || 'rcr2019')));
     lines.push(L('st_' + m.dec.status) + ': ' + tr.head(m.dec.head));
     if (o && p.remaining) {
       lines.push(L('remaining') + ': ' + tr.optShort(o));
@@ -721,7 +727,7 @@
     renderResults();
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
-  const TEXT_BINDS = /(^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
+  const TEXT_BINDS = /(^guidance$|^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
   function onInput(ev) {
     const t = ev.target;
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
@@ -786,18 +792,18 @@
     if (a === 'proto-save') {
       const nm = ($('#proto-name') && $('#proto-name').value.trim()) || (proto && proto.name) || tr.t('proto_unnamed');
       const cons = {}; for (const k of constraintsDiff(state.c, RT.CONSTRAINT_DEFAULTS)) cons[k] = state.c[k];
-      proto = { name: nm, constraints: cons, sites: proto ? proto.sites : {} }; saveProto(); toast(tr.t('proto_saved')); refresh(true); return;
+      proto = { name: nm, constraints: cons, sites: proto ? proto.sites : {}, guidance: state.guidance || 'rcr2019' }; saveProto(); toast(tr.t('proto_saved')); refresh(true); return;
     }
-    if (a === 'proto-apply') { if (proto) { state.c = Object.assign(C0(), { chemo_dates: state.c.chemo_dates || [] }); refresh(true); } return; }
+    if (a === 'proto-apply') { if (proto) { state.c = Object.assign(C0(), { chemo_dates: state.c.chemo_dates || [] }); state.guidance = proto.guidance; refresh(true); } return; }
     if (a === 'proto-export') {
       if (!proto) return;
-      const out = { name: proto.name, generator: 'RTGap ' + RT.VERSION, saved: new Date().toISOString().slice(0, 10), constraints: proto.constraints, sites: proto.sites };
+      const out = { name: proto.name, generator: 'RTGap ' + RT.VERSION, saved: new Date().toISOString().slice(0, 10), guidance: proto.guidance, constraints: proto.constraints, sites: proto.sites };
       saveFile('RTGap-protocol-' + (proto.name || 'department').replace(/[^\w\-]+/g, '_').slice(0, 40) + '.json', JSON.stringify(out, null, 1), 'application/json'); return;
     }
     if (a === 'proto-rm') { proto = null; saveProto(); toast(tr.t('proto_removed')); refresh(true); return; }
     if (a === 'proto-site') {
       const nm = (proto && proto.name) || tr.t('proto_unnamed');
-      if (!proto) proto = { name: nm, constraints: {}, sites: {} };
+      if (!proto) proto = { name: nm, constraints: {}, sites: {}, guidance: state.guidance || 'rcr2019' };
       proto.sites[state.site] = Object.assign({}, proto.sites[state.site] || {}, siteEntryFromState(state)); saveProto(); toast(tr.t('proto_site_saved')); refresh(true); return;
     }
     if (a === 'proto-site-rm') { if (proto) { delete proto.sites[state.site]; saveProto(); } refresh(true); return; }
@@ -820,7 +826,7 @@
       const f = t.files && t.files[0]; if (!f) return;
       f.text().then((txt) => {
         const ign = []; proto = normProto(JSON.parse(txt), ign); saveProto();
-        state.c = Object.assign(C0(), { chemo_dates: state.c.chemo_dates || [] });
+        state.c = Object.assign(C0(), { chemo_dates: state.c.chemo_dates || [] }); state.guidance = proto.guidance;
         refresh(true); toast(tr.t('proto_loaded') + (ign.length ? ' ' + tr.t('proto_ignored') + ': ' + ign.slice(0, 4).join(', ') + (ign.length > 4 ? '…' : '') : ''));
       }).catch(() => toast(tr.t('proto_fail'))); return;
     }

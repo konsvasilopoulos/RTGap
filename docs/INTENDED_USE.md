@@ -35,6 +35,10 @@ software under its own quality system (in the EU: MDR Article 5(5)).
 * An earlier change of plan is described by one date, a number of fractions
   and a dose per fraction. More complex histories need the delivered fractions
   listed one by one (`gap.delivered` in the case file).
+* The RCR 5th edition is used only as its draft for consultation, on request
+  (`guidance: rcr5_draft`); the published 2019 edition is the default. The
+  draft rules were transcribed from the consultation text and must be checked
+  against the final edition when it is published.
 * The department protocol of the web app is kept in this browser on this
   device. Export it as a file to keep a record and to share it.
 

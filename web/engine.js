@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -103,7 +103,8 @@
   // ------------------------------------------------------------------ rules / constraints
   const CATEGORY_DEFAULTS = { 1: [0, 2], 2: [2, 5], 3: [7, 7] };
   function mkRules(r) {
-    const o = Object.assign({ category: null, ideal: null, max: null, maxOTT: null, noAccel: false, siteId: null, notes: [], sources: [], gapCause: null }, r || {});
+    const o = Object.assign({ category: null, ideal: null, max: null, maxOTT: null, noAccel: false, siteId: null, notes: [], sources: [], gapCause: null,
+      guidance: 'rcr2019', noDoseComp: false, targetOTT: null, edRules: [] }, r || {});
     if (CATEGORY_DEFAULTS[o.category]) {
       if (o.ideal == null) o.ideal = CATEGORY_DEFAULTS[o.category][0];
       if (o.max == null) o.max = CATEGORY_DEFAULTS[o.category][1];
@@ -314,7 +315,13 @@
     return out;
   }
   const S = (day, slot) => ({ day, slot: slot || 0 });
-  const patternStandard = (p, n) => daysFrom(p, p.resume, n).map((d) => S(d));
+  /** n fractions on the next treatment days; for sites without acceleration (SABR) on non-consecutive days (RCR). */
+  function patternStandard(p, n) {
+    if (!p.rules.noAccel) return daysFrom(p, p.resume, n).map((d) => S(d));
+    const out = []; let last = p.delivered.length ? Math.max(...p.delivered.map((f) => f.day)) : null;
+    for (let d = p.resume, g = 0; out.length < n && g < 3660; d++, g++) if ((isRegular(p, d) || isExtra(p, d, false, false)) && (last == null || d - last >= 2)) { out.push(S(d)); last = d; }
+    return out;
+  }
   function chooseBidDays(p, regular, need) {
     need = Math.min(need, regular.length);
     const chosen = [];
@@ -496,7 +503,9 @@
       if (d > c.bid_max_dose + 1e-9) R('x_bid_dose', { d, max: c.bid_max_dose }, ['RCR19']);
       if (c.chemo_dates.length) {
         const cs = new Set(c.chemo_dates);
-        if (o.bidDays.some((x) => cs.has(x)) && (!c.chemo_daily || d > 1.5)) R('x_bid_chemo', {}, ['RCR5d']);
+        const clash = o.bidDays.some((x) => cs.has(x));
+        if (clash && r.guidance === 'rcr5_draft' && (!c.chemo_daily || d > 1.5)) R('x_bid_chemo', {}, ['RCR5d']);
+        else if (clash && r.guidance !== 'rcr5_draft') R('x_bid_chemo19', {}, ['RCR19']);
       }
       if (!c.allow_consecutive_bid && o.consecutiveBid) R('x_bid_consec');
     }
@@ -511,6 +520,7 @@
     }
     if (c.max_weekly_increase_pct != null && o.weeklyInc > c.max_weekly_increase_pct + 1e-9) R('x_weekly', { inc: o.weeklyInc, max: c.max_weekly_increase_pct });
     if (r.maxOTT != null && o.T > r.maxOTT) R('x_ott', { T: o.T, max: r.maxOTT }, ['RCR19']);
+    if (r.noDoseComp && o.family !== 'error' && (Math.abs(o.scale - p.s0) > 1e-9 || o.family === 'extra')) R('x_no_dose_comp', {}, ['RCR5d']);
     if (r.noAccel && o.family !== 'baseline') R('x_noaccel', {}, ['RCR19', 'RCR5d']);
     for (const t of o.oars.concat([o.tumour])) if (t.limit != null && t.eqd2 > t.limit + 1e-9) R('x_limit', { name: t.name, eqd2: t.eqd2, limit: t.limit });
     return why;
@@ -528,6 +538,8 @@
     if (o.family === 'error' && p.rx.multilevel) w.push({ code: 'w_joiner_multi', p: {}, refs: ['JOINER'] });
     if (o.weeklyInc > ACUTE_WARN_PCT) w.push({ code: 'w_weekly', p: { peak: o.weeklyPeak, inc: o.weeklyInc }, refs: [] });
     if (p.rules.gapCause === 'toxicity' && o.family !== 'baseline') w.push({ code: 'w_tox', p: {}, refs: [] });
+    const tg = p.rules.targetOTT;
+    if (tg != null && o.T > tg) w.push({ code: 'w_ott_target', p: { T: o.T, tg }, refs: ['RCR5d'] });
     const mx = p.rules.max;
     if (mx != null && o.ext > mx) w.push({ code: 'w_over_allowance', p: { ext: o.ext, max: mx, cat: p.rules.category }, refs: ['RCR19'] });
     return w;
@@ -555,6 +567,8 @@
     const base = opts.find((o) => o.family === 'baseline');
     const trace = [];
     const TRC = (code, pp, refs) => trace.push({ code, p: pp || {}, refs: refs || [] });
+    TRC(r.guidance === 'rcr5_draft' ? 't_guid5' : 't_guid19', {}, [r.guidance === 'rcr5_draft' ? 'RCR5d' : 'RCR19']);
+    for (const k of r.edRules) TRC('t_ed_' + k, {}, ['RCR5d']);
     if (r.category == null && r.max == null) TRC('t_nocat');
     TRC('t_rules', { cat: r.category, ideal, max: mx, ott: r.maxOTT }, r.category ? ['RCR19'] : []);
     TRC('t_base', { end: base.end, ext: base.ext, d: base.tumour.delta, pct: base.tumour.deltaPct }, ['BCR']);
@@ -597,6 +611,11 @@
     pick = sameD.find((o) => o.ext <= mx && lateOk(o));
     if (pick) { TRC('t_s4', { o: pick, max: mx }, ['RCR19']); return done('recommended', H(pick), pick); }
     TRC('t_s34', { max: mx }, ['RCR19']);
+    if (r.noDoseComp) {
+      TRC('t_no_dose_comp', {}, ['RCR5d']);
+      if (!base.rejected.length) return done('no_action', { code: 'h_no_dose_comp', p: {} }, base);
+      return done('clinical_decision', { code: 'h_all_excluded', p: {} }, null, feasible.slice(0, 3));
+    }
     const doseOpts = feasible.filter((o) => DOSE_CHANGE.includes(o.family));
     const within = doseOpts.filter((o) => o.ext <= mx), beyond = doseOpts.filter((o) => o.ext > mx);
     const all = within.concat(beyond);
@@ -803,10 +822,22 @@
   // ------------------------------------------------------------------ case → planner (same schema as the Python package)
   let SITES = {};
   const setSites = (s) => { SITES = s; };
-  function siteRules(site, id) {
-    return mkRules({ category: site.category == null ? null : site.category, ideal: site.ideal_extension_days == null ? null : site.ideal_extension_days,
+  const GUIDANCES = ['rcr2019', 'rcr5_draft'];
+  function siteRules(site, id, guidance, n) {
+    const r = { category: site.category == null ? null : site.category, ideal: site.ideal_extension_days == null ? null : site.ideal_extension_days,
       max: site.max_extension_days == null ? null : site.max_extension_days, maxOTT: site.max_overall_time_days || null,
-      noAccel: !!site.no_acceleration, siteId: id, notes: site.notes || [], sources: site.sources || [] });
+      noAccel: !!site.no_acceleration, siteId: id, notes: site.notes || [], sources: site.sources || [], guidance: guidance || 'rcr2019', edRules: [] };
+    const b0 = site.rcr5_draft;
+    if (r.guidance === 'rcr5_draft' && b0) {
+      const blocks = [b0].concat((b0.by_fractions || []).filter((b) => n != null && (b.min_fractions || 0) <= n && n <= (b.max_fractions == null ? 1e6 : b.max_fractions)));
+      for (const b of blocks) {
+        if ('max_overall_time_days' in b) r.maxOTT = b.max_overall_time_days;
+        if ('target_overall_time_days' in b) r.targetOTT = b.target_overall_time_days;
+        if ('no_dose_compensation' in b) r.noDoseComp = !!b.no_dose_compensation;
+        if (b.rule) r.edRules.push(b.rule);
+      }
+    }
+    return mkRules(r);
   }
   const DEFAULT_LATE_REPAIR_H = 4.4;   // Bentzen, Saunders & Dische 1999 (fibrosis)
   function oarFromCfg(o) {
@@ -836,11 +867,19 @@
     const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab) : (+t.dprolif_eqd2_per_day || 0);
     const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
     const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
-    let rules = site ? siteRules(site, cfg.site) : mkRules({});
+    const guidance = cfg.guidance || protocol.guidance || 'rcr2019';
+    if (!GUIDANCES.includes(guidance)) throw ValidationError([{ code: 'e_generic', p: { msg: 'guidance ' + guidance } }]);
+    let rx;
+    const brachy = ((cfg.brachy || {}).fractions || []).map((f) => ({ day: parseDate(f.date), dose: +f.dose }));
+    if (brachy.some((f) => !(f.dose > 0))) throw ValidationError([{ code: 'e_generic', p: { msg: 'brachytherapy dose' } }]);
+    const rxCfg = brachy.length ? Object.assign({}, cfg.prescription, { closed_dates: (cfg.prescription.closed_dates || []).concat(brachy.map((f) => iso(f.day))) }) : cfg.prescription;
+    try { rx = rxFromCfg(rxCfg); } catch (e) { throw ValidationError([{ code: 'e_generic', p: { msg: e.message } }]); }
+    let rules = site ? siteRules(site, cfg.site, guidance, rx.n) : mkRules({ guidance });
     const over = Object.assign({}, cfg.rules || {});
     if ('category' in cfg && !('category' in over)) over.category = cfg.category;
     if (Object.keys(over).length) {
-      const m = { category: rules.category, ideal: rules.ideal, max: rules.max, maxOTT: rules.maxOTT, noAccel: rules.noAccel, siteId: rules.siteId, notes: rules.notes, sources: rules.sources };
+      const m = { category: rules.category, ideal: rules.ideal, max: rules.max, maxOTT: rules.maxOTT, noAccel: rules.noAccel, siteId: rules.siteId, notes: rules.notes, sources: rules.sources,
+        guidance: rules.guidance, noDoseComp: rules.noDoseComp, targetOTT: rules.targetOTT, edRules: rules.edRules };
       if ('category' in over && over.category !== rules.category) { m.ideal = null; m.max = null; }
       if ('category' in over) m.category = over.category;
       if ('ideal_extension_days' in over) m.ideal = over.ideal_extension_days;
@@ -850,11 +889,6 @@
       rules = mkRules(m);
     }
     const c = mkConstraints(Object.assign({}, protocol.constraints || {}, cfg.constraints || cfg.options || {}));
-    let rx;
-    const brachy = ((cfg.brachy || {}).fractions || []).map((f) => ({ day: parseDate(f.date), dose: +f.dose }));
-    if (brachy.some((f) => !(f.dose > 0))) throw ValidationError([{ code: 'e_generic', p: { msg: 'brachytherapy dose' } }]);
-    const rxCfg = brachy.length ? Object.assign({}, cfg.prescription, { closed_dates: (cfg.prescription.closed_dates || []).concat(brachy.map((f) => iso(f.day))) }) : cfg.prescription;
-    try { rx = rxFromCfg(rxCfg); } catch (e) { throw ValidationError([{ code: 'e_generic', p: { msg: e.message } }]); }
     const gap = cfg.gap || {};
     const resume = gap.resume_date ? parseDate(gap.resume_date) : null;
     const missed = new Set((gap.missed_dates || []).map(parseDate));
@@ -942,6 +976,6 @@
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
     solveScale, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
-    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart };
+    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
 })(typeof window !== 'undefined' ? window : globalThis);

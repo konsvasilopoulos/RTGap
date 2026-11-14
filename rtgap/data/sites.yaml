@@ -93,26 +93,27 @@ sites:
     tumour: *cat1
     oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / cord", alpha_beta: 2}]
     sources: [RCR19]
+    rcr5_draft: {target_overall_time_days: 44, rule: medullo}
   glioblastoma:
     name: "Glioblastoma"
     category: 1
     tumour: *cat1
     oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / optic", alpha_beta: 2}]
-    sources: [RCR5d]
-    notes: ["Category 1 in the 5th edition draft (not listed in the 2019 edition)."]
+    sources: [RCR19, RCR5d]
+    notes: ["2019 edition: described as very fast-growing, not in the category list. Category 1 in the 5th edition draft."]
   ependymoma_intracranial:
     name: "Intracranial ependymoma"
     category: 1
     tumour: *cat1
     oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / cord", alpha_beta: 2}]
     sources: [RCR5d]
-    notes: ["Category 1 in the 5th edition draft (not listed in the 2019 edition)."]
+    notes: ["Not mentioned in the 2019 edition. Category 1 in the 5th edition draft."]
   bladder:
     name: "Carcinoma of bladder (radical)"
     category: 1
     tumour: *cat1
     sources: [RCR5d]
-    notes: ["Category 1 in the 5th edition draft; category 2 in the 2019 edition."]
+    notes: ["Category 1 in the 5th edition draft and in the RCR bladder consensus statements, to which the RCR page of the 2019 guidance refers. The 2019 text itself lists bladder in category 2 (entry 'Carcinoma of bladder (2019 classification)')."]
   short_doubling:
     name: "Other tumour with short mass-doubling time"
     category: 1
@@ -164,7 +165,11 @@ sites:
     oars: [{name: "Late (α/β 3)", alpha_beta: 3}]
     sources: [RCR19, START]
     notes: ["Tumour α/β 3.5 Gy (START, 95% CI 1.2–5.7). No time factor by default.",
-            "The 5th edition draft adds specific guidance for hypofractionated breast schedules: check it for 15- and 5-fraction regimens."]
+            "The 5th edition draft adds rules for hypofractionated breast: 1-week schedules get no extra dose, 3-week schedules finish within 5 weeks (choose the 5th edition in the department settings)."]
+    rcr5_draft:
+      by_fractions:
+        - {max_fractions: 5, no_dose_compensation: true, target_overall_time_days: 20, rule: breast_1wk}
+        - {min_fractions: 13, max_fractions: 16, max_overall_time_days: 34, rule: breast_3wk}
   prostate:
     name: "Prostate carcinoma (radical)"
     category: 2
@@ -207,7 +212,7 @@ sites:
     no_acceleration: true
     tumour: {alpha_beta: 10}
     sources: [RCR19]
-    notes: ["RCR: accelerated scheduling is not appropriate for SABR. The 5th edition draft has a dedicated SABR section; follow it and the local SABR protocol."]
+    notes: ["RCR (2019 and 5th edition draft): accelerated scheduling is not appropriate for SABR; after an unintended delay treatment resumes on non-consecutive days. Follow the local SABR protocol."]
   generic:
     name: "Generic (no site rules)"
     category: null

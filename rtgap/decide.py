@@ -36,7 +36,12 @@ FAMILY_RANK = {"error": 0, "weekend": 1, "bid": 2, "weekend_bid": 3, "accel_dose
                "extended": 6, "extra": 7, "custom": 8}
 SAME_D = {"weekend", "bid", "weekend_bid"}
 DOSE_CHANGE = {"accel_dose", "same_end", "extended", "extra"}
-ACUTE_WARN_PCT = 10.0     # rise of the peak 7-day dose above which a note on acute reactions is shown
+ACUTE_WARN_PCT = 10.0
+EDITION_RULES = {
+    "breast_1wk": "RCR 5th ed. draft, 1-week breast: no extra dose for an interruption; complete within 3 weeks where possible.",
+    "breast_3wk": "RCR 5th ed. draft, 3-week breast: the overall time should not exceed 5 weeks.",
+    "medullo": "RCR 5th ed. draft, medulloblastoma: total radiotherapy time ideally under 45 days.",
+}     # rise of the peak 7-day dose above which a note on acute reactions is shown
 
 
 @dataclass
@@ -66,8 +71,10 @@ def rejection_reasons(p: GapPlanner, o: Option) -> list[str]:
             why.append(f"BID with d = {d:.2f} Gy > {c.bid_max_dose:g} Gy (RCR)")
         if c.chemo_dates:
             clash = set(bid_dates(o.new_fractions)) & set(c.chemo_dates)
-            if clash and (not c.chemo_daily or d > 1.5):
+            if clash and r.guidance == "rcr5_draft" and (not c.chemo_daily or d > 1.5):
                 why.append("BID on a chemotherapy day (RCR 5th ed. draft: not with non-daily chemo or d > 1.5 Gy)")
+            elif clash and r.guidance != "rcr5_draft":
+                why.append("BID on a chemotherapy day (RCR 2019: not on the same day as concomitant chemotherapy)")
         if not c.allow_consecutive_bid and has_consecutive_bid(o.new_fractions):
             why.append("BID on consecutive days (local)")
     if abs(o.scale - p.s0) > 1e-9 and not c.allow_dose_change:
@@ -85,6 +92,8 @@ def rejection_reasons(p: GapPlanner, o: Option) -> list[str]:
         why.append(f"peak 7-day dose +{o.weekly_increase_pct:.0f} % > local maximum of +{c.max_weekly_increase_pct:g} % (acute reactions)")
     if r.max_overall_time_days is not None and o.overall_time > r.max_overall_time_days:
         why.append(f"overall time {o.overall_time} d > {r.max_overall_time_days} d ({r.site_name or 'site'} rule)")
+    if r.no_dose_compensation and o.family != "error" and (abs(o.scale - p.s0) > 1e-9 or o.family == "extra"):
+        why.append("no extra dose after an interruption of this schedule (RCR 5th ed. draft: 1-week breast)")
     if r.no_acceleration and o.family != "baseline":
         why.append("modified scheduling not appropriate for this site (RCR: no acceleration for SABR)")
     for t in o.oars + [o.tumour]:
@@ -120,6 +129,9 @@ def warnings_for(p: GapPlanner, o: Option) -> list[str]:
                  "faster dose accumulation, expect stronger acute reactions.")
     if p.rules.gap_cause == "toxicity" and o.family != "baseline":
         w.append("The interruption was caused by acute toxicity: acceleration or larger fractions may be contraindicated.")
+    tg = p.rules.target_overall_time_days
+    if tg is not None and o.overall_time > tg:
+        w.append(f"Overall time {o.overall_time} d is beyond the RCR 5th ed. draft target of {tg} d.")
     mx = p.rules.max_extension_days
     if mx is not None and o.extension_days > mx:
         cat = f"category {p.category}" if p.category else "site"
@@ -160,6 +172,10 @@ def decide(p: GapPlanner, options: list[Option] | None = None) -> Decision:
     tol_t, tol_l = c.max_tumour_deficit_pct, c.max_late_increase_pct
     base = next(o for o in opts if o.family == "baseline")
     trace: list[str] = []
+    trace.append("Guidance: RCR 5th edition, draft for consultation (not final)." if r.guidance == "rcr5_draft"
+                 else "Guidance: RCR 2019 (4th edition).")
+    for k in r.edition_rules:
+        trace.append(EDITION_RULES.get(k, k))
     cat = f"RCR category {r.category}" if r.category else (r.site_name or "no category")
     if r.category is None and r.max_extension_days is None:
         trace.append("No RCR category or allowance set: aiming to keep the planned end date.")
@@ -247,6 +263,12 @@ def decide(p: GapPlanner, options: list[Option] | None = None) -> Decision:
         trace.append(f"Step 4: '{pick.title}' brings the prolongation to {pick.extension_days} d (≤ {mx} d).")
         return done("recommended", f"{pick.title}: {_short(pick)}", pick)
     trace.append(f"Step 3–4: prolongation cannot be kept within {mx} d with the planned d.")
+    if r.no_dose_compensation:
+        trace.append("Step 5 does not apply: no extra dose for this schedule (RCR 5th ed. draft). "
+                     "Treatment continues at the planned dose per fraction.")
+        if base.feasible:
+            return done("no_action", "Continue at the planned dose per fraction (no dose compensation for this schedule).", base)
+        return done("clinical_decision", "The rules exclude every option: clinical decision.", candidates=feasible[:3])
     # 5
     dose_opts = [o for o in feasible if o.family in DOSE_CHANGE or o.family == "custom"]
     within = [o for o in dose_opts if o.extension_days <= mx]

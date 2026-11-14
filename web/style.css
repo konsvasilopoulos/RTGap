@@ -221,3 +221,5 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
 .proto-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .proto-head .pill { margin-left: auto; }
 .linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font: inherit; text-decoration: underline; cursor: pointer; }
+
+.warnnote { color: var(--warn); }

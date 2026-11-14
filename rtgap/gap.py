@@ -539,8 +539,19 @@ class GapPlanner:
     # ------------------------------------------------------------------ #
     # slot patterns (dates only; doses are assigned later)
     def pattern_standard(self, n: int) -> list[Fraction]:
+        """n fractions on the next treatment days. For sites without acceleration (SABR) RCR asks
+        that treatment resumes on non-consecutive days: then the days are at least 2 days apart,
+        also from the last fraction given."""
         gen = self._days_from(self.resume)
-        return [Fraction(next(gen), 0) for _ in range(n)]
+        if not self.rules.no_acceleration:
+            return [Fraction(next(gen), 0) for _ in range(n)]
+        out: list[Fraction] = []
+        last = max((f.date for f in self.delivered), default=None)
+        while len(out) < n:
+            d = next(gen)
+            if last is None or (d - last).days >= 2:
+                out.append(Fraction(d, 0)); last = d
+        return out
 
     def pattern_accelerated(self, n: int, sat: bool = False, sun: bool = False,
                             bid: bool = False) -> list[Fraction]:

@@ -15,6 +15,8 @@ from .tissues import Tissue
 #   cat 3: compensation generally considered beyond 7 days
 CATEGORY_DEFAULTS = {1: (0, 2), 2: (2, 5), 3: (7, 7)}
 
+GUIDANCES = ("rcr2019", "rcr5_draft")
+
 # Repair half-time used for late-responding organs when two fractions fall on one day.
 # 4.4 h: subcutaneous fibrosis, CHART head & neck (Bentzen, Saunders & Dische, Radiother Oncol 1999;
 # 3.8 h telangiectasia, 4.9 h laryngeal oedema). Set repair_half_time_h: null to assume complete repair.
@@ -34,6 +36,10 @@ class CaseRules:
     notes: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
     gap_cause: str | None = None          # machine | holiday | toxicity | patient | other
+    guidance: str = "rcr2019"             # rcr2019 (4th edition, published) | rcr5_draft (5th edition, consultation draft)
+    no_dose_compensation: bool = False    # no change of fraction size and no extra fractions (5th draft: 1-week breast)
+    target_overall_time_days: int | None = None   # soft limit: a note, not an exclusion
+    edition_rules: list[str] = field(default_factory=list)   # edition-specific site rules applied (keys)
 
     def __post_init__(self):
         if self.category in CATEGORY_DEFAULTS:
@@ -99,13 +105,27 @@ class SiteProfile:
     no_acceleration: bool = False
     notes: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
+    rcr5_draft: dict = field(default_factory=dict)
 
-    def rules(self) -> CaseRules:
-        return CaseRules(category=self.category, ideal_extension_days=self.ideal_extension_days,
-                         max_extension_days=self.max_extension_days,
-                         max_overall_time_days=self.max_overall_time_days,
-                         no_acceleration=self.no_acceleration, site_id=self.id, site_name=self.name,
-                         notes=list(self.notes), sources=list(self.sources))
+    def rules(self, guidance: str = "rcr2019", n_fractions: int | None = None) -> CaseRules:
+        """Site rules under the chosen RCR guidance. With ``rcr5_draft`` the site's ``rcr5_draft`` block
+        (and the matching ``by_fractions`` entry, chosen by the number of fractions) is applied."""
+        r = CaseRules(category=self.category, ideal_extension_days=self.ideal_extension_days,
+                      max_extension_days=self.max_extension_days,
+                      max_overall_time_days=self.max_overall_time_days,
+                      no_acceleration=self.no_acceleration, site_id=self.id, site_name=self.name,
+                      notes=list(self.notes), sources=list(self.sources), guidance=guidance)
+        if guidance == "rcr5_draft" and self.rcr5_draft:
+            blocks = [self.rcr5_draft] + [b for b in self.rcr5_draft.get("by_fractions", []) or []
+                                          if n_fractions is not None
+                                          and b.get("min_fractions", 0) <= n_fractions <= b.get("max_fractions", 10 ** 6)]
+            for b in blocks:
+                for k in ("max_overall_time_days", "target_overall_time_days", "no_dose_compensation"):
+                    if k in b:
+                        setattr(r, k, b[k])
+                if b.get("rule"):
+                    r.edition_rules.append(b["rule"])
+        return r
 
     def tumour_tissue(self) -> Tissue:
         t = self.tumour
@@ -156,5 +176,6 @@ def load_library(overrides: dict | None = None) -> dict[str, SiteProfile]:
             max_overall_time_days=s.get("max_overall_time_days"),
             no_acceleration=bool(s.get("no_acceleration", False)),
             notes=list(s.get("notes") or []), sources=list(s.get("sources") or []),
+            rcr5_draft=dict(s.get("rcr5_draft") or {}),
         )
     return lib

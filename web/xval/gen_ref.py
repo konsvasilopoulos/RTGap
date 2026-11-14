@@ -119,6 +119,29 @@ for i in range(160):
     cfg = dict(site=random.choice(sites), prescription=rx, gap=gap, constraints=c, _sens=(i % 8 == 0), _scen=(i % 10 == 0))
     if random.random() < 0.2: cfg["gap"]["cause"] = random.choice(["machine", "toxicity"])
     cases.append((cfg, {}))
+# RCR edition: every case once more under the 5th-edition draft, plus breast / medulloblastoma / SABR / chemo cases
+extra_cases = []
+for c, pr in cases[:: 3]:
+    extra_cases.append((dict(c, guidance="rcr5_draft"), pr))
+random.seed(23)
+for i in range(80):
+    site, rx = random.choice([("breast", dict(n_fractions=5, dose_per_fraction=5.2)), ("breast", dict(n_fractions=15, dose_per_fraction=2.67)),
+                              ("breast", dict(n_fractions=25, dose_per_fraction=2.0)), ("medulloblastoma", dict(n_fractions=30, dose_per_fraction=1.8)),
+                              ("sabr", dict(n_fractions=5, dose_per_fraction=7.25)), ("sabr", dict(n_fractions=3, dose_per_fraction=18.0)),
+                              ("hn_scc", dict(n_fractions=35, dose_per_fraction=2.0))])
+    start = dt.date(2026, 1, 5) + dt.timedelta(days=random.randrange(0, 330))
+    rx = dict(rx, start=start.isoformat())
+    first = random.randrange(1, rx["n_fractions"] + 2)
+    missed = [(start + dt.timedelta(days=first + j)).isoformat() for j in range(random.choice([1, 2, 3, 5, 8, 12]))]
+    c = {}
+    for k in ("allow_saturday", "allow_sunday", "allow_bid"):
+        if random.random() < 0.4: c[k] = False
+    if site == "hn_scc" or random.random() < 0.2:
+        c["chemo_dates"] = [(start + dt.timedelta(days=7 * w + random.choice([0, 1]))).isoformat() for w in range(7)]; c["chemo_daily"] = random.random() < 0.5
+    cfg = dict(site=site, prescription=rx, gap=dict(missed_dates=missed), constraints=c, guidance=random.choice(["rcr2019", "rcr5_draft"]),
+               _sens=(i % 7 == 0), _scen=(i % 9 == 0))
+    extra_cases.append((cfg, {}))
+cases += extra_cases
 ref = [dict(case=c, protocol=p, result=run(c, p)) for c, p in cases]
 json.dump(ref, open("web/xval/ref.json", "w"), default=str)
 lib = yaml.safe_load(open("rtgap/data/sites.yaml", encoding="utf-8"))["sites"]

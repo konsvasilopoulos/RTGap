@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from .schedule import WEEKDAY_NAMES
 
 CASE_KEYS = {"title", "site", "protocol", "category", "prescription", "gap", "tumour", "oars", "rules",
-             "constraints", "options", "custom_options", "sensitivity", "scenarios", "audit", "brachy"}
+             "constraints", "options", "custom_options", "sensitivity", "scenarios", "audit", "brachy",
+             "guidance"}
 RX_KEYS = {"start", "n_fractions", "dose_per_fraction", "treatment_weekdays", "closed_dates", "holidays",
            "phases", "primary_level"}
 GAP_KEYS = {"missed_dates", "resume_date", "unavailable_dates", "delivered", "outage_start", "cause",

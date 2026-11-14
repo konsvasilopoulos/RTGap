@@ -11,7 +11,7 @@ in any browser; it works offline).
 
 Developed by **Konstantinos Vasilopoulos, PhD Candidate**.
 
-> Version 1.1.0. Decision support for research and education, **not a medical
+> Version 1.2.0. Decision support for research and education, **not a medical
 > device**. All parameters and every modified schedule must be checked by the
 > treating team. See [docs/INTENDED_USE.md](docs/INTENDED_USE.md).
 
@@ -35,6 +35,24 @@ public holidays, twice-daily slots). For each candidate it reports:
 > **Not a medical device.** This is a research and educational tool. Every
 > parameter must be confirmed by the treating team, and every modified schedule
 > must be checked independently before clinical use.
+
+## New in 1.2: RCR edition switch
+
+`guidance: rcr2019` (default, the published 4th edition) or `guidance: rcr5_draft`
+(the 5th edition draft for consultation). It is a case key, a protocol key and a
+setting of the web app's department card; the report states which was used.
+The decision order and categories are the same; the draft adds:
+
+| | RCR 2019 | RCR 5th edition draft |
+|---|---|---|
+| 1-week breast (≤ 5 fx) | category 2 rules | no extra dose for an interruption; finish within 3 weeks where possible (note) |
+| 3-week breast (13–16 fx) | category 2 rules | overall time ≤ 5 weeks (T ≤ 34 d, excludes) |
+| Medulloblastoma | category 1 | also total time ideally < 45 d (note) |
+| BID on a chemotherapy day | excluded (2019: not on the same day as concomitant chemotherapy) | excluded only if the chemotherapy is not daily or d > 1.5 Gy |
+
+In both editions SABR resumes on non-consecutive days after an unintended
+delay, which the calendar now applies. The draft is not final: when the 5th
+edition is published the library will be updated against the final text.
 
 ## New in 1.1
 

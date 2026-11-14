@@ -11,6 +11,7 @@ Case file (YAML or JSON)::
     tumour: {...}                # optional overrides of the site tumour parameters
     oars: [...]                  # optional; replaces the site default OARs
     rules: {category, ideal_extension_days, max_extension_days, max_overall_time_days, no_acceleration}
+    guidance: rcr2019 | rcr5_draft   # RCR edition (default rcr2019, the published 4th edition)
     constraints: {...}           # optional; overrides the protocol constraints
     custom_options: [...]
 
@@ -27,7 +28,7 @@ import json
 from pathlib import Path
 
 from .gap import GapPlanner, Phase, Prescription
-from .rules import CaseRules, Constraints, load_library, oar_from_dict
+from .rules import GUIDANCES, CaseRules, Constraints, load_library, oar_from_dict
 from .schedule import Fraction, parse_date, parse_weekdays
 from .tissues import Tissue
 from .validation import ValidationError, check_case_dict, check_planner
@@ -106,7 +107,18 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
     else:
         oars = [oar_from_dict({"name": "Late (α/β 3)", "alpha_beta": 3})]
 
-    rules = site.rules() if site else CaseRules()
+    guidance = cfg.get("guidance") or protocol.get("guidance") or "rcr2019"
+    if guidance not in GUIDANCES:
+        raise ValidationError([f"unknown guidance {guidance!r}: use one of {', '.join(GUIDANCES)}"])
+    brachy = [(parse_date(f["date"]), float(f["dose"])) for f in ((cfg.get("brachy") or {}).get("fractions") or [])]
+    if any(d <= 0 for _, d in brachy):
+        raise ValidationError(["brachytherapy dose must be > 0"])
+    rx_cfg = dict(cfg["prescription"])
+    if brachy:      # no external beam on a brachytherapy day
+        rx_cfg["closed_dates"] = list(rx_cfg.get("closed_dates") or []) + [d for d, _ in brachy]
+    rx = prescription_from_dict(rx_cfg)
+
+    rules = site.rules(guidance, rx.n_fractions) if site else CaseRules(guidance=guidance)
     over = dict(cfg.get("rules") or {})
     if "category" in cfg and "category" not in over:
         over["category"] = cfg["category"]
@@ -120,13 +132,6 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
     c_cfg.update(cfg.get("constraints") or cfg.get("options") or {})
     constraints = Constraints.from_dict(c_cfg)
 
-    brachy = [(parse_date(f["date"]), float(f["dose"])) for f in ((cfg.get("brachy") or {}).get("fractions") or [])]
-    if any(d <= 0 for _, d in brachy):
-        raise ValidationError(["brachytherapy dose must be > 0"])
-    rx_cfg = dict(cfg["prescription"])
-    if brachy:      # no external beam on a brachytherapy day
-        rx_cfg["closed_dates"] = list(rx_cfg.get("closed_dates") or []) + [d for d, _ in brachy]
-    rx = prescription_from_dict(rx_cfg)
     gap = cfg.get("gap", {}) or {}
     delivered = None
     if gap.get("delivered"):

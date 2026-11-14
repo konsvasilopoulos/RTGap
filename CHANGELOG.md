@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — 2026-11-14
+* RCR edition switch: `guidance: rcr2019` (default) or `rcr5_draft`, in the case, the protocol and the
+  web app. Draft rules for 1-week and 3-week breast schedules and medulloblastoma; BID on chemotherapy
+  days per edition. Site notes for glioblastoma, ependymoma and bladder state both editions.
+* SABR resumes on non-consecutive days after an interruption (both editions).
+* 69 Python tests; JavaScript engine cross-validated on 651 cases (4323 schedules), no mismatches.
+
 ## 1.1.0 — 2026-11-14
 * Several interruptions in one course: the prolongation counts over the whole course; earlier
   catch-up fractions (`extra_delivered`) and an earlier change of plan (`plan_change`) are entered.

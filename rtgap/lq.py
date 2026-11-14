@@ -30,6 +30,15 @@ def bed(n: float, d: float, alpha_beta: float) -> float:
     return n * d * (1.0 + d / alpha_beta)
 
 
+def quad_term(d: float, dt: float | None = None) -> float:
+    """Quadratic dose term of one fraction: d² for LQ. With a transition dose ``dt`` (linear-quadratic-
+    linear model, Astrahan 2008) the survival curve continues along its tangent above dt, so that
+    BED = dt (1 + dt/ab) + (1 + 2 dt/ab)(d - dt), i.e. the quadratic term becomes 2 dt d - dt²."""
+    if dt is None or d <= dt:
+        return d * d
+    return 2.0 * dt * d - dt * dt
+
+
 def eqd2_from_bed(bed_value: float, alpha_beta: float) -> float:
     _check_ab(alpha_beta)
     return bed_value / (1.0 + 2.0 / alpha_beta)

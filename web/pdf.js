@@ -301,6 +301,28 @@
     return assemble(jpgs, a.inputJson || '');
   }
 
+  /* A generic list page: title, key-value lines, one table, notes (used for the machine-outage list). */
+  async function buildList(a) {
+    const tr = a.tr, L = tr.t;
+    if (document.fonts && document.fonts.load) {
+      const want = Promise.all(['400 10px "IBM Plex Sans"', '600 10px "IBM Plex Sans"', '600 14px "STIX Two Text"', '400 9px "JetBrains Mono"'].map((f) => document.fonts.load(f, 'αβγ Ωμέγα abc').catch(() => null)));
+      await Promise.race([want, new Promise((res) => setTimeout(res, 2500))]);
+    }
+    const d = Doc(), g0 = d.g, now = new Date();
+    const stamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    d.font(22, 600, SERIF); g0.fillStyle = COL.ink; g0.fillText('RTGap', M, d.y + 20);
+    d.font(11, 400); g0.fillStyle = COL.muted; g0.fillText(a.title, M + 82, d.y + 19);
+    d.font(9, 400, MONO); const right = L('generated') + ' ' + stamp; g0.fillText(right, PW - M - g0.measureText(right).width, d.y + 19);
+    d.y += 30; g0.strokeStyle = COL.ink; g0.lineWidth = 1.5; g0.beginPath(); g0.moveTo(M, d.y); g0.lineTo(PW - M, d.y); g0.stroke(); d.y += 12;
+    d.kv(a.kv); d.y += 6;
+    d.table(a.cols, a.rows, { size: 9.2 }); d.y += 8;
+    for (const n of a.notes || []) d.text(n, { size: 8.6, color: COL.muted, after: 4 });
+    d.pages.forEach((cv, i) => { const g = cv.getContext('2d'); g.font = '400 8px ' + MONO; g.fillStyle = COL.muted; g.fillText('RTGap ' + RT.VERSION + ' · ' + a.title, M, PH - 30); const pg = (i + 1) + '/' + d.pages.length; g.fillText(pg, PW - M - g.measureText(pg).width, PH - 30); });
+    const jpgs = [];
+    for (const cv of d.pages) { const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.93)); jpgs.push(new Uint8Array(await blob.arrayBuffer())); }
+    return assemble(jpgs, '');
+  }
+
   /* Minimal PDF 1.4 writer: one JPEG per A4 page + the input JSON as an embedded file. */
   function assemble(jpgs, inputJson) {
     const enc = new TextEncoder(), parts = [], offsets = []; let pos = 0;
@@ -327,5 +349,5 @@
     push(x + 'trailer\n<< /Size ' + cnt + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n');
     return new Blob(parts, { type: 'application/pdf' });
   }
-  root.RTPDF = { build, buildSheet, assemble };
+  root.RTPDF = { build, buildSheet, buildList, assemble };
 })(window);

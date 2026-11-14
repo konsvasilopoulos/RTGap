@@ -288,3 +288,7 @@ tr.pick { transition: background 0.12s; }
 .tabs.flat { position: static; box-shadow: none; margin: 10px 0 14px; backdrop-filter: none; }
 .docbody { font-size: 0.92rem; } .docbody .reflist { max-width: none; }
 tr.dim td { opacity: 0.6; }
+
+.warnbox { border: 1px solid var(--warn); border-left-width: 4px; border-radius: 10px; padding: 8px 12px; background: color-mix(in srgb, var(--warn) 9%, transparent); font-size: 0.92rem; }
+tr.best td { background: color-mix(in srgb, var(--good) 10%, transparent); }
+#foot-contact a { color: inherit; }

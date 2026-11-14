@@ -18,6 +18,16 @@ public holidays, twice-daily slots). For each candidate it reports:
 > parameter must be confirmed by the treating team, and every modified schedule
 > must be checked independently before clinical use.
 
+## LQ-L model (1.5)
+
+`model: lql` with `lql_dt_factor: 2.0` (case or protocol key). Above the transition dose
+d_T = factor × α/β of each tissue the fraction BED continues along the LQ tangent
+(Astrahan, Med Phys 2008): BED = d_T(1 + d_T/(α/β)) + (1 + 2 d_T/(α/β))(d − d_T). Below d_T
+nothing changes. For two fractions on one day the incomplete-repair cross term uses the doses
+capped at d_T. Doses per fraction are then solved by bisection instead of the closed form. The
+Joiner correction stays an LQ result and is flagged as approximate. The default is plain LQ, as in
+the RCR guidance and the published examples.
+
 ## New in 1.2: RCR edition switch
 
 `guidance: rcr2019` (default, the published 4th edition) or `guidance: rcr5_draft`

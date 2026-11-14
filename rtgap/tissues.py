@@ -35,6 +35,15 @@ class Tissue:
     repair_half_time_h: float | None = None
     max_eqd2: float | None = None
     brachy_ratio: float = 1.0          # dose to this tissue per Gy of a brachytherapy fraction
+    lql_factor: float | None = None    # LQ-L: transition dose d_T = lql_factor × α/β (None = plain LQ)
+
+    @property
+    def lql_dt(self) -> float | None:
+        return self.lql_factor * self.alpha_beta if self.lql_factor else None
+
+    def bed_fraction(self, d: float) -> float:
+        """BED of a single fraction of d Gy to this tissue (LQ, or LQ-L above the transition dose)."""
+        return d + lq.quad_term(d, self.lql_dt) / self.alpha_beta
 
     # ------------------------------------------------------------------ #
     @classmethod
@@ -74,11 +83,13 @@ class Tissue:
         for fx in group_by_day(fractions).values():
             doses = [f.dose * self.ratio(f.phase) for f in fx]
             linear = sum(doses)
-            quad = sum(d * d for d in doses)
+            dt = self.lql_dt
+            quad = sum(lq.quad_term(d, dt) for d in doses)
             if theta is not None and len(doses) > 1:
+                cap = doses if dt is None else [min(d, dt) for d in doses]   # LQ-L: cross term on the capped doses
                 for i in range(len(doses)):
                     for j in range(i + 1, len(doses)):
-                        quad += 2.0 * doses[i] * doses[j] * theta ** (j - i)
+                        quad += 2.0 * cap[i] * cap[j] * theta ** (j - i)
             total += linear + quad / ab
         return total
 
@@ -106,6 +117,8 @@ class Tissue:
         if self.has_time_factor:
             parts.append(f"D_prolif = {self.dprolif:.3g} Gy/day (K = {self.k_bed:.3g} Gy{self.alpha_beta:g}/day) "
                          f"after T_k = {self.kickoff_days:g} d")
+        if self.lql_factor:
+            parts.append(f"LQ-L above d_T = {self.lql_dt:g} Gy")
         if self.repair_half_time_h:
             parts.append(f"repair T½ = {self.repair_half_time_h:g} h")
         if self.max_eqd2 is not None:

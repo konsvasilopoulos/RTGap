@@ -491,7 +491,7 @@ class GapPlanner:
         per_day: dict[dt.date, float] = {}
         for f in fractions:
             d = f.dose * t.ratio(f.phase)
-            per_day[f.date] = per_day.get(f.date, 0.0) + lq.eqd2_from_bed(d * (1.0 + d / t.alpha_beta), t.alpha_beta)
+            per_day[f.date] = per_day.get(f.date, 0.0) + lq.eqd2_from_bed(t.bed_fraction(d), t.alpha_beta)
         days = sorted(per_day)
         best = 0.0
         for i, d0 in enumerate(days):
@@ -639,6 +639,18 @@ class GapPlanner:
         # sample at positive scales (a fraction with zero dose does not count towards a
         # tissue's overall time, so s = 0 is not on the same parabola)
         bi = self.c.bid_interval_h
+        if tissue.lql_factor:
+            # LQ-L: EQD2 is piecewise in the scale, but increasing: 60 bisection steps on [0.02, 8]
+            lo, hi = 0.02, 8.0
+            if tissue.eqd2(self._course_s(slots, hi), bi) < target_eqd2 or tissue.eqd2(self._course_s(slots, lo), bi) > target_eqd2:
+                raise ValueError("no positive dose per fraction reaches the target")
+            for _ in range(60):
+                mid = 0.5 * (lo + hi)
+                if tissue.eqd2(self._course_s(slots, mid), bi) < target_eqd2:
+                    lo = mid
+                else:
+                    hi = mid
+            return 0.5 * (lo + hi)
         s1, s2, s3 = 0.5, 1.0, 2.0
         f1, f2, f3 = (tissue.eqd2(self._course_s(slots, x), bi) for x in (s1, s2, s3))
         b = ((f3 - f2) / (s3 - s2) - (f2 - f1) / (s2 - s1)) / (s3 - s1)

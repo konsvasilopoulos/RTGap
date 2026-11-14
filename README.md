@@ -28,6 +28,9 @@ tumour and the normal tissues, which options the rules exclude and why.
 - **Dose levels and brachytherapy**: SIB, sequential boost, HDR fractions.
 - **How robust is it**: 81-combination parameter sweep, resume-date scenarios,
   trade-off map, check-by-hand worksheet.
+- **Before the start**: closed days inside the planned course, what they
+  cost, and which start day avoids them.
+- **LQ or LQ-L**: optional linear-quadratic-linear model for large fractions.
 - **Machine outage triage**: apply an outage to all saved cases at once and
   get the patients in order of priority, with the extra sessions needed.
 - **For the department**: protocol file with local constraints and values,
@@ -37,10 +40,10 @@ tumour and the normal tissues, which options the rules exclude and why.
 
 ## Validation
 
-- 69 Python tests reproduce published worked examples (Basic Clinical
+- 75 Python tests reproduce published worked examples (Basic Clinical
   Radiobiology ch. 9; RCR 2019 Appendix B).
-- The engine exists twice (Python and JavaScript); the two agree on 651
-  randomised cases, 4323 schedules.
+- The engine exists twice (Python and JavaScript); the two agree on 928
+  randomised cases, 6136 schedules.
 - Plain LQ results agree with RadComp on 9 schedules
   ([benchmark](validation/benchmark.md)).
 - The web app runs a self-test of 15 published values on every device.

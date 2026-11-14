@@ -39,6 +39,8 @@ software under its own quality system (in the EU: MDR Article 5(5)).
   (`guidance: rcr5_draft`); the published 2019 edition is the default. The
   draft rules were transcribed from the consultation text and must be checked
   against the final edition when it is published.
+* LQ-L is offered to show how much a large-fraction result depends on the model. Its transition
+  dose is not established clinically; it does not make SABR compensation safe.
 * The department protocol of the web app is kept in this browser on this
   device. Export it as a file to keep a record and to share it.
 

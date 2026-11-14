@@ -8,7 +8,7 @@
   const num = (v) => { if (v === '' || v == null) return null; const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
 
   // ------------------------------------------------------------------ department protocol (same schema as the Python package)
-  const CONTACT = '';   // e-mail shown in the footer and in "About"; empty = not shown
+  const CONTACT = 'kostasvasilopoulosgr@yahoo.com';   // e-mail shown in the footer and in "About"; empty = not shown
   const PKEY = 'rtgap.protocol', SITE_RULE_KEYS = ['ideal_extension_days', 'max_extension_days', 'max_overall_time_days'];
   function normProto(p, ignored) {
     ignored = ignored || [];
@@ -68,7 +68,7 @@
   function baseState(over) {
     const s = Object.assign({ v: 3, lang: 'el', pdfLang: null, title: '', caseRef: '', calcBy: '', checkedBy: '', site: 'hn_scc', category: 'auto',
       start: '2026-10-05', multi: false, n: 35, d: 2, phases: [{ name: 'SIB', n: 35, levels: [{ name: 'PTV70', d: 2 }, { name: 'PTV63', d: 1.8 }, { name: 'PTV56', d: 1.6 }] }], primary: '',
-      weekdays: [0, 1, 2, 3, 4], holidays: true, closed: [], missed: [], unavailable: [], resume: '', cause: '', brachy: { on: false, fx: [] }, guidance: proto ? proto.guidance : 'rcr2019', extra: [], errors: [], pc: { on: false, from: '', n: null, d: null }, given: { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }, scen: false, scenDays: 10, mark: 'missed', c: C0(), sel: null }, over || {});
+      weekdays: [0, 1, 2, 3, 4], holidays: true, closed: [], missed: [], unavailable: [], resume: '', cause: '', brachy: { on: false, fx: [] }, guidance: proto ? proto.guidance : 'rcr2019', model: 'lq', lqlF: 2, extra: [], errors: [], pc: { on: false, from: '', n: null, d: null }, given: { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }, scen: false, scenDays: 10, mark: 'missed', c: C0(), sel: null }, over || {});
     const d = siteDefaults(s.site);
     if (!s.tumour) s.tumour = d.tumour;
     if (!s.oars) s.oars = d.oars;
@@ -97,7 +97,7 @@
   const parseRatio = (v) => { if (typeof v === 'number') return v; const parts = String(v == null ? '' : v).split('/').map((x) => num(x)).filter((x) => x != null); return parts.length > 1 ? parts : (parts.length ? parts[0] : 1); };
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
   let state = EXAMPLES.hn_sib();
-  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; } } } catch (e) { /* storage unavailable */ }
+  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; if (!state.model) { state.model = 'lq'; state.lqlF = 2; } } } } catch (e) { /* storage unavailable */ }
   let fromLink = false;
   try { const mh = /[#&]c=([\w\-]+)/.exec(location.hash || ''); if (mh) { const lang0 = state.lang; state = fromCase(JSON.parse(b64dEarly(mh[1]))); state.lang = lang0; fromLink = true; history.replaceState(null, '', location.pathname + location.search); } } catch (e) { /* bad link: ignore */ }
   let tr = I.make(state.lang), model = null;
@@ -141,6 +141,7 @@
     else { const ov = protoSite(s.site); if (ov) { const r = {}; for (const k of SITE_RULE_KEYS) if (ov[k] != null) r[k] = ov[k]; if (Object.keys(r).length) out.rules = r; } }
     if (proto) out.audit = { protocol: proto.name || '–' };
     if (s.guidance === 'rcr5_draft') out.guidance = 'rcr5_draft';
+    if (s.model === 'lql') { out.model = 'lql'; out.lql_dt_factor = s.lqlF > 0 ? s.lqlF : 2; }
     if (s.scen && s.missed.length) out.scenarios = { days: s.scenDays || 10 };
     return out;
   }
@@ -170,6 +171,7 @@
     const c = cfg.constraints || cfg.options || {};
     s.c = Object.assign({}, RT.CONSTRAINT_DEFAULTS, { chemo_dates: [] });     // a case file is self-contained
     s.guidance = cfg.guidance === 'rcr5_draft' ? 'rcr5_draft' : 'rcr2019';
+    s.model = cfg.model === 'lql' ? 'lql' : 'lq'; s.lqlF = cfg.lql_dt_factor || 2;
     for (const k of Object.keys(c)) if (k in RT.CONSTRAINT_DEFAULTS) s.c[k] = k === 'chemo_dates' ? c[k].map((d) => String(d).slice(0, 10)) : c[k];
     const cat = cfg.rules && 'category' in cfg.rules ? cfg.rules.category : ('category' in cfg ? cfg.category : undefined);
     if (cat !== undefined) s.category = cat == null ? 'none' : String(cat);
@@ -269,7 +271,7 @@
   function bioSum() {
     const s = state, L = tr.t, t = s.tumour;
     const rate = t.rate ? (t.mode === 'dp' ? 'D_prolif ' : 'K ') + t.rate + (t.tk != null && t.tk !== '' ? ' · T_k ' + t.tk : '') : L('sum_notime');
-    return L('tumour') + ' α/β ' + t.ab + ' · ' + rate + ' · ' + s.oars.length + ' ' + L('sum_oars');
+    return (s.model === 'lql' ? 'LQ-L · ' : '') + L('tumour') + ' α/β ' + t.ab + ' · ' + rate + ' · ' + s.oars.length + ' ' + L('sum_oars');
   }
   function deptSum() {
     const c = state.c, L = tr.t, y = (b) => (b ? '✓' : '✗');
@@ -361,6 +363,8 @@
         <label class="f"><span>${esc(L('rate'))}</span><select data-bind="tumour.mode" id="i-tumour-mode"><option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option></select></label>
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
       <p class="small gl-row"><span>${esc(L('gl_what'))}</span><span>${gl('ab')} α/β</span><span>${gl('k')} K / D<sub>prolif</sub></span><span>${gl('tk')} T<sub>k</sub></span><span>${gl('repair')} T½</span><span>${gl('eqd2')} EQD2</span></p>
+      <div class="fields" style="margin-top:10px"><label class="f"><span>${esc(L('model_label'))}${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></label>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
+      ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
       ${site.time_factor_option ? `<div class="rowbtn" style="margin:-4px 0 12px"><button type="button" class="btn sm" data-act="tf">${esc(L('tf_apply'))}: ${site.time_factor_option.dprolif_eqd2_per_day} Gy/${state.lang === 'el' ? 'ημέρα' : 'day'}</button>${refs([site.time_factor_option.source])}</div><p class="small" style="margin:-6px 0 12px">${esc(L('tf_note'))}</p>` : ''}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
@@ -443,6 +447,8 @@
     const lines = [t.name + '  (α/β = ' + t.ab + ' Gy)'];
     for (const x of w.terms) {
       if (x.mixed) lines.push(x.n + ' × [' + x.m + ' fx]  → ' + x.bed.toFixed(2));
+      else if (x.lql && x.m === 1) lines.push(x.n + ' × ' + x.d.toFixed(2) + ' Gy (LQ-L, d > dT = ' + (+w.dt.toFixed(2)) + '): ' + x.n + '·[' + (+w.dt.toFixed(2)) + '·(1 + ' + (+w.dt.toFixed(2)) + '/' + t.ab + ') + (1 + 2·' + (+w.dt.toFixed(2)) + '/' + t.ab + ')·(' + x.d.toFixed(2) + ' − ' + (+w.dt.toFixed(2)) + ')] = ' + x.bed.toFixed(2));
+      else if (x.lql) lines.push(x.n + ' × (' + x.m + ' × ' + x.d.toFixed(2) + ' Gy, LQ-L)  → ' + x.bed.toFixed(2));
       else if (x.m > 1 && !x.theta) lines.push(x.n + ' × (' + x.m + ' × ' + x.d.toFixed(2) + ' Gy, ' + L('hand_bid') + '): ' + (x.n * x.m) + '·' + x.d.toFixed(2) + '·(1 + ' + x.d.toFixed(2) + '/' + t.ab + ') = ' + x.bed.toFixed(2));
       else if (x.m > 1) lines.push(x.n + ' × (' + x.m + ' × ' + x.d.toFixed(2) + ' Gy, ' + L('hand_bid') + '): ' + x.n + '·' + x.m + '·' + x.d.toFixed(2) + '·(1 + ' + x.d.toFixed(2) + '·(1 + ' + x.theta.toFixed(3) + ')/' + t.ab + ') = ' + x.bed.toFixed(2));
       else lines.push(x.n + ' × ' + x.d.toFixed(2) + ' Gy: ' + x.n + '·' + x.d.toFixed(2) + '·(1 + ' + x.d.toFixed(2) + '/' + t.ab + ') = ' + x.bed.toFixed(2));
@@ -499,13 +505,59 @@
         <label class="btn" style="position:relative;overflow:hidden">${esc(L('import'))}<input type="file" id="imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     B.rep += shareHtml() + savedHtml();
-    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen, rep: B.rep };
+    const wantPre = ((state.ui && state.ui.tab) === 'an') || !(B.det + B.chart + B.opts);
+    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
     if (avail.length > 1) h += `<div class="tabs" role="tablist" id="tabs">${avail.map((k) => `<button type="button" role="tab" data-act="tab" data-tab="${k}" aria-selected="${k === tab}">${esc(L('tab_' + k))}${k === 'opts' ? ` <span class="cnt">${dec.feasible.length}</span>` : ''}</button>`).join('')}</div>`;
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
+  }
+  // ---- before the start: closed days inside the course, and what another start day would change
+  function preflight() {
+    const L0 = toCase(state), rows = [];
+    const mk = (start, ideal) => {
+      const c = JSON.parse(JSON.stringify(L0)); c.prescription.start = start; c.gap = {}; delete c.custom_options; delete c.scenarios;
+      if (ideal) { c.prescription.holidays = false; delete c.prescription.closed_dates; }
+      return RT.plannerFromCase(c, {});
+    };
+    let d = RT.parseDate(state.start), guard = 0;
+    const p00 = mk(state.start, false);
+    while (rows.length < 8 && guard++ < 40) {
+      if (RT.isRegular(p00, d) || d === RT.parseDate(state.start)) {
+        try {
+          const p = mk(RT.iso(d), false), q = mk(RT.iso(d), true), closed = [];
+          for (let x = p.rx.start; x <= p.plannedEnd; x++) if (p.rx.closed.has(x) && q.rx.weekdays.includes(RT.weekday(x)) && !p.fixed.some((f) => f.day === x)) closed.push(x);
+          rows.push({ start: d, end: p.plannedEnd, T: p.plannedEnd - p.rx.start, ext: (p.plannedEnd - p.rx.start) - (q.plannedEnd - q.rx.start), closed, names: p.rx.holidayNames || new Map(), dT: p.plannedTumour - q.plannedTumour, rules: p.rules, hasTime: RT.hasTime(p.tumour) });
+        } catch (e) { /* skip a start day that cannot be planned */ }
+      }
+      d++;
+    }
+    if (!rows.length) return null;
+    const best = rows.reduce((a, r) => (r.ext < a.ext ? r : a), rows[0]), cur = rows[0];
+    let comp = null;
+    if (cur.closed.length) {
+      try {
+        const c = JSON.parse(JSON.stringify(L0)); c.gap = { missed_dates: cur.closed.map(RT.iso), unavailable_dates: cur.closed.map(RT.iso), cause: 'holiday' };
+        c.prescription.holidays = false; delete c.prescription.closed_dates; delete c.custom_options; delete c.scenarios;
+        const p = RT.plannerFromCase(c, {}); comp = { p, dec: RT.decide(p) };
+      } catch (e) { comp = null; }
+    }
+    return { rows, best, cur, comp };
+  }
+  function preflightHtml() {
+    const L = tr.t; let r;
+    try { r = preflight(); } catch (e) { r = null; }
+    if (!r) return '';
+    const { rows, best, cur, comp } = r, mx = cur.rules.max != null ? cur.rules.max : 0;
+    const nm = (x, row) => tr.dshort(x) + (row.names.get(x) ? ' ' + tr.hol(row.names.get(x)) : '');
+    let h = `<div class="card" id="preflight"><h2>${esc(L('pre_title'))} ${refs(['RCR19'])}</h2><p class="hint">${esc(L('pre_hint'))}</p>`;
+    h += cur.closed.length ? `<div class="warnbox"><b>${cur.closed.length} ${esc(L(cur.closed.length === 1 ? 'pre_closed1' : 'pre_closed'))}</b>: ${esc(cur.closed.map((x) => nm(x, cur)).join(' · '))}. ${esc(L(cur.closed.length === 1 ? 'pre_cost1' : 'pre_cost'))} <b>${tr.sgi(cur.ext)} ${esc(L('days'))}</b>${cur.hasTime ? `, ${esc(L('col_t'))} <b>${tr.sg(cur.dT)} Gy</b> EQD2` : ''}.${cur.rules.category === 1 && cur.ext > mx ? ' ' + esc(L('pre_cat1')) : ''}</div>` : `<p><b>${esc(L('pre_clear'))}</b></p>`;
+    if (comp) h += `<p style="margin:8px 0"><span class="small">${esc(L('pre_comp'))}</span><br><b>${esc(tr.head(comp.dec.head))}</b>${comp.dec.recommended && comp.dec.recommended.family !== 'baseline' ? `<br><span class="small num">${esc(tr.optShort(comp.dec.recommended))}</span>` : ''}</p>`;
+    h += `<div class="scroll"><table><thead><tr><th style="text-align:left">${esc(L('pre_start'))}</th><th>${esc(L('ends'))}</th><th>T</th><th>${esc(L('pre_ncl'))}</th><th>${esc(L('kpi_ext'))}</th><th>Δ ${esc(L('col_t'))}</th><th></th></tr></thead><tbody>` +
+      rows.map((x, i) => `<tr class="${x === best && best.ext < cur.ext ? 'best' : ''}"><td style="text-align:left">${esc(tr.date(x.start))}${i === 0 ? ` <span class="pill plain">${esc(L('pre_now'))}</span>` : ''}${x === best && best.ext < cur.ext ? ` <span class="pill c3">${esc(L('pre_best'))}</span>` : ''}</td><td class="n">${esc(tr.dshort(x.end))}</td><td class="n">${x.T}</td><td class="n" title="${esc(x.closed.map((y) => nm(y, x)).join(', '))}">${x.closed.length}</td><td class="n ${x.ext > mx ? 'neg' : ''}">${tr.sgi(x.ext)}</td>${x.hasTime ? dcell(x.dT) : '<td class="n">–</td>'}<td>${i ? `<button type="button" class="btn sm" data-act="pre-start" data-d="${RT.iso(x.start)}">${esc(L('pre_use'))}</button>` : ''}</td></tr>`).join('') + `</tbody></table></div><p class="small" style="margin:8px 0 0">${esc(L('pre_note'))}</p></div>`;
+    return h;
   }
   function kpiHtml(m) {
     const p = m.p, L = tr.t, b = m.base, o = m.sel;
@@ -784,7 +836,9 @@
             : r.none ? `<tr class="dim"><td class="n">–</td><td style="text-align:left">${esc(r.name)}<br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat || '–'}</td><td colspan="4" class="small" style="text-align:left">${esc(L('tri_unaff'))}</td></tr>`
             : `<tr class="pick" data-act="tri-open" data-i="${i}" tabindex="0" role="button"><td class="n">${i + 1}</td><td style="text-align:left"><b>${esc(r.name)}</b><br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat ? `<span class="pill c${r.cat}">${r.cat}</span>` : '–'}</td><td class="n">${r.n} ${esc(L('fx'))}</td><td class="n ${r.ext > r.max ? 'neg' : ''}">${tr.sgi(r.ext)} ${esc(L('days'))}</td>${dcell(r.dT, true)}<td style="white-space:normal;min-width:220px;text-align:left"><span class="small">${esc(L('st_' + r.status))}</span><br>${esc(tr.head(r.head))}${r.rec && r.rec.family !== 'baseline' ? `<br><span class="small num">${esc(tr.optShort(r.rec))}</span>` : ''}</td></tr>`).join('') + '</tbody></table></div>';
         const wl = [...load.entries()].sort((x, y) => (+x[0].slice(1)) - (+y[0].slice(1)) || (x[0] < y[0] ? -1 : 1));
-        if (wl.length) h += `<p class="small" style="margin:10px 0 0"><b>${esc(L('tri_load'))}:</b> ${wl.map(([k, v]) => esc(tr.dshort(+k.slice(1))) + (k[0] === 'b' ? ' BID' : '') + ' × ' + v).join(' · ')}</p>`;
+        const wlTxt = wl.map(([k, v]) => tr.dshort(+k.slice(1)) + (k[0] === 'b' ? ' BID' : '') + ' × ' + v).join(' · '); box._load = wlTxt;
+        if (wl.length) h += `<p class="small" style="margin:10px 0 0"><b>${esc(L('tri_load'))}:</b> ${esc(wlTxt)}</p>`;
+        h += `<div class="rowbtn"><button type="button" class="btn" data-act="tri-pdf">${esc(L('tri_pdf'))}</button><button type="button" class="btn" data-act="tri-csv">${esc(L('tri_csv'))}</button></div>`;
         h += `<p class="small" style="margin:8px 0 0">${esc(L('tri_note'))}</p>`;
         box._rows = rows;
       }
@@ -847,7 +901,7 @@
     renderResults();
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
-  const TEXT_BINDS = /(^guidance$|^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
+  const TEXT_BINDS = /(^guidance$|^model$|^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
   function onInput(ev) {
     const t = ev.target;
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
@@ -936,6 +990,20 @@
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
     if (a === 'docs-close') { $('#docs').hidden = true; return; }
+    if (a === 'pre-start') { state.start = t.dataset.d; refresh(true); return; }
+    if (a === 'tri-csv' || a === 'tri-pdf') {
+      const rows = ($('#triage')._rows || []), L = tr.t, q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+      const cells = (r, i) => r.err ? [i + 1, r.name, '', '', '', '', '', L('tri_err'), ''] : r.none ? ['', r.name, r.site, r.cat || '', 0, '', '', L('tri_unaff'), ''] : [i + 1, r.name, r.site, r.cat || '', r.n, r.ext, r.dT.toFixed(1), L('st_' + r.status) + ': ' + tr.head(r.head), r.rec && r.rec.family !== 'baseline' ? tr.optShort(r.rec) : ''];
+      const head = ['#', L('rep_case'), L('s_site'), L('cat'), L('missed_n'), L('kpi_ext') + ' (' + L('days') + ')', 'Δ ' + L('col_t') + ' %', L('scen_dec'), L('remaining')];
+      const stem = 'RTGap-outage-' + tri.from + '_' + tri.to;
+      if (a === 'tri-csv') { saveFile(stem + '.csv', '\ufeff' + [head].concat(rows.map(cells)).map((r) => r.map(q).join(',')).join('\r\n'), 'text/csv'); return; }
+      const wl = $('#triage')._load || '';
+      window.RTPDF.buildList({ tr, title: L('tri_pdf_title'), kv: [[L('tri_from'), tr.date(RT.parseDate(tri.from))], [L('tri_to'), tr.date(RT.parseDate(tri.to))], [L('tri_n').replace(/^./, (c) => c.toUpperCase()), String(rows.length)]].concat(wl ? [[L('tri_load'), wl]] : []),
+        cols: [{ label: '#', w: 0.05 }, { label: head[1], w: 0.25 }, { label: L('cat'), w: 0.08 }, { label: L('missed_n'), w: 0.09 }, { label: L('kpi_ext'), w: 0.09 }, { label: head[6], w: 0.09 }, { label: head[7], w: 0.35 }],
+        rows: rows.map((r, i) => { const c = cells(r, i); return [{ t: String(c[0]), mono: true }, { t: c[1] + (c[2] ? ' · ' + c[2] : '') }, { t: String(c[3]), mono: true }, { t: String(c[4] || '–'), mono: true }, { t: c[5] === '' ? '–' : tr.sgi(c[5]), mono: true }, { t: c[6] === '' ? '–' : c[6], mono: true }, { t: c[7] + (c[8] ? ' · ' + c[8] : '') }]; }),
+        notes: [L('tri_note'), L('disclaimer')] }).then((blob) => saveFile(stem + '.pdf', blob, 'application/pdf')).catch(() => toast(L('save_fail')));
+      return;
+    }
     if (a === 'tri-open') { const r = ($('#triage')._rows || [])[+t.dataset.i]; if (r && r.state) { loadState(JSON.parse(JSON.stringify(r.state))); toast(r.name); window.scrollTo({ top: 0, behavior: 'smooth' }); } return; }
     if (a === 'about-close') { $('#about').hidden = true; return; }
     if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
@@ -1001,5 +1069,5 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (heroDone) drawHero('full'); });
   if (hot && hot.snapshot) hot.snapshot(() => state);
   if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || null);
-  window.__rtgap = { fromCase, toCase, loadState, shareUrl, get state() { return state; } };
+  window.__rtgap = { fromCase, toCase, loadState, shareUrl, get state() { return state; }, model: () => model };
 })();

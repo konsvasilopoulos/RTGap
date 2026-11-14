@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.4.0';
+  const VERSION = '1.5.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -69,8 +69,12 @@
   // {name, ab, ratio:number|number[], dprolif, tk:null|number, repairH:null|number, maxEqd2:null|number}
   function mkTissue(o) {
     return { name: o.name, ab: +o.ab, ratio: o.ratio == null ? 1 : o.ratio, dprolif: o.dprolif || 0,
-      tk: o.tk == null ? null : +o.tk, repairH: o.repairH || null, maxEqd2: o.maxEqd2 == null ? null : +o.maxEqd2, brachyRatio: o.brachyRatio == null ? 1 : +o.brachyRatio };
+      tk: o.tk == null ? null : +o.tk, repairH: o.repairH || null, maxEqd2: o.maxEqd2 == null ? null : +o.maxEqd2, brachyRatio: o.brachyRatio == null ? 1 : +o.brachyRatio, lql: o.lql || null };
   }
+  /** Quadratic dose term of one fraction: d² (LQ); above the transition dose dT the LQ-L tangent, 2·dT·d − dT² (Astrahan 2008). */
+  const quadTerm = (d, dt) => (dt == null || d <= dt) ? d * d : 2 * dt * d - dt * dt;
+  const lqlDt = (t) => (t.lql ? t.lql * t.ab : null);
+  const bedFraction = (t, d) => d + quadTerm(d, lqlDt(t)) / t.ab;
   const tRatio = (t, ph) => Array.isArray(t.ratio) ? +t.ratio[Math.min(ph, t.ratio.length - 1)] : +t.ratio;
   const hasTime = (t) => t.dprolif > 0 && t.tk != null;
   const overallTime = (fx) => { if (!fx.length) return 0; let a = Infinity, b = -Infinity; for (const f of fx) { if (f.day < a) a = f.day; if (f.day > b) b = f.day; } return b - a; };
@@ -85,10 +89,12 @@
     let total = 0;
     for (const day of groupByDay(fx).values()) {
       const ds = day.map((f) => f.dose * tRatio(t, f.phase));
-      let lin = 0, quad = 0;
-      for (const d of ds) { lin += d; quad += d * d; }
-      if (theta != null && ds.length > 1)
-        for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) quad += 2 * ds[i] * ds[j] * Math.pow(theta, j - i);
+      let lin = 0, quad = 0; const dt = lqlDt(t);
+      for (const d of ds) { lin += d; quad += quadTerm(d, dt); }
+      if (theta != null && ds.length > 1) {
+        const cap = dt == null ? ds : ds.map((d) => Math.min(d, dt));
+        for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) quad += 2 * cap[i] * cap[j] * Math.pow(theta, j - i);
+      }
       total += lin + quad / t.ab;
     }
     if (hasTime(t)) {
@@ -297,7 +303,7 @@
   /** Largest EQD2 of the primary level (tumour α/β, no time factor) delivered within any 7 consecutive days. */
   function weeklyPeak(p, fx) {
     const t = p.tumour, per = new Map();
-    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(d * (1 + d / t.ab), t.ab)); }
+    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(bedFraction(t, d), t.ab)); }
     const days = [...per.keys()].sort((a, b) => a - b); let best = 0;
     for (let i = 0; i < days.length; i++) { let tot = 0; for (let j = i; j < days.length && days[j] - days[i] <= 6; j++) tot += per.get(days[j]); if (tot > best) best = tot; }
     return best;
@@ -366,6 +372,12 @@
   const courseS = (p, slots, scale) => p.delivered.concat(assign(p, slots).map((f) => Object.assign({}, f, { dose: scale * f.dose })), p.fixed).sort(fxSort);
   function solveScale(p, slots, tissue, target) {
     const bi = p.c.bid_interval_h, s1 = 0.5, s2 = 1, s3 = 2;
+    if (tissue.lql) {   // LQ-L: piecewise but increasing in the scale: 60 bisection steps on [0.02, 8]
+      let lo = 0.02, hi = 8;
+      if (tissueEqd2(tissue, courseS(p, slots, hi), bi) < target || tissueEqd2(tissue, courseS(p, slots, lo), bi) > target) throw new Error('no positive dose per fraction reaches the target');
+      for (let i = 0; i < 60; i++) { const mid = 0.5 * (lo + hi); if (tissueEqd2(tissue, courseS(p, slots, mid), bi) < target) lo = mid; else hi = mid; }
+      return 0.5 * (lo + hi);
+    }
     const f1 = tissueEqd2(tissue, courseS(p, slots, s1), bi), f2 = tissueEqd2(tissue, courseS(p, slots, s2), bi), f3 = tissueEqd2(tissue, courseS(p, slots, s3), bi);
     const b = ((f3 - f2) / (s3 - s2) - (f2 - f1) / (s2 - s1)) / (s3 - s1);
     const a = (f2 - f1) / (s2 - s1) - b * (s1 + s2);
@@ -531,7 +543,8 @@
       if (o.consecutiveBid) w.push({ code: 'w_bid_consec', p: {}, refs: ['RCR19', 'THAMES'] });
       if (!p.oars.some((t) => t.repairH)) w.push({ code: 'w_bid_repair', p: { h: p.c.bid_interval_h }, refs: ['RCR5d', 'THAMES'] });
     }
-    if (d >= 6) w.push({ code: 'w_large_d', p: {}, refs: ['BCR'] });
+    if (d >= 6 && !p.tumour.lql) w.push({ code: 'w_large_d', p: {}, refs: ['BCR'] });
+    if (o.family === 'error' && o.strategy === 'joiner' && p.tumour.lql) w.push({ code: 'w_joiner_lql', p: {}, refs: ['JOINER', 'ASTRAHAN'] });
     else if (o.scale > 1.25) w.push({ code: 'w_scale', p: { pct: 100 * (o.scale - 1) }, refs: ['RCR19'] });
     if (Math.abs(o.scale - p.s0) > 1e-9) w.push({ code: 'w_replan', p: {}, refs: [] });
     if (p.hasDoseError && (SAME_D.includes(o.family) || o.family === 'baseline')) w.push({ code: 'w_err_uncorrected', p: {}, refs: [] });
@@ -567,6 +580,7 @@
     const base = opts.find((o) => o.family === 'baseline');
     const trace = [];
     const TRC = (code, pp, refs) => trace.push({ code, p: pp || {}, refs: refs || [] });
+    if (p.tumour.lql) TRC('t_lql', { f: p.tumour.lql }, ['ASTRAHAN']);
     TRC(r.guidance === 'rcr5_draft' ? 't_guid5' : 't_guid19', {}, [r.guidance === 'rcr5_draft' ? 'RCR5d' : 'RCR19']);
     for (const k of r.edRules) TRC('t_ed_' + k, {}, ['RCR5d']);
     if (r.category == null && r.max == null) TRC('t_nocat');
@@ -729,10 +743,10 @@
     }
     const terms = [];
     for (const gq of groups.values()) {
-      let lin = 0, quad = 0;
-      for (const d of gq.ds) { lin += d; quad += d * d; }
-      if (gq.m > 1 && theta) for (let i = 0; i < gq.ds.length; i++) for (let j = i + 1; j < gq.ds.length; j++) quad += 2 * gq.ds[i] * gq.ds[j] * Math.pow(theta, j - i);
-      terms.push({ n: gq.n, d: gq.d, m: gq.m, mixed: gq.mixed, theta: gq.m > 1 ? theta : 0, bed: gq.n * (lin + quad / t.ab) });
+      let lin = 0, quad = 0; const dt = lqlDt(t), cap = dt == null ? gq.ds : gq.ds.map((d) => Math.min(d, dt));
+      for (const d of gq.ds) { lin += d; quad += quadTerm(d, dt); }
+      if (gq.m > 1 && theta) for (let i = 0; i < gq.ds.length; i++) for (let j = i + 1; j < gq.ds.length; j++) quad += 2 * cap[i] * cap[j] * Math.pow(theta, j - i);
+      terms.push({ n: gq.n, d: gq.d, m: gq.m, mixed: gq.mixed, theta: gq.m > 1 ? theta : 0, bed: gq.n * (lin + quad / t.ab), lql: dt != null && gq.ds.some((d) => d > dt) });
     }
     terms.sort((a, b) => b.n - a.n);
     const noTime = terms.reduce((s, x) => s + x.bed, 0);
@@ -740,7 +754,7 @@
     const K = hasTime(t) ? kFromDprolif(t.dprolif, t.ab) : 0, loss = hasTime(t) ? K * Math.max(0, T - t.tk) : 0;
     const total = noTime - loss;
     if (Math.abs(total - tissueBed(t, course, bi)) > 1e-6) return null;
-    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab), ab: t.ab, theta, bidH: bi };
+    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab), ab: t.ab, theta, bidH: bi, dt: lqlDt(t) };
   }
 
   /** Built-in self-test against published worked examples (runs in the browser at start-up). */
@@ -867,6 +881,13 @@
     const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab) : (+t.dprolif_eqd2_per_day || 0);
     const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
     const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
+    const model = cfg.model || protocol.model || 'lq';
+    if (!['lq', 'lql'].includes(model)) throw ValidationError([{ code: 'e_generic', p: { msg: 'model ' + model } }]);
+    if (model === 'lql') {
+      const fac = +(cfg.lql_dt_factor || protocol.lql_dt_factor || 2);
+      if (!(fac > 0)) throw ValidationError([{ code: 'e_generic', p: { msg: 'lql_dt_factor' } }]);
+      tumour.lql = fac; for (const o of oars) o.lql = fac;
+    }
     const guidance = cfg.guidance || protocol.guidance || 'rcr2019';
     if (!GUIDANCES.includes(guidance)) throw ValidationError([{ code: 'e_generic', p: { msg: 'guidance ' + guidance } }]);
     let rx;
@@ -976,6 +997,6 @@
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
     solveScale, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
-    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES };
+    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
 })(typeof window !== 'undefined' ? window : globalThis);

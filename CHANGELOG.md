@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — 2026-11-14
+* LQ-L model as an option (`model: lql`, `lql_dt_factor`, default 2 × α/β; Astrahan 2008): linear
+  above the transition dose for every tissue, in both engines, including the hand-check worksheet.
+* Before the start: closed days inside the planned course, what they cost, the suggested
+  compensation and a comparison of start days (web app).
+* Machine-outage list as PDF and CSV. Contact address in the footer.
+* 75 Python tests; JavaScript engine cross-validated on 928 cases (6136 schedules), no mismatches.
+
 ## 1.4.0 — 2026-11-14
 * Machine outage triage: the outage days are applied to every case saved on the device and the
   patients are listed by priority (category, tumour dose at stake) with the suggestion for each

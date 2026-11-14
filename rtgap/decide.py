@@ -112,8 +112,11 @@ def warnings_for(p: GapPlanner, o: Option) -> list[str]:
         if not any(t.repair_half_time_h for t in p.oars):
             w.append(f"Late-tissue doses assume complete repair between BID fractions "
                      f"({p.c.bid_interval_h:g} h); RCR notes repair may be incomplete even at 6 h.")
-    if d >= 6.0:
-        w.append("d ≥ 6 Gy: LQ extrapolation is uncertain at large doses per fraction.")
+    if d >= 6.0 and not p.tumour.lql_factor:
+        w.append("d ≥ 6 Gy: LQ extrapolation is uncertain at large doses per fraction "
+                 "(the LQ-L model can be chosen for comparison).")
+    if o.family == "error" and o.strategy == "joiner" and p.tumour.lql_factor:
+        w.append("The Joiner correction is derived for the LQ model; with LQ-L it is approximate above the transition dose.")
     elif o.scale > 1.25:
         w.append(f"Fraction size +{100 * (o.scale - 1):.0f} %: results are sensitive to the α/β values.")
     if abs(o.scale - p.s0) > 1e-9:
@@ -172,6 +175,8 @@ def decide(p: GapPlanner, options: list[Option] | None = None) -> Decision:
     tol_t, tol_l = c.max_tumour_deficit_pct, c.max_late_increase_pct
     base = next(o for o in opts if o.family == "baseline")
     trace: list[str] = []
+    if p.tumour.lql_factor:
+        trace.append(f"Model: LQ-L, linear above d_T = {p.tumour.lql_factor:g} × α/β for each tissue (Astrahan 2008).")
     trace.append("Guidance: RCR 5th edition, draft for consultation (not final)." if r.guidance == "rcr5_draft"
                  else "Guidance: RCR 2019 (4th edition).")
     for k in r.edition_rules:

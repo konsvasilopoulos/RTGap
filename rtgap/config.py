@@ -11,6 +11,7 @@ Case file (YAML or JSON)::
     tumour: {...}                # optional overrides of the site tumour parameters
     oars: [...]                  # optional; replaces the site default OARs
     rules: {category, ideal_extension_days, max_extension_days, max_overall_time_days, no_acceleration}
+    model: lq | lql ; lql_dt_factor: 2.0   # LQ-L: linear above d_T = factor × α/β (default plain LQ)
     guidance: rcr2019 | rcr5_draft   # RCR edition (default rcr2019, the published 4th edition)
     constraints: {...}           # optional; overrides the protocol constraints
     custom_options: [...]
@@ -107,6 +108,16 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
     else:
         oars = [oar_from_dict({"name": "Late (α/β 3)", "alpha_beta": 3})]
 
+    model = cfg.get("model") or protocol.get("model") or "lq"
+    if model not in ("lq", "lql"):
+        raise ValidationError([f"unknown model {model!r}: use lq or lql"])
+    if model == "lql":
+        factor = float(cfg.get("lql_dt_factor") or protocol.get("lql_dt_factor") or 2.0)
+        if factor <= 0:
+            raise ValidationError(["lql_dt_factor must be > 0"])
+        tumour.lql_factor = factor
+        for o in oars:
+            o.lql_factor = factor
     guidance = cfg.get("guidance") or protocol.get("guidance") or "rcr2019"
     if guidance not in GUIDANCES:
         raise ValidationError([f"unknown guidance {guidance!r}: use one of {', '.join(GUIDANCES)}"])

@@ -141,6 +141,26 @@ for i in range(80):
     cfg = dict(site=site, prescription=rx, gap=dict(missed_dates=missed), constraints=c, guidance=random.choice(["rcr2019", "rcr5_draft"]),
                _sens=(i % 7 == 0), _scen=(i % 9 == 0))
     extra_cases.append((cfg, {}))
+# LQ-L: a third of all cases again with the linear-quadratic-linear model, plus large-fraction cases
+random.seed(31)
+for c, pr in (cases + extra_cases)[1:: 3]:
+    extra_cases.append((dict(c, model="lql", lql_dt_factor=random.choice([2.0, 2.0, 1.5, 3.0])), pr))
+for i in range(60):
+    site, rx = random.choice([("sabr", dict(n_fractions=5, dose_per_fraction=11.0)), ("sabr", dict(n_fractions=8, dose_per_fraction=7.5)),
+                              ("rectum", dict(n_fractions=5, dose_per_fraction=5.0)), ("breast", dict(n_fractions=5, dose_per_fraction=5.2)),
+                              ("prostate", dict(n_fractions=7, dose_per_fraction=6.1)), ("palliative", dict(n_fractions=5, dose_per_fraction=4.0)),
+                              ("prostate", dict(n_fractions=20, dose_per_fraction=3.0))])
+    if site not in sites: site = "generic"
+    start = dt.date(2026, 2, 2) + dt.timedelta(days=random.randrange(0, 300))
+    rx = dict(rx, start=start.isoformat())
+    first = random.randrange(1, rx["n_fractions"] + 1)
+    gap = dict(missed_dates=[(start + dt.timedelta(days=first + j)).isoformat() for j in range(random.choice([1, 2, 3, 6]))])
+    if random.random() < 0.3:
+        gap["dose_errors"] = [dict(date=start.isoformat(), dose=rx["dose_per_fraction"] * random.choice([0.7, 1.3]))]
+    c = {}
+    if random.random() < 0.5: c["max_late_increase_pct"] = 5; c["max_tumour_deficit_pct"] = 3
+    extra_cases.append((dict(site=site, prescription=rx, gap=gap, constraints=c, model="lql", lql_dt_factor=random.choice([2.0, 1.0]),
+                             _sens=(i % 6 == 0), _scen=(i % 8 == 0)), {}))
 cases += extra_cases
 ref = [dict(case=c, protocol=p, result=run(c, p)) for c, p in cases]
 json.dump(ref, open("web/xval/ref.json", "w"), default=str)

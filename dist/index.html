@@ -7,6 +7,7 @@
 <meta name="description" content="RTGap: linear-quadratic decision support for unscheduled radiotherapy interruptions, following the RCR guidance. Runs offline, Greek and English.">
 <meta name="theme-color" content="#07101f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%2307101f'/%3E%3Cpath d='M8 12C16 13 20 18 24 26S33 39 41 41' fill='none' stroke='%237fb2ff' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M8 12C14 12.5 17 15 19 19L19 13C24 14 27 20 29 26L29 19C33 21 36 27 41 33' fill='none' stroke='%23f3b45a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>try{if(/^https?:$/.test(location.protocol)&&window.top===window&&!location.hash&&!localStorage.getItem('rtgap.seen')&&!localStorage.getItem('rtgap.state'))location.replace('welcome.html');else localStorage.setItem('rtgap.seen','1')}catch(e){}</script>
 <script>try{var t=localStorage.getItem('rtgap.theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -310,6 +311,16 @@ tr.best td { background: color-mix(in srgb, var(--good) 10%, transparent); }
 ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font-size: 0.9rem; }
 .tabs.flat { flex-wrap: wrap; } .tabs.flat button { flex: 1 1 auto; }
 
+.top .ghost:disabled { opacity: 0.35; cursor: default; }
+.cmppick { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 10px; }
+.cmppick label { display: flex; gap: 6px; align-items: center; min-width: 0; } .cmppick select { flex: 1 1 auto; min-width: 0; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 7px 8px; }
+.cmptag { font: 700 0.72rem/1 var(--f-num); border-radius: 6px; padding: 4px 7px; color: #fff; flex: none; } .cmptag.a { background: var(--accent); color: var(--accent-ink); } .cmptag.b { background: #5a3fa0; }
+td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transparent); font-weight: 600; }
+.cmptable th:nth-child(n+2), .cmptable td:nth-child(n+2) { width: 27%; }
+.cmpgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .cmpcol { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.cmphead { display: flex; gap: 8px; align-items: center; }
+@media (max-width: 760px) { .cmpgrid { grid-template-columns: 1fr; } .cmppick { grid-template-columns: 1fr; } .cmppick .btn { justify-self: center; } }
+
 </style>
 </head>
 <body>
@@ -328,6 +339,8 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
       <div class="topctl">
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
+        <button type="button" class="ghost icon" id="undo" data-act="undo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M8 5 4 9l4 4M4 9h8a4 4 0 0 1 0 8h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="ghost icon" id="redo" data-act="redo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m12 5 4 4-4 4m4-4H8a4 4 0 0 0 0 8h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost" id="reset"></button>
         <button type="button" class="ghost" id="docsbtn" data-act="docs"></button>
         <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
@@ -342,7 +355,7 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
   <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
-  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-lic"></p></div>
+  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-site"></p><p id="foot-lic"></p></div>
   <p id="disc"></p>
 </div></footer>
 <div id="refpop" role="dialog" hidden></div>
@@ -357,7 +370,7 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.6.0';
+  const VERSION = '1.7.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1404,6 +1417,11 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
       aud_title: 'Department audit of the saved cases', aud_hint: 'RCR asks departments to audit treatment interruptions regularly. For every case saved on this device: the interruptions, the prolongation without compensation and with the schedule that was selected, and whether the course stays within the allowance of its category.',
       aud_nocat: 'No category', aud_within: 'within the allowance', aud_int: 'interrupted', aud_list: 'All cases', aud_ext0: 'Prolongation, no compensation (d)', aud_ext: 'Prolongation, selected schedule (d)', aud_ok: 'Within allowance', aud_csv: 'Audit table (CSV)',
       aud_note: 'The percentage is the share of saved courses whose prolongation with the selected schedule is within the maximum of the category. The saved cases describe plans, not what was finally delivered: update a case when the course ends. Use case numbers, not names.',
+      undo: 'Undo (Ctrl+Z)', redo: 'Redo (Ctrl+Y)', welcome_link: 'About the project',
+      cmp_title: 'Compare two schedules', cmp_hint: 'Choose any two schedules. Green marks the better value in each row; below, the two calendars side by side. Excluded schedules can be compared too (✗).',
+      cmp_wkend: 'Weekend fractions', cmp_bid: 'Days with two fractions', cmp_warn: 'Notes and warnings', cmp_legend: 'better of the two', cmp_pro: 'Better in', cmp_use: 'Choose this schedule', cmp_selected: 'Selected', cmp_excl: 'excluded',
+      bk_save: 'Backup of all data', bk_load: 'Restore from backup', bk_done: 'cases restored', bk_fail: 'This file is not an RTGap backup.',
+      inst_t: 'Install as an app', inst_text: 'RTGap can be installed on this device: it gets its own icon and opens without a connection.', inst_btn: 'Install RTGap', inst_how: 'In the browser menu choose "Install app" or "Add to Home Screen" (iPhone: Share → Add to Home Screen).',
       docs_btn: 'Documentation', doc_method: 'Method', doc_refs: 'References', doc_test: 'Self-test', doc_more: 'Full description of the model, the files and the limitations:', refs_all: 'All references', contact: 'Contact',
       tri_title: 'Machine outage: all saved cases in order of priority', tri_hint: 'When a linac is down, every patient on it is affected at once. Enter the outage days: RTGap applies them to each case saved on this device and lists the patients by priority, category 1 first and then by the tumour dose at stake. RCR advises moving the highest-priority patients to a matched machine first. Tap a row to open that case with the outage applied.',
       tri_none: 'Save some cases first (Report tab → Cases saved on this device).', tri_from: 'First day of the outage', tri_to: 'Last day of the outage', tri_n: 'saved cases', tri_unaff: 'not affected by these days', tri_err: 'could not be calculated',
@@ -1551,6 +1569,11 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
       aud_title: 'Έλεγχος (audit) τμήματος από τα αποθηκευμένα περιστατικά', aud_hint: 'Το RCR ζητά από τα τμήματα να ελέγχουν τακτικά τις διακοπές. Για κάθε περιστατικό που είναι αποθηκευμένο στη συσκευή: οι διακοπές, η παράταση χωρίς αντιστάθμιση και με το σχήμα που επιλέχθηκε, και αν η θεραπεία μένει εντός του επιτρεπτού της κατηγορίας της.',
       aud_nocat: 'Χωρίς κατηγορία', aud_within: 'εντός επιτρεπτού', aud_int: 'με διακοπή', aud_list: 'Όλα τα περιστατικά', aud_ext0: 'Παράταση χωρίς αντιστάθμιση (ημ.)', aud_ext: 'Παράταση με το επιλεγμένο σχήμα (ημ.)', aud_ok: 'Εντός επιτρεπτού', aud_csv: 'Πίνακας ελέγχου (CSV)',
       aud_note: 'Το ποσοστό είναι το μέρος των αποθηκευμένων θεραπειών των οποίων η παράταση με το επιλεγμένο σχήμα είναι εντός του μέγιστου της κατηγορίας. Τα αποθηκευμένα περιστατικά περιγράφουν σχέδια, όχι ό,τι τελικά χορηγήθηκε: ενημερώστε το περιστατικό όταν τελειώσει η θεραπεία. Χρησιμοποιήστε αριθμούς περιστατικών, όχι ονόματα.',
+      undo: 'Αναίρεση (Ctrl+Z)', redo: 'Επανάληψη (Ctrl+Y)', welcome_link: 'Σχετικά με το έργο',
+      cmp_title: 'Σύγκριση δύο σχημάτων', cmp_hint: 'Διαλέξτε δύο οποιαδήποτε σχήματα. Το πράσινο δείχνει την καλύτερη τιμή σε κάθε γραμμή· από κάτω, τα δύο ημερολόγια δίπλα-δίπλα. Συγκρίνονται και τα σχήματα που αποκλείστηκαν (✗).',
+      cmp_wkend: 'Κλάσματα Σαββατοκύριακου', cmp_bid: 'Ημέρες με δύο κλάσματα', cmp_warn: 'Σημειώσεις και προειδοποιήσεις', cmp_legend: 'καλύτερο από τα δύο', cmp_pro: 'Υπερέχει σε', cmp_use: 'Επιλογή αυτού του σχήματος', cmp_selected: 'Επιλεγμένο', cmp_excl: 'αποκλείστηκε',
+      bk_save: 'Αντίγραφο ασφαλείας όλων', bk_load: 'Επαναφορά από αντίγραφο', bk_done: 'περιστατικά επαναφέρθηκαν', bk_fail: 'Το αρχείο δεν είναι αντίγραφο ασφαλείας του RTGap.',
+      inst_t: 'Εγκατάσταση ως εφαρμογή', inst_text: 'Το RTGap εγκαθίσταται σε αυτή τη συσκευή: αποκτά δικό του εικονίδιο και ανοίγει χωρίς σύνδεση.', inst_btn: 'Εγκατάσταση RTGap', inst_how: 'Στο μενού του browser διαλέξτε «Εγκατάσταση εφαρμογής» ή «Προσθήκη στην αρχική οθόνη» (iPhone: Κοινή χρήση → Προσθήκη στην οθόνη Αφετηρίας).',
       docs_btn: 'Τεκμηρίωση', doc_method: 'Μέθοδος', doc_refs: 'Βιβλιογραφία', doc_test: 'Αυτοέλεγχος', doc_more: 'Πλήρης περιγραφή του μοντέλου, των αρχείων και των περιορισμών:', refs_all: 'Όλες οι παραπομπές', contact: 'Επικοινωνία',
       tri_title: 'Βλάβη μηχανήματος: όλα τα αποθηκευμένα περιστατικά κατά προτεραιότητα', tri_hint: 'Όταν ένας γραμμικός μένει εκτός, επηρεάζονται ταυτόχρονα όλοι οι ασθενείς του. Δώστε τις ημέρες της βλάβης: το RTGap τις εφαρμόζει σε κάθε περιστατικό που είναι αποθηκευμένο στη συσκευή και κατατάσσει τους ασθενείς κατά προτεραιότητα, πρώτα η κατηγορία 1 και μετά η δόση όγκου που διακυβεύεται. Το RCR συνιστά να μεταφέρονται πρώτοι σε αντίστοιχο μηχάνημα οι ασθενείς με τη μεγαλύτερη προτεραιότητα. Πατήστε μια γραμμή για να ανοίξει το περιστατικό με τη βλάβη εφαρμοσμένη.',
       tri_none: 'Αποθηκεύστε πρώτα μερικά περιστατικά (καρτέλα Αναφορά → Περιστατικά αποθηκευμένα στη συσκευή).', tri_from: 'Πρώτη ημέρα βλάβης', tri_to: 'Τελευταία ημέρα βλάβης', tri_n: 'αποθηκευμένα περιστατικά', tri_unaff: 'δεν επηρεάζεται από αυτές τις ημέρες', tri_err: 'δεν υπολογίστηκε',
@@ -2378,7 +2401,27 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
   try { const mh = /[#&]c=([\w\-]+)/.exec(location.hash || ''); if (mh) { const lang0 = state.lang; state = fromCase(JSON.parse(b64dEarly(mh[1]))); state.lang = lang0; fromLink = true; history.replaceState(null, '', location.pathname + location.search); } } catch (e) { /* bad link: ignore */ }
   let tr = I.make(state.lang), model = null;
   function b64dEarly(str) { return decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/')))); }
-  const persist = () => { try { localStorage.setItem('rtgap.state', JSON.stringify(state)); } catch (e) { /* ignore */ } };
+  // ---- undo / redo: snapshots of the inputs, taken whenever they are saved
+  const hist = [], fut = []; let lastSnap = null, lastPush = 0;
+  const undoBtn = () => { const u = document.getElementById('undo'), r = document.getElementById('redo'); if (u) u.disabled = !hist.length; if (r) r.disabled = !fut.length; };
+  const persist = () => {
+    const cur = JSON.stringify(state);
+    if (cur !== lastSnap) {
+      const now = Date.now();
+      if (lastSnap != null && now - lastPush > 700) { hist.push(lastSnap); if (hist.length > 60) hist.shift(); lastPush = now; }
+      if (lastSnap != null) fut.length = 0;
+      lastSnap = cur; undoBtn();
+    }
+    try { localStorage.setItem('rtgap.state', cur); } catch (e) { /* ignore */ }
+  };
+  function timeTravel(from, to) {
+    if (!from.length) return;
+    to.push(lastSnap); const snap = from.pop(), lang = state.lang;
+    state = JSON.parse(snap); state.lang = lang; lastSnap = JSON.stringify(state); lastPush = 0;
+    tr = I.make(state.lang); refresh(true); undoBtn();
+  }
+  let HOSTED = false; try { HOSTED = /^https?:$/.test(location.protocol) && window.top === window; } catch (e) { HOSTED = false; }
+  let installEvt = null;
 
   // ------------------------------------------------------------------ state → case (same schema as the Python package)
   function toCase(s) {
@@ -2755,6 +2798,7 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;
       B.opts += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
         ${dec.rejected.length ? `<details style="margin-top:12px"><summary class="small">${esc(L('excluded'))} (${dec.rejected.length})</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</div>`;
+      B.opts += compareHtml(m);
       if (p.oars.length) B.map += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--accent);border-radius:50%"></i>${esc(L('map_feas'))}</span><span><i style="border:1.5px solid var(--muted);border-radius:50%;background:transparent"></i>${esc(L('map_excl'))}</span>${m.given ? `<span><i style="background:var(--warn);transform:rotate(45deg)"></i>${esc(L('map_given'))}</span>` : ''}<span><i style="background:var(--ink);border-radius:50%"></i>${esc(L('ch_planned'))}</span></div></div>`;
       if (m.sel) B.det += detailHtml(m.sel);
@@ -2835,6 +2879,42 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
       rows.map((x, i) => `<tr class="${x === best && best.ext < cur.ext ? 'best' : ''}"><td style="text-align:left">${esc(tr.date(x.start))}${i === 0 ? ` <span class="pill plain">${esc(L('pre_now'))}</span>` : ''}${x === best && best.ext < cur.ext ? ` <span class="pill c3">${esc(L('pre_best'))}</span>` : ''}</td><td class="n">${esc(tr.dshort(x.end))}</td><td class="n">${x.T}</td><td class="n" title="${esc(x.closed.map((y) => nm(y, x)).join(', '))}">${x.closed.length}</td><td class="n ${x.ext > mx ? 'neg' : ''}">${tr.sgi(x.ext)}</td>${x.hasTime ? dcell(x.dT) : '<td class="n">–</td>'}<td>${i ? `<button type="button" class="btn sm" data-act="pre-start" data-d="${RT.iso(x.start)}">${esc(L('pre_use'))}</button>` : ''}</td></tr>`).join('') + `</tbody></table></div><p class="small" style="margin:8px 0 0">${esc(L('pre_note'))}</p></div>`;
     return h;
   }
+  // ---- two schedules side by side
+  function compareHtml(m) {
+    const L = tr.t, p = m.p, dec = m.dec, all = dec.feasible.concat(dec.rejected); if (all.length < 2) return '';
+    const ui = state.ui || {}, base = all.find((o) => o.family === 'baseline');
+    let A = all.find((o) => o.key === ui.cmpA) || m.sel || dec.feasible[0] || all[0];
+    let B = all.find((o) => o.key === ui.cmpB) || (base && base !== A ? base : all.find((o) => o !== A));
+    if (B === A) B = all.find((o) => o !== A);
+    const excl = (o) => dec.rejected.includes(o);
+    const sel = (id, cur) => `<select id="${id}" aria-label="${id === 'cmp-a' ? 'A' : 'B'}">${all.map((o) => `<option value="${esc(o.key)}" ${o === cur ? 'selected' : ''}>${excl(o) ? '✗ ' : ''}${esc(tr.optTitle(o))}</option>`).join('')}</select>`;
+    // rows: [label, value A, value B, text A, text B, which direction is better (+1 higher, -1 lower, 0 none), threshold]
+    const rows = [[L('remaining'), null, null, o => o.nNew + ' × ' + tr.f2(o.d) + ' Gy', 0],
+      [L('ends'), null, null, o => tr.dshort(o.end), 0],
+      [L('kpi_ext') + ' (' + L('days') + ')', o => o.ext, null, o => tr.sgi(o.ext), -1, 0.5],
+      [L('cmp_wkend'), o => o.nSat + o.nSun, null, o => String(o.nSat + o.nSun), -1, 0.5],
+      [L('cmp_bid'), o => o.nBid, null, o => String(o.nBid), -1, 0.5],
+      [(p.rx.multilevel ? p.tumour.name : L('col_t')) + ' · Δ EQD2 (Gy)', o => o.tumour.delta, null, o => tr.sg(o.tumour.delta), 1, 0.05]]
+      .concat(A.levels.map((r, i) => [r.name + ' · Δ EQD2 (Gy)', o => o.levels[i].delta, null, o => tr.sg(o.levels[i].delta), 1, 0.05]),
+        A.oars.map((r, i) => [r.name + ' · Δ %', o => o.oars[i].deltaPct, null, o => tr.sg(o.oars[i].deltaPct), -1, 0.05]),
+        [[L('acute_row') + ' · Δ %', o => o.weeklyInc, null, o => tr.sg(o.weeklyInc), -1, 0.5], [L('cmp_warn'), o => o.warnings.length + o.rejected.length, null, o => String(o.warnings.length + o.rejected.length), -1, 0.5]]);
+    const proA = [], proB = [];
+    const body = rows.map(([lab, val, , txt, dir, eps]) => {
+      let ca = '', cb = '';
+      if (val && dir) { const a = val(A), b = val(B); if (Math.abs(a - b) > eps) { const aBetter = dir > 0 ? a > b : a < b; if (aBetter) { ca = 'better'; proA.push(lab.split(' · ')[0]); } else { cb = 'better'; proB.push(lab.split(' · ')[0]); } } }
+      return `<tr><td style="text-align:left">${esc(lab)}</td><td class="n ${ca}">${esc(txt(A))}</td><td class="n ${cb}">${esc(txt(B))}</td></tr>`;
+    }).join('');
+    const col = (o, tag, pros) => `<div class="cmpcol"><div class="cmphead"><span class="cmptag ${tag === 'A' ? 'a' : 'b'}">${tag}</span><b>${esc(tr.optTitle(o))}</b></div>
+      <p class="small" style="margin:2px 0 6px">${esc(tr.optShort(o))}${excl(o) ? ` · <span class="neg">${esc(L('cmp_excl'))}: ${esc(o.rejected.map((w) => tr.reason(w)).join('; '))}</span>` : ''}</p>
+      ${calendarHtml(p, o, false)}
+      <p class="small" style="margin:6px 0"><b>${esc(L('cmp_pro'))}:</b> ${pros.length ? esc(pros.join(', ')) : '–'}</p>
+      ${excl(o) ? '' : `<button type="button" class="btn sm ${m.sel === o ? '' : 'pri'}" data-opt="${esc(o.key)}">${esc(m.sel === o ? L('cmp_selected') : L('cmp_use'))}</button>`}</div>`;
+    return `<div class="card" id="compare"><h2>${esc(L('cmp_title'))}</h2><p class="hint">${esc(L('cmp_hint'))}</p>
+      <div class="cmppick"><label><span class="cmptag a">A</span>${sel('cmp-a', A)}</label><button type="button" class="btn sm" data-act="cmp-swap" aria-label="swap">⇄</button><label><span class="cmptag b">B</span>${sel('cmp-b', B)}</label></div>
+      <div class="scroll"><table class="cmptable"><thead><tr><th></th><th><span class="cmptag a">A</span></th><th><span class="cmptag b">B</span></th></tr></thead><tbody>${body}</tbody></table></div>
+      <p class="small" style="margin:6px 0 12px"><span class="better" style="padding:1px 6px;border-radius:4px">${esc(L('cmp_legend'))}</span></p>
+      <div class="cmpgrid">${col(A, 'A', proA)}${col(B, 'B', proB)}</div></div>`;
+  }
   function kpiHtml(m) {
     const p = m.p, L = tr.t, b = m.base, o = m.sel;
     if (!b || !p.remaining) return '';
@@ -2870,6 +2950,7 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
   function savedHtml() {
     const L = tr.t, list = loadCases();
     return `<div class="card"><h2>${esc(L('saved_title'))}</h2><p class="hint">${esc(L('saved_hint'))}</p>
+      <div class="rowbtn" style="margin:0 0 10px"><button type="button" class="btn sm" data-act="backup">${esc(L('bk_save'))}</button><label class="btn sm" style="position:relative;overflow:hidden">${esc(L('bk_load'))}<input type="file" id="bk-imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <div class="savebar"><input type="text" id="save-name" placeholder="${esc(L('saved_name'))}" value="${esc(state.caseRef || '')}" autocomplete="off"><button type="button" class="btn pri" data-act="case-save">${esc(L('saved_save'))}</button></div>
       ${list.length ? `<ul class="saved">${list.map((c, i) => `<li><button type="button" class="linkbtn" data-act="case-load" data-i="${i}">${esc(c.name)}</button><span class="small">${esc(c.when)} · ${esc(c.sum || '')}</span><button type="button" class="btn x" data-act="case-del" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></li>`).join('')}</ul>` : `<p class="small" style="margin:10px 0 0">${esc(L('saved_none'))}</p>`}</div>`;
   }
@@ -3051,19 +3132,27 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
-    $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
+    $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
+    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
       <div class="about-head"><h2>RT<i>Gap</i> <span>v${RT.VERSION}</span></h2><p>${esc(L('about_lead'))}</p></div>
       <div class="feats">${L('feats').map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>
+      <div id="install-slot"></div>
       <h3>${esc(L('about_valid_t'))}</h3><p>${esc(L('about_valid').replace('{a}', SELF.filter((x) => x.ok).length + '/' + SELF.length))}</p>
       <h3>${esc(L('about_use_t'))}</h3><p>${esc(L('disclaimer'))}</p>
       <h3>${esc(L('about_cite_t'))}</h3><p class="cite">Vasilopoulos K. RTGap: compensation of unscheduled radiotherapy interruptions. Version ${RT.VERSION}, 2026. https://github.com/konsvasilopoulos/RTGap</p>
       <p class="small">${esc(L('dev'))}: Konstantinos Vasilopoulos, PhD Candidate · ${esc(L('lic'))} <a href="https://github.com/konsvasilopoulos/RTGap" target="_blank" rel="noopener">${esc(L('src'))}</a></p></div>`;
+    fillInstall();
     let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
     $('#intro').hidden = seen;
     $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
+  }
+  function fillInstall() {
+    const el = $('#install-slot'); if (!el) return; const L = tr.t;
+    let standalone = false; try { standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone; } catch (e) { /* ignore */ }
+    el.innerHTML = !HOSTED || standalone ? '' : `<h3>${esc(L('inst_t'))}</h3><p>${esc(L('inst_text'))}</p>${installEvt ? `<div class="rowbtn" style="margin:4px 0 8px"><button type="button" class="btn pri sm" data-act="install">${esc(L('inst_btn'))}</button></div>` : `<p class="small">${esc(L('inst_how'))}</p>`}`;
   }
   let docsParts = {}, docTab = 'guide';
   function renderDocs() {
@@ -3324,6 +3413,14 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'undo') { timeTravel(hist, fut); return; }
+    if (a === 'redo') { timeTravel(fut, hist); return; }
+    if (a === 'cmp-swap') { const x = $('#cmp-a').value; state.ui = state.ui || {}; state.ui.cmpA = $('#cmp-b').value; state.ui.cmpB = x; renderResults(); return; }
+    if (a === 'install') { if (installEvt) { installEvt.prompt(); installEvt = null; fillInstall(); } return; }
+    if (a === 'backup') {
+      const out = { app: 'RTGap', kind: 'backup', version: RT.VERSION, saved: new Date().toISOString(), cases: loadCases(), protocol: proto, current: JSON.parse(JSON.stringify(state)) };
+      saveFile('RTGap-backup-' + out.saved.slice(0, 10) + '.json', JSON.stringify(out), 'application/json'); return;
+    }
     if (a === 'guide-open') { $('#docs').hidden = true; if (EXAMPLES[t.dataset.ex]) { const s2 = EXAMPLES[t.dataset.ex](); s2.lang = state.lang; loadState(s2); } window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     if (a === 'csv-template') { saveFile('RTGap-patients-template.csv', '\ufeff' + CSV_HEAD + '\r\nRT-001,hn_scc,2026-10-05,35,2,\r\nRT-002,prostate,2026-10-12,20,3,2026-10-20 2026-10-21\r\n', 'text/csv'); return; }
     if (a === 'aud-csv') {
@@ -3387,6 +3484,18 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
         refresh(true); toast(tr.t('proto_loaded') + (ign.length ? ' ' + tr.t('proto_ignored') + ': ' + ign.slice(0, 4).join(', ') + (ign.length > 4 ? '…' : '') : ''));
       }).catch(() => toast(tr.t('proto_fail'))); return;
     }
+    if (t.id === 'cmp-a' || t.id === 'cmp-b') { state.ui = state.ui || {}; state.ui[t.id === 'cmp-a' ? 'cmpA' : 'cmpB'] = t.value; renderResults(); return; }
+    if (t.id === 'bk-imp') {
+      const f = t.files && t.files[0]; if (!f) return;
+      f.text().then((txt) => {
+        const j = JSON.parse(txt); if (j.app !== 'RTGap' || !Array.isArray(j.cases)) throw new Error('not a backup');
+        const list = loadCases(); let n = 0;
+        for (const c of j.cases.slice().reverse()) { if (!c || !c.name || !c.state) continue; const k = list.findIndex((x) => x.name === c.name); if (k >= 0) list.splice(k, 1); list.unshift(c); n++; }
+        storeCases(list);
+        if (j.protocol) { proto = normProto(j.protocol); saveProto(); }
+        refresh(true); renderTriage(); renderAudit(); toast(n + ' ' + tr.t('bk_done') + (j.protocol ? ' · ' + tr.t('proto_title') : ''));
+      }).catch(() => toast(tr.t('bk_fail'))); return;
+    }
     if (t.id === 'csv-imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const r = importCsv(txt); renderResults(); renderTriage(); renderAudit(); toast(r.ok + ' ' + tr.t('csv_ok') + (r.bad.length ? ' · ' + tr.t('csv_bad') + ' ' + r.bad.slice(0, 8).join(', ') : '')); }).catch(() => toast(tr.t('csv_fail'))); return; }
     if (t.id === 'imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const j = JSON.parse(txt); loadState(fromCase(j.case || j)); }).catch(() => toast(tr.t('import_fail'))); return; }
     onInput(ev);
@@ -3394,6 +3503,19 @@ ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
   document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
+  document.addEventListener('keydown', (ev) => {
+    if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || (ev.key !== 'z' && ev.key !== 'Z' && ev.key !== 'y')) return;
+    const tg = ev.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;
+    ev.preventDefault(); if (ev.key === 'y' || ev.shiftKey) timeTravel(fut, hist); else timeTravel(hist, fut);
+  });
+  if (HOSTED) {
+    try {
+      const lk = document.createElement('link'); lk.rel = 'manifest'; lk.href = 'manifest.webmanifest'; document.head.appendChild(lk);
+      const ic = document.createElement('link'); ic.rel = 'apple-touch-icon'; ic.href = 'icon-192.png'; document.head.appendChild(ic);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* offline install not available */ });
+      window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; fillInstall(); });
+    } catch (e) { /* ignore */ }
+  }
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;

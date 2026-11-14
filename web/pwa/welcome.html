@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTGap · compensation of unscheduled radiotherapy interruptions</title>
+<meta name="description" content="RTGap: decision support for unscheduled radiotherapy interruptions, following the RCR guidance. Free, open source, runs offline, Greek and English.">
+<meta name="theme-color" content="#07101f">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root { --bg: #07101f; --ink: #e9eefb; --mut: #a9b8d6; --acc: #7fb2ff; --amb: #f3b45a; --line: rgba(159,176,207,.22); --panel: rgba(255,255,255,.045);
+  --fd: "STIX Two Text", Cambria, "Times New Roman", serif; --fb: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; --fn: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+* { box-sizing: border-box; } html { scroll-behavior: smooth; }
+body { margin: 0; background: radial-gradient(1100px 520px at 78% -8%, #16305f 0%, transparent 60%), var(--bg); color: var(--ink); font: 16px/1.55 var(--fb); }
+a { color: var(--acc); } .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+.logo { font: 600 1.5rem/1 var(--fd); color: #fff; text-decoration: none; } .logo i { color: var(--acc); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; } .seg button { background: none; border: 0; color: var(--mut); padding: 6px 11px; font: 500 .82rem var(--fb); cursor: pointer; } .seg button[aria-pressed="true"] { background: var(--acc); color: #06142e; }
+header.hero { padding: 34px 0 26px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 34px; align-items: center; }
+h1 { font: 600 clamp(2.1rem, 5.2vw, 3.5rem)/1.04 var(--fd); margin: 0 0 14px; letter-spacing: -.01em; text-wrap: balance; } h1 em { font-style: italic; color: var(--acc); }
+.lead { color: var(--mut); font-size: 1.08rem; max-width: 56ch; margin: 0 0 22px; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { display: inline-block; text-decoration: none; border-radius: 10px; padding: 12px 20px; font-weight: 600; border: 1px solid var(--line); color: var(--ink); }
+.btn.pri { background: var(--acc); color: #06142e; border-color: var(--acc); box-shadow: 0 8px 26px rgba(127,178,255,.28); } .btn:hover { filter: brightness(1.08); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; } .chips span { font: .72rem var(--fn); letter-spacing: .05em; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; color: var(--mut); }
+.shot { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5); background: #0b1730; } .shot img { display: block; width: 100%; height: auto; }
+section { padding: 34px 0; border-top: 1px solid var(--line); }
+h2 { font: 600 1.7rem/1.15 var(--fd); margin: 0 0 6px; } .sub { color: var(--mut); margin: 0 0 20px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; } .tile b { display: block; font: 600 1.06rem var(--fd); margin-bottom: 4px; } .tile span { color: var(--mut); font-size: .9rem; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; counter-reset: s; } .steps div { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 14px 54px; position: relative; }
+.steps div::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--acc); color: var(--acc); font: 600 .8rem/26px var(--fn); text-align: center; }
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; } .nums div { border-left: 3px solid var(--amb); padding: 2px 0 2px 14px; } .nums b { display: block; font: 600 2rem/1.1 var(--fn); } .nums span { color: var(--mut); font-size: .88rem; }
+.note { border: 1px solid var(--amb); border-left-width: 4px; border-radius: 10px; padding: 12px 16px; background: rgba(243,180,90,.07); color: var(--ink); max-width: 80ch; }
+.cite { font: .86rem/1.5 var(--fn); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; user-select: all; max-width: 80ch; }
+footer { padding: 26px 0 40px; color: var(--mut); font-size: .88rem; border-top: 1px solid var(--line); }
+@media (max-width: 860px) { header.hero { grid-template-columns: 1fr; padding-top: 14px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><a class="logo" href="index.html">RT<i>Gap</i></a><div class="seg" role="group"><button type="button" data-l="el">ΕΛ</button><button type="button" data-l="en">EN</button></div></nav>
+<header class="hero">
+  <div>
+    <h1 data-el="Όταν η ακτινοθεραπεία <em>διακόπτεται</em>, τι κάνουμε;" data-en="When radiotherapy is <em>interrupted</em>, what next?"></h1>
+    <p class="lead" data-el="Το RTGap τοποθετεί κάθε μέθοδο αντιστάθμισης της οδηγίας του RCR στο πραγματικό ημερολόγιο, την αξιολογεί με το γραμμικό-τετραγωνικό μοντέλο και δείχνει τι κοστίζει στον όγκο και στους υγιείς ιστούς. Με την πηγή δίπλα σε κάθε βήμα." data-en="RTGap places every compensation method of the RCR guidance on the real calendar, evaluates it with the linear-quadratic model and shows what it costs the tumour and the normal tissues. With the source beside every step."></p>
+    <div class="cta"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a><a class="btn" href="https://github.com/konsvasilopoulos/RTGap" data-el="Κώδικας στο GitHub" data-en="Source on GitHub"></a></div>
+    <div class="chips"><span data-el="Δωρεάν · ανοιχτός κώδικας" data-en="Free · open source"></span><span data-el="Χωρίς λογαριασμό" data-en="No account"></span><span data-el="Λειτουργεί χωρίς σύνδεση" data-en="Runs offline"></span><span>Ελληνικά · English</span></div>
+  </div>
+  <a class="shot" href="index.html"><img src="screenshot.png" alt="RTGap" width="1280" height="860"></a>
+</header>
+
+<section>
+  <h2 data-el="Τρία βήματα" data-en="Three steps"></h2>
+  <div class="steps">
+    <div data-el="Διαλέξτε εντοπισμό και δώστε τη συνταγογράφηση." data-en="Choose the tumour site and enter the prescription."></div>
+    <div data-el="Πατήστε στο ημερολόγιο τις ημέρες που χάθηκαν." data-en="Tap the missed days on the calendar."></div>
+    <div data-el="Δείτε την πρόταση, συγκρίνετε τις επιλογές, κατεβάστε την αναφορά." data-en="Read the suggestion, compare the options, download the report."></div>
+  </div>
+</section>
+
+<section>
+  <h2 data-el="Τι κάνει" data-en="What it does"></h2>
+  <p class="sub" data-el="Ένα εργαλείο για τον φυσικό και τον ακτινοθεραπευτή, από το ένα περιστατικό ως ολόκληρο το τμήμα." data-en="One tool for the physicist and the radiation oncologist, from a single case to the whole department."></p>
+  <div class="grid">
+    <div class="tile"><b data-el="Σειρά αποφάσεων RCR" data-en="RCR decision order"></b><span data-el="Κατηγορίες 1–3 για 26 εντοπισμούς, έκδοση 2019 ή σχέδιο 5ης έκδοσης." data-en="Categories 1–3 for 26 tumour sites, 2019 edition or 5th edition draft."></span></div>
+    <div class="tile"><b data-el="Πραγματικό ημερολόγιο" data-en="Real calendar"></b><span data-el="Σαββατοκύριακα, ελληνικές αργίες, βλάβες, χημειοθεραπεία, δύο κλάσματα την ημέρα." data-en="Weekends, Greek public holidays, downtime, chemotherapy days, twice-daily fractions."></span></div>
+    <div class="tile"><b data-el="Όλες οι επιλογές, με αιτιολόγηση" data-en="Every option, with reasons"></b><span data-el="Ό,τι αποκλείεται εμφανίζεται μαζί με τον κανόνα που το απέκλεισε. Σύγκριση δύο σχημάτων δίπλα-δίπλα." data-en="Excluded options stay visible with the rule that excluded them. Two schedules side by side."></span></div>
+    <div class="tile"><b data-el="Όλο το ιστορικό" data-en="Whole treatment history"></b><span data-el="Πολλές διακοπές, αναπληρώσεις που ήδη έγιναν, αλλαγές πλάνου, λάθη δόσης (Joiner)." data-en="Several interruptions, catch-up fractions already given, plan changes, dose errors (Joiner)."></span></div>
+    <div class="tile"><b data-el="Επίπεδα δόσης και βραχυθεραπεία" data-en="Dose levels and brachytherapy"></b><span data-el="SIB, διαδοχικό boost, κλάσματα HDR· LQ ή LQ-L για μεγάλα κλάσματα." data-en="SIB, sequential boost, HDR fractions; LQ or LQ-L for large fractions."></span></div>
+    <div class="tile"><b data-el="Πόσο σίγουρο είναι;" data-en="How sure is it?"></b><span data-el="Σάρωση 81 συνδυασμών παραμέτρων, σενάρια επανέναρξης, έλεγχος με το χέρι." data-en="81-combination parameter sweep, resume-date scenarios, check-by-hand worksheet."></span></div>
+    <div class="tile"><b data-el="Για όλο το τμήμα" data-en="For the whole department"></b><span data-el="Προτεραιοποίηση ασθενών σε βλάβη, έλεγχος πριν από την έναρξη, audit, εισαγωγή από CSV, πρωτόκολλο τμήματος." data-en="Patient priority in a machine outage, check before the start, audit, CSV import, department protocol."></span></div>
+    <div class="tile"><b data-el="Έγγραφα έτοιμα" data-en="Documents ready"></b><span data-el="Αναφορά PDF σε ελληνικά ή αγγλικά και φύλλο θεραπείας για τους τεχνολόγους." data-en="PDF report in Greek or English and a treatment sheet for the radiographers."></span></div>
+    <div class="tile"><b data-el="Ιδιωτικό" data-en="Private"></b><span data-el="Ένα αρχείο, χωρίς διακομιστή: τίποτα δεν φεύγει από τη συσκευή. Εγκαθίσταται ως εφαρμογή." data-en="One file, no server: nothing leaves the device. Installs as an app."></span></div>
+  </div>
+</section>
+
+<section>
+  <h2 data-el="Επικύρωση" data-en="Validation"></h2>
+  <p class="sub" data-el="Η μηχανή υπολογισμού υπάρχει δύο φορές, σε Python και σε JavaScript, και ελέγχεται αυτόματα σε κάθε αλλαγή." data-en="The engine exists twice, in Python and in JavaScript, and is checked automatically on every change."></p>
+  <div class="nums">
+    <div><b>75</b><span data-el="tests σε Python με δημοσιευμένα λυμένα παραδείγματα" data-en="Python tests against published worked examples"></span></div>
+    <div><b>928</b><span data-el="τυχαία περιστατικά όπου οι δύο μηχανές συμφωνούν" data-en="randomised cases on which the two engines agree"></span></div>
+    <div><b>15/15</b><span data-el="τιμές αυτοελέγχου σε κάθε συσκευή" data-en="self-test values on every device"></span></div>
+    <div><b>9/9</b><span data-el="σχήματα σε συμφωνία με το RadComp" data-en="schedules in agreement with RadComp"></span></div>
+  </div>
+</section>
+
+<section>
+  <h2 data-el="Προβλεπόμενη χρήση" data-en="Intended use"></h2>
+  <p class="note" data-el="Υποστήριξη απόφασης για έρευνα και εκπαίδευση, όχι ιατροτεχνολογικό προϊόν. Ο υπολογισμός βασίζεται στο γραμμικό-τετραγωνικό μοντέλο με γενικές παραμέτρους και δεν υποκαθιστά την κλινική κρίση. Όλες οι παράμετροι και κάθε τροποποιημένο σχήμα πρέπει να ελέγχονται από τη θεραπευτική ομάδα." data-en="Decision support for research and education, not a medical device. The calculation uses the linear-quadratic model with generic parameters and does not replace clinical judgement. All parameters and every modified schedule must be checked by the treating team."></p>
+</section>
+
+<section>
+  <h2 data-el="Αναφορά και επικοινωνία" data-en="Citation and contact"></h2>
+  <p class="cite">Vasilopoulos K. RTGap: compensation of unscheduled radiotherapy interruptions. Version __VERSION__, 2026. https://github.com/konsvasilopoulos/RTGap</p>
+  <p><span data-el="Ανάπτυξη" data-en="Developed by"></span>: Konstantinos Vasilopoulos, PhD Candidate · <a href="mailto:kostasvasilopoulosgr@yahoo.com">kostasvasilopoulosgr@yahoo.com</a></p>
+  <div class="cta"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a></div>
+</section>
+<footer>RTGap __VERSION__ · AGPL-3.0-or-later · <span data-el="εμπορικές άδειες από τον δημιουργό" data-en="commercial licences from the author"></span></footer>
+</div>
+<script>
+(function () {
+  try { localStorage.setItem('rtgap.seen', '1'); } catch (e) {}
+  var lang = 'en';
+  try { var st = JSON.parse(localStorage.getItem('rtgap.state') || 'null'); lang = (st && st.lang) || localStorage.getItem('rtgap.wlang') || ((navigator.language || '').toLowerCase().indexOf('el') === 0 ? 'el' : 'en'); } catch (e) {}
+  function set(l) {
+    lang = l; document.documentElement.lang = l; try { localStorage.setItem('rtgap.wlang', l); } catch (e) {}
+    document.querySelectorAll('[data-el]').forEach(function (n) { n.innerHTML = n.getAttribute('data-' + l); });
+    document.querySelectorAll('[data-l]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-l') === l)); });
+  }
+  document.querySelectorAll('[data-l]').forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-l')); }); });
+  set(lang);
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>

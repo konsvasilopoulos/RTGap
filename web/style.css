@@ -295,3 +295,13 @@ tr.best td { background: color-mix(in srgb, var(--good) 10%, transparent); }
 
 ol.gsteps { margin: 8px 0 8px; padding-left: 22px; display: grid; gap: 4px; font-size: 0.9rem; }
 .tabs.flat { flex-wrap: wrap; } .tabs.flat button { flex: 1 1 auto; }
+
+.top .ghost:disabled { opacity: 0.35; cursor: default; }
+.cmppick { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-bottom: 10px; }
+.cmppick label { display: flex; gap: 6px; align-items: center; min-width: 0; } .cmppick select { flex: 1 1 auto; min-width: 0; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 7px 8px; }
+.cmptag { font: 700 0.72rem/1 var(--f-num); border-radius: 6px; padding: 4px 7px; color: #fff; flex: none; } .cmptag.a { background: var(--accent); color: var(--accent-ink); } .cmptag.b { background: #5a3fa0; }
+td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transparent); font-weight: 600; }
+.cmptable th:nth-child(n+2), .cmptable td:nth-child(n+2) { width: 27%; }
+.cmpgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .cmpcol { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.cmphead { display: flex; gap: 8px; align-items: center; }
+@media (max-width: 760px) { .cmpgrid { grid-template-columns: 1fr; } .cmppick { grid-template-columns: 1fr; } .cmppick .btn { justify-self: center; } }

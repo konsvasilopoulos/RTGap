@@ -7,6 +7,7 @@
 <meta name="description" content="RTGap: linear-quadratic decision support for unscheduled radiotherapy interruptions, following the RCR guidance. Runs offline, Greek and English.">
 <meta name="theme-color" content="#07101f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%2307101f'/%3E%3Cpath d='M8 12C16 13 20 18 24 26S33 39 41 41' fill='none' stroke='%237fb2ff' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M8 12C14 12.5 17 15 19 19L19 13C24 14 27 20 29 26L29 19C33 21 36 27 41 33' fill='none' stroke='%23f3b45a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>try{if(/^https?:$/.test(location.protocol)&&window.top===window&&!location.hash&&!localStorage.getItem('rtgap.seen')&&!localStorage.getItem('rtgap.state'))location.replace('welcome.html');else localStorage.setItem('rtgap.seen','1')}catch(e){}</script>
 <script>try{var t=localStorage.getItem('rtgap.theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +32,8 @@
       <div class="topctl">
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
+        <button type="button" class="ghost icon" id="undo" data-act="undo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M8 5 4 9l4 4M4 9h8a4 4 0 0 1 0 8h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="ghost icon" id="redo" data-act="redo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m12 5 4 4-4 4m4-4H8a4 4 0 0 0 0 8h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost" id="reset"></button>
         <button type="button" class="ghost" id="docsbtn" data-act="docs"></button>
         <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
@@ -45,7 +48,7 @@
   <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
-  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-lic"></p></div>
+  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-site"></p><p id="foot-lic"></p></div>
   <p id="disc"></p>
 </div></footer>
 <div id="refpop" role="dialog" hidden></div>

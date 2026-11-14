@@ -6,7 +6,8 @@ evaluates it with the linear-quadratic model, and shows what each one costs the
 tumour and the normal tissues, which options the rules exclude and why.
 
 **Open the app: <https://konsvasilopoulos.github.io/RTGap/>**
-(or download `dist/index.html` and open it in any browser; it works offline).
+(installable as an app; or download `dist/index.html` and open it in any
+browser, it works offline).
 
 ![RTGap](docs/screenshot.png)
 
@@ -70,7 +71,7 @@ described in the [reference](docs/REFERENCE.md). Changes per version are in the
 
 | Path | Content |
 |---|---|
-| `dist/index.html` | the web app, one file |
+| `dist/index.html` | the web app, one file (`dist/` also holds the presentation page and the files that make it installable) |
 | `web/` | sources of the web app and the Python-vs-JavaScript cross-validation |
 | `rtgap/` | Python reference implementation and site library |
 | `tests/`, `validation/` | tests, benchmark, template for retrospective cases |

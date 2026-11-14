@@ -12,4 +12,12 @@ for k, f in rep.items():
 html = html.replace("/*__SITES__*/", json.dumps(sites, ensure_ascii=False).replace("</", "<\\/"))
 out = here.parent / "dist"; out.mkdir(exist_ok=True)
 (out / "index.html").write_text(html, "utf-8")
+import re, shutil
+ver = re.search(r"const VERSION = '([^']+)'", (here / "engine.js").read_text("utf-8")).group(1)
+for f in (here / "pwa").iterdir():
+    if f.suffix in (".html", ".js", ".webmanifest"):
+        (out / f.name).write_text(f.read_text("utf-8").replace("__VERSION__", ver), "utf-8")
+    else:
+        shutil.copy(f, out / f.name)
+shutil.copy(here.parent / "docs" / "screenshot.png", out / "screenshot.png")
 print("dist/index.html", len(html) // 1024, "KiB")

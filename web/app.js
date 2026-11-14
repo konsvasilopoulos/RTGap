@@ -102,7 +102,27 @@
   try { const mh = /[#&]c=([\w\-]+)/.exec(location.hash || ''); if (mh) { const lang0 = state.lang; state = fromCase(JSON.parse(b64dEarly(mh[1]))); state.lang = lang0; fromLink = true; history.replaceState(null, '', location.pathname + location.search); } } catch (e) { /* bad link: ignore */ }
   let tr = I.make(state.lang), model = null;
   function b64dEarly(str) { return decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/')))); }
-  const persist = () => { try { localStorage.setItem('rtgap.state', JSON.stringify(state)); } catch (e) { /* ignore */ } };
+  // ---- undo / redo: snapshots of the inputs, taken whenever they are saved
+  const hist = [], fut = []; let lastSnap = null, lastPush = 0;
+  const undoBtn = () => { const u = document.getElementById('undo'), r = document.getElementById('redo'); if (u) u.disabled = !hist.length; if (r) r.disabled = !fut.length; };
+  const persist = () => {
+    const cur = JSON.stringify(state);
+    if (cur !== lastSnap) {
+      const now = Date.now();
+      if (lastSnap != null && now - lastPush > 700) { hist.push(lastSnap); if (hist.length > 60) hist.shift(); lastPush = now; }
+      if (lastSnap != null) fut.length = 0;
+      lastSnap = cur; undoBtn();
+    }
+    try { localStorage.setItem('rtgap.state', cur); } catch (e) { /* ignore */ }
+  };
+  function timeTravel(from, to) {
+    if (!from.length) return;
+    to.push(lastSnap); const snap = from.pop(), lang = state.lang;
+    state = JSON.parse(snap); state.lang = lang; lastSnap = JSON.stringify(state); lastPush = 0;
+    tr = I.make(state.lang); refresh(true); undoBtn();
+  }
+  let HOSTED = false; try { HOSTED = /^https?:$/.test(location.protocol) && window.top === window; } catch (e) { HOSTED = false; }
+  let installEvt = null;
 
   // ------------------------------------------------------------------ state → case (same schema as the Python package)
   function toCase(s) {
@@ -479,6 +499,7 @@
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;
       B.opts += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
         ${dec.rejected.length ? `<details style="margin-top:12px"><summary class="small">${esc(L('excluded'))} (${dec.rejected.length})</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</div>`;
+      B.opts += compareHtml(m);
       if (p.oars.length) B.map += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--accent);border-radius:50%"></i>${esc(L('map_feas'))}</span><span><i style="border:1.5px solid var(--muted);border-radius:50%;background:transparent"></i>${esc(L('map_excl'))}</span>${m.given ? `<span><i style="background:var(--warn);transform:rotate(45deg)"></i>${esc(L('map_given'))}</span>` : ''}<span><i style="background:var(--ink);border-radius:50%"></i>${esc(L('ch_planned'))}</span></div></div>`;
       if (m.sel) B.det += detailHtml(m.sel);
@@ -559,6 +580,42 @@
       rows.map((x, i) => `<tr class="${x === best && best.ext < cur.ext ? 'best' : ''}"><td style="text-align:left">${esc(tr.date(x.start))}${i === 0 ? ` <span class="pill plain">${esc(L('pre_now'))}</span>` : ''}${x === best && best.ext < cur.ext ? ` <span class="pill c3">${esc(L('pre_best'))}</span>` : ''}</td><td class="n">${esc(tr.dshort(x.end))}</td><td class="n">${x.T}</td><td class="n" title="${esc(x.closed.map((y) => nm(y, x)).join(', '))}">${x.closed.length}</td><td class="n ${x.ext > mx ? 'neg' : ''}">${tr.sgi(x.ext)}</td>${x.hasTime ? dcell(x.dT) : '<td class="n">–</td>'}<td>${i ? `<button type="button" class="btn sm" data-act="pre-start" data-d="${RT.iso(x.start)}">${esc(L('pre_use'))}</button>` : ''}</td></tr>`).join('') + `</tbody></table></div><p class="small" style="margin:8px 0 0">${esc(L('pre_note'))}</p></div>`;
     return h;
   }
+  // ---- two schedules side by side
+  function compareHtml(m) {
+    const L = tr.t, p = m.p, dec = m.dec, all = dec.feasible.concat(dec.rejected); if (all.length < 2) return '';
+    const ui = state.ui || {}, base = all.find((o) => o.family === 'baseline');
+    let A = all.find((o) => o.key === ui.cmpA) || m.sel || dec.feasible[0] || all[0];
+    let B = all.find((o) => o.key === ui.cmpB) || (base && base !== A ? base : all.find((o) => o !== A));
+    if (B === A) B = all.find((o) => o !== A);
+    const excl = (o) => dec.rejected.includes(o);
+    const sel = (id, cur) => `<select id="${id}" aria-label="${id === 'cmp-a' ? 'A' : 'B'}">${all.map((o) => `<option value="${esc(o.key)}" ${o === cur ? 'selected' : ''}>${excl(o) ? '✗ ' : ''}${esc(tr.optTitle(o))}</option>`).join('')}</select>`;
+    // rows: [label, value A, value B, text A, text B, which direction is better (+1 higher, -1 lower, 0 none), threshold]
+    const rows = [[L('remaining'), null, null, o => o.nNew + ' × ' + tr.f2(o.d) + ' Gy', 0],
+      [L('ends'), null, null, o => tr.dshort(o.end), 0],
+      [L('kpi_ext') + ' (' + L('days') + ')', o => o.ext, null, o => tr.sgi(o.ext), -1, 0.5],
+      [L('cmp_wkend'), o => o.nSat + o.nSun, null, o => String(o.nSat + o.nSun), -1, 0.5],
+      [L('cmp_bid'), o => o.nBid, null, o => String(o.nBid), -1, 0.5],
+      [(p.rx.multilevel ? p.tumour.name : L('col_t')) + ' · Δ EQD2 (Gy)', o => o.tumour.delta, null, o => tr.sg(o.tumour.delta), 1, 0.05]]
+      .concat(A.levels.map((r, i) => [r.name + ' · Δ EQD2 (Gy)', o => o.levels[i].delta, null, o => tr.sg(o.levels[i].delta), 1, 0.05]),
+        A.oars.map((r, i) => [r.name + ' · Δ %', o => o.oars[i].deltaPct, null, o => tr.sg(o.oars[i].deltaPct), -1, 0.05]),
+        [[L('acute_row') + ' · Δ %', o => o.weeklyInc, null, o => tr.sg(o.weeklyInc), -1, 0.5], [L('cmp_warn'), o => o.warnings.length + o.rejected.length, null, o => String(o.warnings.length + o.rejected.length), -1, 0.5]]);
+    const proA = [], proB = [];
+    const body = rows.map(([lab, val, , txt, dir, eps]) => {
+      let ca = '', cb = '';
+      if (val && dir) { const a = val(A), b = val(B); if (Math.abs(a - b) > eps) { const aBetter = dir > 0 ? a > b : a < b; if (aBetter) { ca = 'better'; proA.push(lab.split(' · ')[0]); } else { cb = 'better'; proB.push(lab.split(' · ')[0]); } } }
+      return `<tr><td style="text-align:left">${esc(lab)}</td><td class="n ${ca}">${esc(txt(A))}</td><td class="n ${cb}">${esc(txt(B))}</td></tr>`;
+    }).join('');
+    const col = (o, tag, pros) => `<div class="cmpcol"><div class="cmphead"><span class="cmptag ${tag === 'A' ? 'a' : 'b'}">${tag}</span><b>${esc(tr.optTitle(o))}</b></div>
+      <p class="small" style="margin:2px 0 6px">${esc(tr.optShort(o))}${excl(o) ? ` · <span class="neg">${esc(L('cmp_excl'))}: ${esc(o.rejected.map((w) => tr.reason(w)).join('; '))}</span>` : ''}</p>
+      ${calendarHtml(p, o, false)}
+      <p class="small" style="margin:6px 0"><b>${esc(L('cmp_pro'))}:</b> ${pros.length ? esc(pros.join(', ')) : '–'}</p>
+      ${excl(o) ? '' : `<button type="button" class="btn sm ${m.sel === o ? '' : 'pri'}" data-opt="${esc(o.key)}">${esc(m.sel === o ? L('cmp_selected') : L('cmp_use'))}</button>`}</div>`;
+    return `<div class="card" id="compare"><h2>${esc(L('cmp_title'))}</h2><p class="hint">${esc(L('cmp_hint'))}</p>
+      <div class="cmppick"><label><span class="cmptag a">A</span>${sel('cmp-a', A)}</label><button type="button" class="btn sm" data-act="cmp-swap" aria-label="swap">⇄</button><label><span class="cmptag b">B</span>${sel('cmp-b', B)}</label></div>
+      <div class="scroll"><table class="cmptable"><thead><tr><th></th><th><span class="cmptag a">A</span></th><th><span class="cmptag b">B</span></th></tr></thead><tbody>${body}</tbody></table></div>
+      <p class="small" style="margin:6px 0 12px"><span class="better" style="padding:1px 6px;border-radius:4px">${esc(L('cmp_legend'))}</span></p>
+      <div class="cmpgrid">${col(A, 'A', proA)}${col(B, 'B', proB)}</div></div>`;
+  }
   function kpiHtml(m) {
     const p = m.p, L = tr.t, b = m.base, o = m.sel;
     if (!b || !p.remaining) return '';
@@ -594,6 +651,7 @@
   function savedHtml() {
     const L = tr.t, list = loadCases();
     return `<div class="card"><h2>${esc(L('saved_title'))}</h2><p class="hint">${esc(L('saved_hint'))}</p>
+      <div class="rowbtn" style="margin:0 0 10px"><button type="button" class="btn sm" data-act="backup">${esc(L('bk_save'))}</button><label class="btn sm" style="position:relative;overflow:hidden">${esc(L('bk_load'))}<input type="file" id="bk-imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <div class="savebar"><input type="text" id="save-name" placeholder="${esc(L('saved_name'))}" value="${esc(state.caseRef || '')}" autocomplete="off"><button type="button" class="btn pri" data-act="case-save">${esc(L('saved_save'))}</button></div>
       ${list.length ? `<ul class="saved">${list.map((c, i) => `<li><button type="button" class="linkbtn" data-act="case-load" data-i="${i}">${esc(c.name)}</button><span class="small">${esc(c.when)} · ${esc(c.sum || '')}</span><button type="button" class="btn x" data-act="case-del" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></li>`).join('')}</ul>` : `<p class="small" style="margin:10px 0 0">${esc(L('saved_none'))}</p>`}</div>`;
   }
@@ -775,19 +833,27 @@
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
-    $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
+    $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
+    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
       <div class="about-head"><h2>RT<i>Gap</i> <span>v${RT.VERSION}</span></h2><p>${esc(L('about_lead'))}</p></div>
       <div class="feats">${L('feats').map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>
+      <div id="install-slot"></div>
       <h3>${esc(L('about_valid_t'))}</h3><p>${esc(L('about_valid').replace('{a}', SELF.filter((x) => x.ok).length + '/' + SELF.length))}</p>
       <h3>${esc(L('about_use_t'))}</h3><p>${esc(L('disclaimer'))}</p>
       <h3>${esc(L('about_cite_t'))}</h3><p class="cite">Vasilopoulos K. RTGap: compensation of unscheduled radiotherapy interruptions. Version ${RT.VERSION}, 2026. https://github.com/konsvasilopoulos/RTGap</p>
       <p class="small">${esc(L('dev'))}: Konstantinos Vasilopoulos, PhD Candidate · ${esc(L('lic'))} <a href="https://github.com/konsvasilopoulos/RTGap" target="_blank" rel="noopener">${esc(L('src'))}</a></p></div>`;
+    fillInstall();
     let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
     $('#intro').hidden = seen;
     $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
+  }
+  function fillInstall() {
+    const el = $('#install-slot'); if (!el) return; const L = tr.t;
+    let standalone = false; try { standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone; } catch (e) { /* ignore */ }
+    el.innerHTML = !HOSTED || standalone ? '' : `<h3>${esc(L('inst_t'))}</h3><p>${esc(L('inst_text'))}</p>${installEvt ? `<div class="rowbtn" style="margin:4px 0 8px"><button type="button" class="btn pri sm" data-act="install">${esc(L('inst_btn'))}</button></div>` : `<p class="small">${esc(L('inst_how'))}</p>`}`;
   }
   let docsParts = {}, docTab = 'guide';
   function renderDocs() {
@@ -1048,6 +1114,14 @@
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'undo') { timeTravel(hist, fut); return; }
+    if (a === 'redo') { timeTravel(fut, hist); return; }
+    if (a === 'cmp-swap') { const x = $('#cmp-a').value; state.ui = state.ui || {}; state.ui.cmpA = $('#cmp-b').value; state.ui.cmpB = x; renderResults(); return; }
+    if (a === 'install') { if (installEvt) { installEvt.prompt(); installEvt = null; fillInstall(); } return; }
+    if (a === 'backup') {
+      const out = { app: 'RTGap', kind: 'backup', version: RT.VERSION, saved: new Date().toISOString(), cases: loadCases(), protocol: proto, current: JSON.parse(JSON.stringify(state)) };
+      saveFile('RTGap-backup-' + out.saved.slice(0, 10) + '.json', JSON.stringify(out), 'application/json'); return;
+    }
     if (a === 'guide-open') { $('#docs').hidden = true; if (EXAMPLES[t.dataset.ex]) { const s2 = EXAMPLES[t.dataset.ex](); s2.lang = state.lang; loadState(s2); } window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     if (a === 'csv-template') { saveFile('RTGap-patients-template.csv', '\ufeff' + CSV_HEAD + '\r\nRT-001,hn_scc,2026-10-05,35,2,\r\nRT-002,prostate,2026-10-12,20,3,2026-10-20 2026-10-21\r\n', 'text/csv'); return; }
     if (a === 'aud-csv') {
@@ -1111,6 +1185,18 @@
         refresh(true); toast(tr.t('proto_loaded') + (ign.length ? ' ' + tr.t('proto_ignored') + ': ' + ign.slice(0, 4).join(', ') + (ign.length > 4 ? '…' : '') : ''));
       }).catch(() => toast(tr.t('proto_fail'))); return;
     }
+    if (t.id === 'cmp-a' || t.id === 'cmp-b') { state.ui = state.ui || {}; state.ui[t.id === 'cmp-a' ? 'cmpA' : 'cmpB'] = t.value; renderResults(); return; }
+    if (t.id === 'bk-imp') {
+      const f = t.files && t.files[0]; if (!f) return;
+      f.text().then((txt) => {
+        const j = JSON.parse(txt); if (j.app !== 'RTGap' || !Array.isArray(j.cases)) throw new Error('not a backup');
+        const list = loadCases(); let n = 0;
+        for (const c of j.cases.slice().reverse()) { if (!c || !c.name || !c.state) continue; const k = list.findIndex((x) => x.name === c.name); if (k >= 0) list.splice(k, 1); list.unshift(c); n++; }
+        storeCases(list);
+        if (j.protocol) { proto = normProto(j.protocol); saveProto(); }
+        refresh(true); renderTriage(); renderAudit(); toast(n + ' ' + tr.t('bk_done') + (j.protocol ? ' · ' + tr.t('proto_title') : ''));
+      }).catch(() => toast(tr.t('bk_fail'))); return;
+    }
     if (t.id === 'csv-imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const r = importCsv(txt); renderResults(); renderTriage(); renderAudit(); toast(r.ok + ' ' + tr.t('csv_ok') + (r.bad.length ? ' · ' + tr.t('csv_bad') + ' ' + r.bad.slice(0, 8).join(', ') : '')); }).catch(() => toast(tr.t('csv_fail'))); return; }
     if (t.id === 'imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const j = JSON.parse(txt); loadState(fromCase(j.case || j)); }).catch(() => toast(tr.t('import_fail'))); return; }
     onInput(ev);
@@ -1118,6 +1204,19 @@
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
   document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
+  document.addEventListener('keydown', (ev) => {
+    if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || (ev.key !== 'z' && ev.key !== 'Z' && ev.key !== 'y')) return;
+    const tg = ev.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;
+    ev.preventDefault(); if (ev.key === 'y' || ev.shiftKey) timeTravel(fut, hist); else timeTravel(hist, fut);
+  });
+  if (HOSTED) {
+    try {
+      const lk = document.createElement('link'); lk.rel = 'manifest'; lk.href = 'manifest.webmanifest'; document.head.appendChild(lk);
+      const ic = document.createElement('link'); ic.rel = 'apple-touch-icon'; ic.href = 'icon-192.png'; document.head.appendChild(ic);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* offline install not available */ });
+      window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; fillInstall(); });
+    } catch (e) { /* ignore */ }
+  }
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;

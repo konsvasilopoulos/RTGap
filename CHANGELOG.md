@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0 — 2026-11-14
+* Installable app (PWA): manifest, icons and a service worker, so the hosted app opens offline.
+* Backup and restore of all saved cases and the department protocol in one file.
+* Compare two schedules side by side: values with the better one marked, both calendars.
+* Undo and redo (buttons and Ctrl+Z / Ctrl+Y).
+* Presentation page (welcome.html), shown on the first visit to the hosted site.
+
 ## 1.6.0 — 2026-11-14
 * Department audit of the saved cases: share of courses within the RCR allowance per category,
   table of all cases, CSV export (web app).

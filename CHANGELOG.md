@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0 — 2026-11-14
+* The presentation page opens at the start of every visit to the hosted site (once per browser
+  session; not in the installed app and not for links that carry a case).
+* Accessibility: arrow keys in the calendar and between tabs, focus kept after a tap and inside
+  dialogs, spoken status of the decision, calendar days labelled with their state, skip link.
+* Print view of the page: case summary, decision and all four result sections on white.
+
 ## 1.7.0 — 2026-11-14
 * Installable app (PWA): manifest, icons and a service worker, so the hosted app opens offline.
 * Backup and restore of all saved cases and the department protocol in one file.

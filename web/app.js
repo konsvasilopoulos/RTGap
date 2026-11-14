@@ -275,7 +275,9 @@
         if (nw.has(d)) { const n = nw.get(d).length; cls.push(n > 1 ? 'bid' : 'new'); if (n > 1) txt += '<small>×2</small>'; }
         if (d === p.plannedEnd) cls.push('endmark');
         if (d < p.rx.start) cls.push('out');
-        h += interactive ? `<button type="button" class="${cls.join(' ')}" data-day="${RT.iso(d)}" title="${esc(title)}" aria-label="${esc(title)}">${txt}</button>` : `<div class="${cls.join(' ')}" title="${esc(title)}">${txt}</div>`;
+        const words = cls.filter((k) => ({ delivered: 1, missed: 1, planned: 1, closed: 1, unavail: 1, chemo: 1 })[k] && !(k === 'planned' && cls.includes('missed'))).map((k) => tr.t('lg_' + (k === 'closed' ? 'holiday' : k))).join(', ');
+        const lab = title + (words ? ' · ' + words : '');
+        h += interactive ? `<button type="button" class="${cls.join(' ')}" data-day="${RT.iso(d)}" title="${esc(title)}" aria-label="${esc(lab)}" aria-pressed="${cls.includes('missed')}">${txt}</button>` : `<div class="${cls.join(' ')}" title="${esc(title)}">${txt}</div>`;
       }
     }
     return h + '</div>';
@@ -522,7 +524,7 @@
     B.rep += `<div class="card" id="report"><h2>${esc(L('record'))}</h2>
       <div class="fields">${fld(L('case_ref'), 'caseRef', state.caseRef, 'type="text" autocomplete="off"')}${fld(L('calc_by'), 'calcBy', state.calcBy, 'type="text"')}${fld(L('checked_by'), 'checkedBy', state.checkedBy, 'type="text"')}
         <label class="f"><span>${esc(L('pdf_lang'))}</span><select data-bind="pdfLang" id="i-pdfLang"><option value="el" ${repLang === 'el' ? 'selected' : ''}>Ελληνικά</option><option value="en" ${repLang === 'en' ? 'selected' : ''}>English</option></select></label></div>
-      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button>${model.sel && model.p.remaining ? `<button type="button" class="btn" data-act="sheet">${esc(L('sheet_btn'))}</button>` : ''}<button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
+      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button><button type="button" class="btn" data-act="print">${esc(L('print'))}</button>${model.sel && model.p.remaining ? `<button type="button" class="btn" data-act="sheet">${esc(L('sheet_btn'))}</button>` : ''}<button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
         <label class="btn" style="position:relative;overflow:hidden">${esc(L('import'))}<input type="file" id="imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     B.rep += shareHtml() + savedHtml();
@@ -530,6 +532,7 @@
     const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
+    if (printing) { out.innerHTML = `<pre class="printsum">${esc(summaryText())}</pre>` + h + avail.map((k) => `<h2 class="printh">${esc(L('tab_' + k))}</h2>` + (k === 'an' ? B.sens + B.scen + preflightHtml() : panes[k])).join(''); out.querySelectorAll('details[data-fold="why"]').forEach((d) => { d.open = true; }); drawChart(); drawMap(); return; }
     if (avail.length > 1) h += `<div class="tabs" role="tablist" id="tabs">${avail.map((k) => `<button type="button" role="tab" data-act="tab" data-tab="${k}" aria-selected="${k === tab}">${esc(L('tab_' + k))}${k === 'opts' ? ` <span class="cnt">${dec.feasible.length}</span>` : ''}</button>`).join('')}</div>`;
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
@@ -833,6 +836,7 @@
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
+    $('#skip').textContent = L('skip'); $('#about').setAttribute('aria-label', L('about_btn')); $('#docs').setAttribute('aria-label', L('docs_btn'));
     $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
     $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
@@ -984,7 +988,7 @@
     pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p><p class="small" style="margin:6px 0 0"><button type="button" class="linkbtn" data-act="docs" data-tab="refs">${esc(tr.t('refs_all'))}</button></p>`;
     pop.hidden = false;
   }
-  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
 
   // ------------------------------------------------------------------ saving
   let dl = null;
@@ -1020,8 +1024,14 @@
     o[ks[ks.length - 1]] = value;
   }
   let timer = null;
+  let focusDay = null, printing = false;
+  function announce() {
+    const el = $('#sr-status'); if (!el || !model) return;
+    el.textContent = model.error ? tr.t('st_error') : tr.t('st_' + model.dec.status) + ': ' + tr.head(model.dec.head);
+    if (focusDay) { const b = document.querySelector('#gapcal [data-day="' + focusDay + '"]'); if (b) b.focus({ preventScroll: true }); focusDay = null; }
+  }
   function refresh(full) {
-    compute(); persist();
+    compute(); persist(); setTimeout(announce, 0);
     if (full) { renderStatic(); renderInputs(); } else { renderGapCal(); renderBioNote(); const ps = $('#proto-status'); if (ps) ps.innerHTML = protoStatus(); const ds = $('#dept-sum'); if (ds) ds.textContent = deptSum(); const bs = $('#bio-sum'); if (bs) bs.textContent = bioSum(); const tt = $('#rx-total'); if (tt) tt.textContent = ((state.n || 0) * (state.d || 0)).toFixed(2) + ' Gy'; refreshSiteMeta(); }
     renderResults();
   }
@@ -1053,7 +1063,7 @@
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
     if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
     if (t.dataset.lang) { state.lang = t.dataset.lang; tr = I.make(state.lang); refresh(true); return; }
-    if (t.dataset.day) {
+    if (t.dataset.day) { focusDay = t.dataset.day;
       const d = t.dataset.day, m = state.mark, p0 = model && model.p, dd = RT.parseDate(d);
       if (m === 'err') {
         const i = state.errors.findIndex((e) => e.date === d);
@@ -1114,6 +1124,7 @@
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'print') { window.print(); return; }
     if (a === 'undo') { timeTravel(hist, fut); return; }
     if (a === 'redo') { timeTravel(fut, hist); return; }
     if (a === 'cmp-swap') { const x = $('#cmp-a').value; state.ui = state.ui || {}; state.ui.cmpA = $('#cmp-b').value; state.ui.cmpB = x; renderResults(); return; }
@@ -1204,6 +1215,29 @@
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
   document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
+  // keyboard: arrows in the calendar and between tabs; focus stays inside an open dialog
+  document.addEventListener('keydown', (ev) => {
+    const tg = ev.target, k = ev.key; if (!tg || !tg.matches) return;
+    if (tg.matches('#gapcal button[data-day]') && /^Arrow/.test(k)) {
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gapcal [data-day="' + RT.iso(RT.parseDate(tg.dataset.day) + step) + '"]');
+      if (nx) { ev.preventDefault(); nx.focus(); } return;
+    }
+    if (tg.matches('[role="tab"]') && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'Home' || k === 'End')) {
+      const tabs = [...tg.parentElement.querySelectorAll('[role="tab"]')], i = tabs.indexOf(tg), j = k === 'Home' ? 0 : k === 'End' ? tabs.length - 1 : (i + (k === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      ev.preventDefault(); const sel = '[role="tab"][data-act="' + tabs[j].dataset.act + '"][data-tab="' + tabs[j].dataset.tab + '"]'; tabs[j].click(); const nb = document.querySelector(sel); if (nb) nb.focus(); return;
+    }
+    if (k === 'Tab') {
+      const dlg = [...document.querySelectorAll('.modal')].find((x) => !x.hidden); if (!dlg) return;
+      const f = [...dlg.querySelectorAll('button, a[href], input, select, summary')].filter((x) => x.offsetParent !== null); if (!f.length) return;
+      if (ev.shiftKey && (document.activeElement === f[0] || !dlg.contains(document.activeElement))) { ev.preventDefault(); f[f.length - 1].focus(); }
+      else if (!ev.shiftKey && (document.activeElement === f[f.length - 1] || !dlg.contains(document.activeElement))) { ev.preventDefault(); f[0].focus(); }
+    }
+  });
+  let opener = null;
+  new MutationObserver((ms) => { for (const m of ms) { const el = m.target; if (!el.classList || !el.classList.contains('modal')) continue; if (!el.hidden) { if (!el.contains(document.activeElement)) { opener = document.activeElement; const c = el.querySelector('.close'); if (c) c.focus(); } } else if (opener && document.body.contains(opener)) { opener.focus(); opener = null; } } }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+  let themeBefore = null;
+  window.addEventListener('beforeprint', () => { themeBefore = document.documentElement.getAttribute('data-theme'); document.documentElement.setAttribute('data-theme', 'light'); printing = true; renderResults(); });
+  window.addEventListener('afterprint', () => { printing = false; if (themeBefore) document.documentElement.setAttribute('data-theme', themeBefore); else document.documentElement.removeAttribute('data-theme'); renderResults(); });
   document.addEventListener('keydown', (ev) => {
     if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || (ev.key !== 'z' && ev.key !== 'Z' && ev.key !== 'y')) return;
     const tg = ev.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;

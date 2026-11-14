@@ -102,7 +102,7 @@ footer { padding: 26px 0 40px; color: var(--mut); font-size: .88rem; border-top:
 </div>
 <script>
 (function () {
-  try { localStorage.setItem('rtgap.seen', '1'); } catch (e) {}
+  try { sessionStorage.setItem('rtgap.entered', '1'); } catch (e) {}
   var lang = 'en';
   try { var st = JSON.parse(localStorage.getItem('rtgap.state') || 'null'); lang = (st && st.lang) || localStorage.getItem('rtgap.wlang') || ((navigator.language || '').toLowerCase().indexOf('el') === 0 ? 'el' : 'en'); } catch (e) {}
   function set(l) {

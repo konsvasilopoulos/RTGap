@@ -7,7 +7,7 @@
 <meta name="description" content="RTGap: linear-quadratic decision support for unscheduled radiotherapy interruptions, following the RCR guidance. Runs offline, Greek and English.">
 <meta name="theme-color" content="#07101f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%2307101f'/%3E%3Cpath d='M8 12C16 13 20 18 24 26S33 39 41 41' fill='none' stroke='%237fb2ff' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M8 12C14 12.5 17 15 19 19L19 13C24 14 27 20 29 26L29 19C33 21 36 27 41 33' fill='none' stroke='%23f3b45a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<script>try{if(/^https?:$/.test(location.protocol)&&window.top===window&&!location.hash&&!localStorage.getItem('rtgap.seen')&&!localStorage.getItem('rtgap.state'))location.replace('welcome.html');else localStorage.setItem('rtgap.seen','1')}catch(e){}</script>
+<script>try{var sa=false;try{sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone}catch(e){}if(/^https?:$/.test(location.protocol)&&window.top===window&&!location.hash&&!sa&&!sessionStorage.getItem('rtgap.entered'))location.replace('welcome.html')}catch(e){}</script>
 <script>try{var t=localStorage.getItem('rtgap.theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -321,6 +321,32 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
 .cmphead { display: flex; gap: 8px; align-items: center; }
 @media (max-width: 760px) { .cmpgrid { grid-template-columns: 1fr; } .cmppick { grid-template-columns: 1fr; } .cmppick .btn { justify-self: center; } }
 
+/* ---- accessibility ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -60px; z-index: 100; background: var(--accent); color: var(--accent-ink); padding: 8px 14px; border-radius: 8px; font-weight: 600; }
+.skip:focus { top: 8px; }
+a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus-visible, .ghost:focus-visible, label.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.top .ghost:focus-visible, .top select:focus-visible, .top .seg button:focus-visible { outline-color: #fff; }
+#results:focus { outline: none; }
+.printsum, .printh { display: none; }
+@media (forced-colors: active) { .cal .c.missed { border-style: double; } .cal .c.delivered { border-width: 3px; } .kpi::before { background: CanvasText; } }
+/* ---- print ---- */
+@media print {
+  @page { margin: 14mm 12mm; }
+  body { background: #fff !important; font-size: 10.5pt; }
+  .top { background: none !important; color: #000; padding: 0; } .top canvas, .top .side, .chips, #intro, #inputs, #below, .dock, .tabs, .steps, .rowbtn, .btn, .help, .skip, .toast, .modal, #refpop, .savebar, ul.saved, #compare .cmppick { display: none !important; }
+  .top-in { min-height: 0 !important; padding: 0 0 6px; } .brand h1 { font-size: 20pt; color: #000; } .brand h1 i { color: #1d4ed8; } #tagline { color: #333; margin: 0; } .logo { display: none; }
+  main { padding: 0; max-width: none; } .grid { display: block; }
+  .card, .kpi { box-shadow: none !important; break-inside: avoid; border-color: #bbb; } .card { margin-bottom: 8px; padding: 10px 12px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); margin-bottom: 8px; }
+  .printsum { display: block; white-space: pre-wrap; font: 9pt/1.45 var(--f-num); border: 1px solid #bbb; border-radius: 6px; padding: 8px 10px; margin: 0 0 8px; }
+  .printh { display: block; font: 600 13pt var(--f-display); margin: 12px 0 6px; break-after: avoid; border-bottom: 1px solid #000; }
+  .scroll { overflow: visible !important; } table { font-size: 8.5pt; } .pane { animation: none; }
+  .foot { border-top: 1px solid #bbb; margin-top: 10px; padding: 6px 0 0; font-size: 8pt; } a { color: inherit; text-decoration: none; }
+  .cmpgrid { grid-template-columns: 1fr 1fr; }
+}
+@media print { .card.decision, #detail { break-inside: auto; } }
+
 </style>
 </head>
 <body>
@@ -349,9 +375,11 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     </div>
   </div>
 </header>
+<a class="skip" href="#results" id="skip"></a>
+<div id="sr-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <main>
   <div id="intro" hidden></div>
-  <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-live="polite"></section></div>
+  <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-label="Results" tabindex="-1"></section></div>
   <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
@@ -370,7 +398,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.7.0';
+  const VERSION = '1.8.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1417,6 +1445,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
       aud_title: 'Department audit of the saved cases', aud_hint: 'RCR asks departments to audit treatment interruptions regularly. For every case saved on this device: the interruptions, the prolongation without compensation and with the schedule that was selected, and whether the course stays within the allowance of its category.',
       aud_nocat: 'No category', aud_within: 'within the allowance', aud_int: 'interrupted', aud_list: 'All cases', aud_ext0: 'Prolongation, no compensation (d)', aud_ext: 'Prolongation, selected schedule (d)', aud_ok: 'Within allowance', aud_csv: 'Audit table (CSV)',
       aud_note: 'The percentage is the share of saved courses whose prolongation with the selected schedule is within the maximum of the category. The saved cases describe plans, not what was finally delivered: update a case when the course ends. Use case numbers, not names.',
+      skip: 'Skip to the results', print: 'Print this page',
       undo: 'Undo (Ctrl+Z)', redo: 'Redo (Ctrl+Y)', welcome_link: 'About the project',
       cmp_title: 'Compare two schedules', cmp_hint: 'Choose any two schedules. Green marks the better value in each row; below, the two calendars side by side. Excluded schedules can be compared too (✗).',
       cmp_wkend: 'Weekend fractions', cmp_bid: 'Days with two fractions', cmp_warn: 'Notes and warnings', cmp_legend: 'better of the two', cmp_pro: 'Better in', cmp_use: 'Choose this schedule', cmp_selected: 'Selected', cmp_excl: 'excluded',
@@ -1569,6 +1598,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
       aud_title: 'Έλεγχος (audit) τμήματος από τα αποθηκευμένα περιστατικά', aud_hint: 'Το RCR ζητά από τα τμήματα να ελέγχουν τακτικά τις διακοπές. Για κάθε περιστατικό που είναι αποθηκευμένο στη συσκευή: οι διακοπές, η παράταση χωρίς αντιστάθμιση και με το σχήμα που επιλέχθηκε, και αν η θεραπεία μένει εντός του επιτρεπτού της κατηγορίας της.',
       aud_nocat: 'Χωρίς κατηγορία', aud_within: 'εντός επιτρεπτού', aud_int: 'με διακοπή', aud_list: 'Όλα τα περιστατικά', aud_ext0: 'Παράταση χωρίς αντιστάθμιση (ημ.)', aud_ext: 'Παράταση με το επιλεγμένο σχήμα (ημ.)', aud_ok: 'Εντός επιτρεπτού', aud_csv: 'Πίνακας ελέγχου (CSV)',
       aud_note: 'Το ποσοστό είναι το μέρος των αποθηκευμένων θεραπειών των οποίων η παράταση με το επιλεγμένο σχήμα είναι εντός του μέγιστου της κατηγορίας. Τα αποθηκευμένα περιστατικά περιγράφουν σχέδια, όχι ό,τι τελικά χορηγήθηκε: ενημερώστε το περιστατικό όταν τελειώσει η θεραπεία. Χρησιμοποιήστε αριθμούς περιστατικών, όχι ονόματα.',
+      skip: 'Μετάβαση στα αποτελέσματα', print: 'Εκτύπωση σελίδας',
       undo: 'Αναίρεση (Ctrl+Z)', redo: 'Επανάληψη (Ctrl+Y)', welcome_link: 'Σχετικά με το έργο',
       cmp_title: 'Σύγκριση δύο σχημάτων', cmp_hint: 'Διαλέξτε δύο οποιαδήποτε σχήματα. Το πράσινο δείχνει την καλύτερη τιμή σε κάθε γραμμή· από κάτω, τα δύο ημερολόγια δίπλα-δίπλα. Συγκρίνονται και τα σχήματα που αποκλείστηκαν (✗).',
       cmp_wkend: 'Κλάσματα Σαββατοκύριακου', cmp_bid: 'Ημέρες με δύο κλάσματα', cmp_warn: 'Σημειώσεις και προειδοποιήσεις', cmp_legend: 'καλύτερο από τα δύο', cmp_pro: 'Υπερέχει σε', cmp_use: 'Επιλογή αυτού του σχήματος', cmp_selected: 'Επιλεγμένο', cmp_excl: 'αποκλείστηκε',
@@ -2574,7 +2604,9 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
         if (nw.has(d)) { const n = nw.get(d).length; cls.push(n > 1 ? 'bid' : 'new'); if (n > 1) txt += '<small>×2</small>'; }
         if (d === p.plannedEnd) cls.push('endmark');
         if (d < p.rx.start) cls.push('out');
-        h += interactive ? `<button type="button" class="${cls.join(' ')}" data-day="${RT.iso(d)}" title="${esc(title)}" aria-label="${esc(title)}">${txt}</button>` : `<div class="${cls.join(' ')}" title="${esc(title)}">${txt}</div>`;
+        const words = cls.filter((k) => ({ delivered: 1, missed: 1, planned: 1, closed: 1, unavail: 1, chemo: 1 })[k] && !(k === 'planned' && cls.includes('missed'))).map((k) => tr.t('lg_' + (k === 'closed' ? 'holiday' : k))).join(', ');
+        const lab = title + (words ? ' · ' + words : '');
+        h += interactive ? `<button type="button" class="${cls.join(' ')}" data-day="${RT.iso(d)}" title="${esc(title)}" aria-label="${esc(lab)}" aria-pressed="${cls.includes('missed')}">${txt}</button>` : `<div class="${cls.join(' ')}" title="${esc(title)}">${txt}</div>`;
       }
     }
     return h + '</div>';
@@ -2821,7 +2853,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     B.rep += `<div class="card" id="report"><h2>${esc(L('record'))}</h2>
       <div class="fields">${fld(L('case_ref'), 'caseRef', state.caseRef, 'type="text" autocomplete="off"')}${fld(L('calc_by'), 'calcBy', state.calcBy, 'type="text"')}${fld(L('checked_by'), 'checkedBy', state.checkedBy, 'type="text"')}
         <label class="f"><span>${esc(L('pdf_lang'))}</span><select data-bind="pdfLang" id="i-pdfLang"><option value="el" ${repLang === 'el' ? 'selected' : ''}>Ελληνικά</option><option value="en" ${repLang === 'en' ? 'selected' : ''}>English</option></select></label></div>
-      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button>${model.sel && model.p.remaining ? `<button type="button" class="btn" data-act="sheet">${esc(L('sheet_btn'))}</button>` : ''}<button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
+      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button><button type="button" class="btn" data-act="print">${esc(L('print'))}</button>${model.sel && model.p.remaining ? `<button type="button" class="btn" data-act="sheet">${esc(L('sheet_btn'))}</button>` : ''}<button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
         <label class="btn" style="position:relative;overflow:hidden">${esc(L('import'))}<input type="file" id="imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     B.rep += shareHtml() + savedHtml();
@@ -2829,6 +2861,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
+    if (printing) { out.innerHTML = `<pre class="printsum">${esc(summaryText())}</pre>` + h + avail.map((k) => `<h2 class="printh">${esc(L('tab_' + k))}</h2>` + (k === 'an' ? B.sens + B.scen + preflightHtml() : panes[k])).join(''); out.querySelectorAll('details[data-fold="why"]').forEach((d) => { d.open = true; }); drawChart(); drawMap(); return; }
     if (avail.length > 1) h += `<div class="tabs" role="tablist" id="tabs">${avail.map((k) => `<button type="button" role="tab" data-act="tab" data-tab="${k}" aria-selected="${k === tab}">${esc(L('tab_' + k))}${k === 'opts' ? ` <span class="cnt">${dec.feasible.length}</span>` : ''}</button>`).join('')}</div>`;
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
@@ -3132,6 +3165,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
+    $('#skip').textContent = L('skip'); $('#about').setAttribute('aria-label', L('about_btn')); $('#docs').setAttribute('aria-label', L('docs_btn'));
     $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
     $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
@@ -3283,7 +3317,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p><p class="small" style="margin:6px 0 0"><button type="button" class="linkbtn" data-act="docs" data-tab="refs">${esc(tr.t('refs_all'))}</button></p>`;
     pop.hidden = false;
   }
-  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
 
   // ------------------------------------------------------------------ saving
   let dl = null;
@@ -3319,8 +3353,14 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     o[ks[ks.length - 1]] = value;
   }
   let timer = null;
+  let focusDay = null, printing = false;
+  function announce() {
+    const el = $('#sr-status'); if (!el || !model) return;
+    el.textContent = model.error ? tr.t('st_error') : tr.t('st_' + model.dec.status) + ': ' + tr.head(model.dec.head);
+    if (focusDay) { const b = document.querySelector('#gapcal [data-day="' + focusDay + '"]'); if (b) b.focus({ preventScroll: true }); focusDay = null; }
+  }
   function refresh(full) {
-    compute(); persist();
+    compute(); persist(); setTimeout(announce, 0);
     if (full) { renderStatic(); renderInputs(); } else { renderGapCal(); renderBioNote(); const ps = $('#proto-status'); if (ps) ps.innerHTML = protoStatus(); const ds = $('#dept-sum'); if (ds) ds.textContent = deptSum(); const bs = $('#bio-sum'); if (bs) bs.textContent = bioSum(); const tt = $('#rx-total'); if (tt) tt.textContent = ((state.n || 0) * (state.d || 0)).toFixed(2) + ' Gy'; refreshSiteMeta(); }
     renderResults();
   }
@@ -3352,7 +3392,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
     if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
     if (t.dataset.lang) { state.lang = t.dataset.lang; tr = I.make(state.lang); refresh(true); return; }
-    if (t.dataset.day) {
+    if (t.dataset.day) { focusDay = t.dataset.day;
       const d = t.dataset.day, m = state.mark, p0 = model && model.p, dd = RT.parseDate(d);
       if (m === 'err') {
         const i = state.errors.findIndex((e) => e.date === d);
@@ -3413,6 +3453,7 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'print') { window.print(); return; }
     if (a === 'undo') { timeTravel(hist, fut); return; }
     if (a === 'redo') { timeTravel(fut, hist); return; }
     if (a === 'cmp-swap') { const x = $('#cmp-a').value; state.ui = state.ui || {}; state.ui.cmpA = $('#cmp-b').value; state.ui.cmpB = x; renderResults(); return; }
@@ -3503,6 +3544,29 @@ td.better, span.better { background: color-mix(in srgb, var(--good) 16%, transpa
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
   document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
+  // keyboard: arrows in the calendar and between tabs; focus stays inside an open dialog
+  document.addEventListener('keydown', (ev) => {
+    const tg = ev.target, k = ev.key; if (!tg || !tg.matches) return;
+    if (tg.matches('#gapcal button[data-day]') && /^Arrow/.test(k)) {
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gapcal [data-day="' + RT.iso(RT.parseDate(tg.dataset.day) + step) + '"]');
+      if (nx) { ev.preventDefault(); nx.focus(); } return;
+    }
+    if (tg.matches('[role="tab"]') && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'Home' || k === 'End')) {
+      const tabs = [...tg.parentElement.querySelectorAll('[role="tab"]')], i = tabs.indexOf(tg), j = k === 'Home' ? 0 : k === 'End' ? tabs.length - 1 : (i + (k === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      ev.preventDefault(); const sel = '[role="tab"][data-act="' + tabs[j].dataset.act + '"][data-tab="' + tabs[j].dataset.tab + '"]'; tabs[j].click(); const nb = document.querySelector(sel); if (nb) nb.focus(); return;
+    }
+    if (k === 'Tab') {
+      const dlg = [...document.querySelectorAll('.modal')].find((x) => !x.hidden); if (!dlg) return;
+      const f = [...dlg.querySelectorAll('button, a[href], input, select, summary')].filter((x) => x.offsetParent !== null); if (!f.length) return;
+      if (ev.shiftKey && (document.activeElement === f[0] || !dlg.contains(document.activeElement))) { ev.preventDefault(); f[f.length - 1].focus(); }
+      else if (!ev.shiftKey && (document.activeElement === f[f.length - 1] || !dlg.contains(document.activeElement))) { ev.preventDefault(); f[0].focus(); }
+    }
+  });
+  let opener = null;
+  new MutationObserver((ms) => { for (const m of ms) { const el = m.target; if (!el.classList || !el.classList.contains('modal')) continue; if (!el.hidden) { if (!el.contains(document.activeElement)) { opener = document.activeElement; const c = el.querySelector('.close'); if (c) c.focus(); } } else if (opener && document.body.contains(opener)) { opener.focus(); opener = null; } } }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+  let themeBefore = null;
+  window.addEventListener('beforeprint', () => { themeBefore = document.documentElement.getAttribute('data-theme'); document.documentElement.setAttribute('data-theme', 'light'); printing = true; renderResults(); });
+  window.addEventListener('afterprint', () => { printing = false; if (themeBefore) document.documentElement.setAttribute('data-theme', themeBefore); else document.documentElement.removeAttribute('data-theme'); renderResults(); });
   document.addEventListener('keydown', (ev) => {
     if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || (ev.key !== 'z' && ev.key !== 'Z' && ev.key !== 'y')) return;
     const tg = ev.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;

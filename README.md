@@ -28,6 +28,8 @@ tumour and the normal tissues, which options the rules exclude and why.
 - **Dose levels and brachytherapy**: SIB, sequential boost, HDR fractions.
 - **How robust is it**: 81-combination parameter sweep, resume-date scenarios,
   trade-off map, check-by-hand worksheet.
+- **Machine outage triage**: apply an outage to all saved cases at once and
+  get the patients in order of priority, with the extra sessions needed.
 - **For the department**: protocol file with local constraints and values,
   PDF report in Greek or English, treatment sheet for radiographers, link to
   share a case, cases saved on the device.

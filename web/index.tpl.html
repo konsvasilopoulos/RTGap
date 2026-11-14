@@ -32,6 +32,7 @@
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
         <button type="button" class="ghost" id="reset"></button>
+        <button type="button" class="ghost" id="docsbtn" data-act="docs"></button>
         <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
         <button type="button" class="ghost icon" id="theme" data-act="theme">◐</button>
       </div>
@@ -44,11 +45,12 @@
   <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
-  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-lic"></p></div>
+  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-lic"></p></div>
   <p id="disc"></p>
 </div></footer>
 <div id="refpop" role="dialog" hidden></div>
 <div id="about" class="modal" role="dialog" aria-modal="true" hidden></div>
+<div id="docs" class="modal" role="dialog" aria-modal="true" hidden></div>
 <button type="button" class="dock" id="dock" data-act="dock"></button>
 <script>window.RTGAP_SITES = /*__SITES__*/;</script>
 <script>

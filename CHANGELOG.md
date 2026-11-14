@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 — 2026-11-14
+* Machine outage triage: the outage days are applied to every case saved on the device and the
+  patients are listed by priority (category, tumour dose at stake) with the suggestion for each
+  and the extra weekend or BID sessions the suggestions would need.
+* Method, references and self-test moved from the bottom of the page into a Documentation panel;
+  the reference pop-up links to the full list.
+
 ## 1.3.0 — 2026-11-14
 * Web app: read-out tiles, results in four tabs (schedule, options, analysis, report), section
   navigation, first-visit guide, About panel, light/dark theme switch.

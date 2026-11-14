@@ -8,6 +8,7 @@
   const num = (v) => { if (v === '' || v == null) return null; const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
 
   // ------------------------------------------------------------------ department protocol (same schema as the Python package)
+  const CONTACT = '';   // e-mail shown in the footer and in "About"; empty = not shown
   const PKEY = 'rtgap.protocol', SITE_RULE_KEYS = ['ideal_extension_days', 'max_extension_days', 'max_overall_time_days'];
   function normProto(p, ignored) {
     ignored = ignored || [];
@@ -667,7 +668,7 @@
     if (heroT0 == null) heroT0 = t;
     const prog = (reduce || now === 'full') ? 1 : Math.max(0, Math.min(1, (t - heroT0) / 1600)), ease = 1 - Math.pow(1 - prog, 3);
     if (prog >= 1) heroDone = true;
-    const wide = W > 1000, x0 = wide ? W * 0.41 : W * 0.06, x1 = wide ? W * 0.535 : W - 14, y0 = 20, y1 = H - 24, Dmax = 14, decades = 5;
+    const wide = W > 1000, x0 = wide ? Math.max(W * 0.55, 700) : W * 0.06, x1 = wide ? x0 + Math.min(W * 0.14, 190) : W - 14, y0 = wide ? 66 : 20, y1 = H - 24, Dmax = 14, decades = 5;
     g.globalAlpha = wide ? 1 : 0.4;
     const X = (D) => x0 + (D / Dmax) * (x1 - x0), Y = (lg) => y0 + (-lg / decades) * (y1 - y0);
     g.lineWidth = 1; g.strokeStyle = 'rgba(159,176,207,0.10)';
@@ -703,6 +704,7 @@
     $('#herochips').innerHTML = L('chips').map((c) => `<span>${esc(c)}</span>`).join('');
     $('#foot-ver').textContent = 'v' + RT.VERSION;
     $('#foot-dev').innerHTML = esc(L('dev')) + ': <b>Konstantinos Vasilopoulos, PhD Candidate</b>';
+    $('#foot-contact').innerHTML = CONTACT ? esc(L('contact')) + ': <a href="mailto:' + esc(CONTACT) + '">' + esc(CONTACT) + '</a>' : '';
     $('#foot-lic').innerHTML = esc(L('lic')) + ' <a href="https://github.com/konsvasilopoulos/RTGap" target="_blank" rel="noopener">' + esc(L('src')) + '</a>';
     document.documentElement.lang = state.lang;
     document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === state.lang));
@@ -714,9 +716,11 @@
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('joiner_t'))} ${refs(['JOINER', 'BCR'])}</h3><p class="hint">${esc(L('joiner_h'))}</p><div class="fields">${tf('P', L('j_P'))}${tf('p', L('j_p'))}${tf('E', L('j_E'))}${tf('e', L('j_e'))}</div><div class="out" id="j-out"></div></div>
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('eq_t'))} ${refs(['FOWLER', 'BCR'])}</h3><p class="hint">EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub> · (T − T<sub>k</sub>)</p><div class="fields">${tf('n', L('eq_n'))}${tf('d', L('eq_d'))}${tf('ab', L('eq_ab'))}${tf('T', L('eq_T'))}${tf('dp', L('eq_dp'))}${tf('tk', L('eq_tk'))}</div><div class="out" id="e-out"></div></div>
       </div></div>
-      <div class="card" id="references"><h2>${esc(L('refs_title'))}</h2><p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol></div>
-      <div class="card"><h2>${esc(L('method'))}</h2><p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p>
-        <details><summary class="small">${esc(L('selftest'))}: ${SELF.filter((x) => x.ok).length}/${SELF.length} ${esc(L('st_pass'))}</summary><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div></details></div>`;
+      <div class="card" id="triage"></div>`;
+    docsParts = { method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
+      refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
+      test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
+    $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage();
     $('#disc').textContent = L('disclaimer');
     $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
@@ -732,6 +736,61 @@
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
+  let docsParts = {}, docTab = 'method';
+  function renderDocs() {
+    const L = tr.t;
+    $('#docs').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="docs-close" aria-label="close">✕</button>
+      <div class="about-head"><h2>${esc(L('docs_btn'))}</h2></div>
+      <div class="tabs flat" role="tablist">${['method', 'refs', 'test'].map((k) => `<button type="button" role="tab" data-act="docs" data-tab="${k}" aria-selected="${k === docTab}">${esc(L('doc_' + k))}</button>`).join('')}</div>
+      <div class="docbody">${docsParts[docTab] || ''}</div></div>`;
+  }
+  // ---- machine outage: every saved case at once, in order of priority (RCR: category 1 first)
+  const tri = { from: '', to: '' };
+  function triageRows() {
+    if (!tri.from || !tri.to || tri.to < tri.from) return null;
+    const a = RT.parseDate(tri.from), b = RT.parseDate(tri.to), rows = [];
+    loadCases().forEach((c, idx) => {
+      const row = { name: c.name, idx };
+      try {
+        const s2 = Object.assign(baseState(), JSON.parse(JSON.stringify(c.state))); s2.oars.forEach(fixOar);
+        s2.given = baseState().given; s2.scen = false; s2.resume = '';
+        const p0 = RT.plannerFromCase(toCase(s2), {}), b0 = p0.remaining ? RT.options(p0).find((o) => o.family === 'baseline') : null;
+        const lastDay = b0 ? b0.end : p0.plannedEnd, add = [];
+        for (let d = Math.max(a, p0.rx.start); d <= Math.min(b, lastDay); d++) if (RT.isRegular(p0, d) && !p0.missed.includes(d)) add.push(RT.iso(d));
+        row.site = tr.siteName(p0.siteId, p0.site); row.cat = p0.rules.category;
+        if (!add.length) { row.none = true; rows.push(row); return; }
+        s2.missed = s2.missed.concat(add); s2.cause = 'machine'; row.state = s2;
+        const p = RT.plannerFromCase(toCase(s2), {}), dec = RT.decide(p), base = dec.feasible.concat(dec.rejected).find((o) => o.family === 'baseline');
+        Object.assign(row, { n: add.length, ext: base.ext, dT: base.tumour.deltaPct, status: dec.status, rec: dec.recommended, head: dec.head, max: p.rules.max != null ? p.rules.max : 0 });
+      } catch (e) { row.err = true; }
+      rows.push(row);
+    });
+    const key = (r) => [r.err || r.none ? 1 : 0, r.cat == null ? 4 : r.cat, r.dT == null ? 0 : r.dT, -(r.ext || 0)];
+    rows.sort((x, y) => { const kx = key(x), ky = key(y); for (let i = 0; i < kx.length; i++) if (kx[i] !== ky[i]) return kx[i] < ky[i] ? -1 : 1; return 0; });
+    return rows;
+  }
+  function renderTriage() {
+    const box = $('#triage'); if (!box) return;
+    const L = tr.t, n = loadCases().length, rows = n ? triageRows() : null;
+    let h = `<h2>${esc(L('tri_title'))} ${refs(['RCR19'])}</h2><p class="hint">${esc(L('tri_hint'))}</p>`;
+    if (!n) h += `<p class="small">${esc(L('tri_none'))}</p>`;
+    else {
+      h += `<div class="fields" style="max-width:520px"><label class="f"><span>${esc(L('tri_from'))}</span><input type="date" id="tri-from" value="${esc(tri.from)}"></label><label class="f"><span>${esc(L('tri_to'))}</span><input type="date" id="tri-to" value="${esc(tri.to)}"></label></div><p class="small" style="margin:6px 0 10px">${n} ${esc(L('tri_n'))}</p>`;
+      if (rows) {
+        const hit = rows.filter((r) => !r.none && !r.err), load = new Map();
+        for (const r of hit) if (r.rec) { for (const f of r.rec.newFx) if (RT.weekday(f.day) >= 5) { const k = 'w' + f.day; load.set(k, (load.get(k) || 0) + 1); } for (const d of r.rec.bidDays) { const k = 'b' + d; load.set(k, (load.get(k) || 0) + 1); } }
+        h += `<div class="scroll"><table><thead><tr><th>#</th><th style="text-align:left">${esc(L('rep_case'))}</th><th>${esc(L('cat'))}</th><th>${esc(L('missed_n'))}</th><th>${esc(L('kpi_ext'))}</th><th>Δ ${esc(L('col_t'))} %</th><th style="text-align:left">${esc(L('scen_dec'))}</th></tr></thead><tbody>` +
+          rows.map((r, i) => r.err ? `<tr><td class="n">–</td><td>${esc(r.name)}</td><td colspan="5" class="small">${esc(L('tri_err'))}</td></tr>`
+            : r.none ? `<tr class="dim"><td class="n">–</td><td style="text-align:left">${esc(r.name)}<br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat || '–'}</td><td colspan="4" class="small" style="text-align:left">${esc(L('tri_unaff'))}</td></tr>`
+            : `<tr class="pick" data-act="tri-open" data-i="${i}" tabindex="0" role="button"><td class="n">${i + 1}</td><td style="text-align:left"><b>${esc(r.name)}</b><br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat ? `<span class="pill c${r.cat}">${r.cat}</span>` : '–'}</td><td class="n">${r.n} ${esc(L('fx'))}</td><td class="n ${r.ext > r.max ? 'neg' : ''}">${tr.sgi(r.ext)} ${esc(L('days'))}</td>${dcell(r.dT, true)}<td style="white-space:normal;min-width:220px;text-align:left"><span class="small">${esc(L('st_' + r.status))}</span><br>${esc(tr.head(r.head))}${r.rec && r.rec.family !== 'baseline' ? `<br><span class="small num">${esc(tr.optShort(r.rec))}</span>` : ''}</td></tr>`).join('') + '</tbody></table></div>';
+        const wl = [...load.entries()].sort((x, y) => (+x[0].slice(1)) - (+y[0].slice(1)) || (x[0] < y[0] ? -1 : 1));
+        if (wl.length) h += `<p class="small" style="margin:10px 0 0"><b>${esc(L('tri_load'))}:</b> ${wl.map(([k, v]) => esc(tr.dshort(+k.slice(1))) + (k[0] === 'b' ? ' BID' : '') + ' × ' + v).join(' · ')}</p>`;
+        h += `<p class="small" style="margin:8px 0 0">${esc(L('tri_note'))}</p>`;
+        box._rows = rows;
+      }
+    }
+    box.innerHTML = h;
+  }
   function renderTools() {
     const L = tr.t, s = toolState, el = state.lang === 'el';
     try { const j = RT.joiner(s.P, s.p, s.E, s.e); $('#j-out').textContent = `D = P − E = ${j.D.toFixed(2)} Gy\nd = (P·p − E·e) / (P − E) = ${j.d.toFixed(3)} Gy\n${L('j_res')}: ${j.nExact.toFixed(2)} → ${j.n} × ${j.practical.toFixed(2)} Gy`; }
@@ -743,7 +802,7 @@
   }
   function showRef(id) {
     const r = I.REFS.find((x) => x.id === id), pop = $('#refpop'); if (!r) return;
-    pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p>`;
+    pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p><p class="small" style="margin:6px 0 0"><button type="button" class="linkbtn" data-act="docs" data-tab="refs">${esc(tr.t('refs_all'))}</button></p>`;
     pop.hidden = false;
   }
   function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
@@ -810,7 +869,7 @@
   }
   function toggle(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(ev) {
-    if (ev.target.id === 'about') { ev.target.hidden = true; return; }
+    if (ev.target.classList && ev.target.classList.contains('modal')) { ev.target.hidden = true; return; }
     const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
     if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
@@ -875,6 +934,9 @@
     if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { if (el2.tagName === 'DETAILS') el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
+    if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'docs-close') { $('#docs').hidden = true; return; }
+    if (a === 'tri-open') { const r = ($('#triage')._rows || [])[+t.dataset.i]; if (r && r.state) { loadState(JSON.parse(JSON.stringify(r.state))); toast(r.name); window.scrollTo({ top: 0, behavior: 'smooth' }); } return; }
     if (a === 'about-close') { $('#about').hidden = true; return; }
     if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
     if (a === 'intro-try') { loadState(EXAMPLES.hn_70()); const r0 = $('#results'); if (r0 && window.innerWidth <= 900) r0.scrollIntoView({ behavior: 'smooth' }); return; }
@@ -883,10 +945,10 @@
       const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
       const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
       list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
-      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); return;
+      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); return;
     }
     if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
-    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); return; }
+    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
     if (a === 'copysum') { try { navigator.clipboard.writeText(summaryText()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
@@ -906,6 +968,7 @@
   document.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.id === 'ex') { if (t.value) loadState(EXAMPLES[t.value]()); t.value = ''; return; }
+    if (t.id === 'tri-from' || t.id === 'tri-to') { tri[t.id === 'tri-from' ? 'from' : 'to'] = t.value; if (t.id === 'tri-from' && (!tri.to || tri.to < tri.from)) tri.to = tri.from; renderTriage(); return; }
     if (t.id === 'proto-imp') {
       const f = t.files && t.files[0]; if (!f) return;
       f.text().then((txt) => {
@@ -919,7 +982,7 @@
   });
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
-  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; } });
+  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;

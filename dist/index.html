@@ -299,6 +299,10 @@ tr.pick { transition: background 0.12s; }
 @media (max-width: 1100px) { .intro-in .rowbtn { flex-wrap: wrap; margin-left: 0 !important; } }
 @media (max-width: 1100px) { .intro-in .rowbtn { flex: 1 1 100%; } }
 
+.tabs.flat { position: static; box-shadow: none; margin: 10px 0 14px; backdrop-filter: none; }
+.docbody { font-size: 0.92rem; } .docbody .reflist { max-width: none; }
+tr.dim td { opacity: 0.6; }
+
 </style>
 </head>
 <body>
@@ -318,6 +322,7 @@ tr.pick { transition: background 0.12s; }
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
         <button type="button" class="ghost" id="reset"></button>
+        <button type="button" class="ghost" id="docsbtn" data-act="docs"></button>
         <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
         <button type="button" class="ghost icon" id="theme" data-act="theme">◐</button>
       </div>
@@ -330,11 +335,12 @@ tr.pick { transition: background 0.12s; }
   <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
-  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-lic"></p></div>
+  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-lic"></p></div>
   <p id="disc"></p>
 </div></footer>
 <div id="refpop" role="dialog" hidden></div>
 <div id="about" class="modal" role="dialog" aria-modal="true" hidden></div>
+<div id="docs" class="modal" role="dialog" aria-modal="true" hidden></div>
 <button type="button" class="dock" id="dock" data-act="dock"></button>
 <script>window.RTGAP_SITES = {"hn_scc": {"name": "Squamous cell carcinoma, head & neck", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "nsclc": {"name": "Non-small cell lung cancer (radical)", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "sclc_chemort": {"name": "Small cell lung cancer, chemoradiotherapy", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "cervix_scc": {"name": "Squamous cell carcinoma, cervix (external beam)", "category": 1, "max_overall_time_days": 56, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: overall treatment time for squamous cervix should not exceed 56 days."]}, "oesophagus_scc": {"name": "Squamous cell carcinoma, oesophagus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "oesophagus_adeno": {"name": "Adenocarcinoma, oesophagus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "anus_scc": {"name": "Squamous cell carcinoma, anus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "skin_scc": {"name": "Squamous cell carcinoma, skin", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "vulva_vagina_scc": {"name": "Squamous cell carcinoma, vulva / vagina", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "medulloblastoma": {"name": "Medulloblastoma / CNS embryonal tumours", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / cord", "alpha_beta": 2}], "sources": ["RCR19"], "rcr5_draft": {"target_overall_time_days": 44, "rule": "medullo"}}, "glioblastoma": {"name": "Glioblastoma", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / optic", "alpha_beta": 2}], "sources": ["RCR19", "RCR5d"], "notes": ["2019 edition: described as very fast-growing, not in the category list. Category 1 in the 5th edition draft."]}, "ependymoma_intracranial": {"name": "Intracranial ependymoma", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / cord", "alpha_beta": 2}], "sources": ["RCR5d"], "notes": ["Not mentioned in the 2019 edition. Category 1 in the 5th edition draft."]}, "bladder": {"name": "Carcinoma of bladder (radical)", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR5d"], "notes": ["Category 1 in the 5th edition draft and in the RCR bladder consensus statements, to which the RCR page of the 2019 guidance refers. The 2019 text itself lists bladder in category 2 (entry 'Carcinoma of bladder (2019 classification)')."]}, "short_doubling": {"name": "Other tumour with short mass-doubling time", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "cervix_scc_brachy": {"name": "Squamous cervix, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "max_overall_time_days": 56, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days (1 used here; set 2 if local protocol allows).", "Overall time should not exceed 56 days."]}, "vulva_vagina_scc_brachy": {"name": "Squamous vulva / vagina, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19", "RCR5d"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "tongue_scc_brachy": {"name": "Squamous tongue, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "anus_scc_brachy": {"name": "Squamous anus, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "breast": {"name": "Breast adenocarcinoma (radical / adjuvant)", "category": 2, "tumour": {"alpha_beta": 3.5}, "time_factor_option": {"dprolif_eqd2_per_day": 0.6, "kickoff_days": 0, "source": "STARTT"}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}], "sources": ["RCR19", "START"], "notes": ["Tumour α/β 3.5 Gy (START, 95% CI 1.2–5.7). No time factor by default.", "The 5th edition draft adds rules for hypofractionated breast: 1-week schedules get no extra dose, 3-week schedules finish within 5 weeks (choose the 5th edition in the department settings)."], "rcr5_draft": {"by_fractions": [{"max_fractions": 5, "no_dose_compensation": true, "target_overall_time_days": 20, "rule": "breast_1wk"}, {"min_fractions": 13, "max_fractions": 16, "max_overall_time_days": 34, "rule": "breast_3wk"}]}}, "prostate": {"name": "Prostate carcinoma (radical)", "category": 2, "tumour": {"alpha_beta": 1.6}, "time_factor_option": {"dprolif_eqd2_per_day": 0.31, "kickoff_days": 0, "source": "VB13"}, "oars": [{"name": "Rectum (late, α/β 3)", "alpha_beta": 3}], "sources": ["RCR19", "VB20"], "notes": ["Tumour α/β 1.6 Gy (Vogelius & Bentzen 2020, 95% CI 1.3–2.0). No time factor by default.", "With α/β below the late-tissue value, fewer/larger fractions favour the tumour: check both 'match' variants."]}, "bladder_rcr2019": {"name": "Carcinoma of bladder (2019 classification)", "category": 2, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"], "notes": ["Use 'bladder' to follow the 5th edition draft (category 1)."]}, "rectum": {"name": "Rectal adenocarcinoma (radical / neoadjuvant)", "category": 2, "tumour": {"alpha_beta": 10}, "oars": [{"name": "Bowel (late, α/β 4)", "alpha_beta": 4}], "sources": ["RCR19"], "notes": ["Category 2 as a 'remaining radical' tumour."]}, "radical_other": {"name": "Other radical treatment (category 2)", "category": 2, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"]}, "palliative": {"name": "Palliative treatment", "category": 3, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"]}, "sabr": {"name": "SABR / stereotactic", "category": null, "no_acceleration": true, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"], "notes": ["RCR (2019 and 5th edition draft): accelerated scheduling is not appropriate for SABR; after an unintended delay treatment resumes on non-consecutive days. Follow the local SABR protocol."]}, "generic": {"name": "Generic (no site rules)", "category": null, "tumour": {"alpha_beta": 10}, "notes": ["No category rules: set max_extension_days / ideal_extension_days in the case or protocol."]}};</script>
 <script>
@@ -344,7 +350,7 @@ tr.pick { transition: background 0.12s; }
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.3.0';
+  const VERSION = '1.4.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1352,6 +1358,10 @@ tr.pick { transition: background 0.12s; }
       pc_title: 'Earlier compensation', pc_on: 'An earlier compensation changed the rest of the course', pc_from: 'From (first changed fraction)', pc_n: 'Fractions from that day', pc_d: 'Dose per fraction (Gy)',
       pc_hint: 'For example "from 9/11, 11 × 2.45 Gy instead of 14 × 2 Gy". Fractions from that day count at the new dose. The targets stay those of the original prescription.',
       intr_n: 'Interruptions', intr_total: 'total prolongation without compensation',
+      docs_btn: 'Documentation', doc_method: 'Method', doc_refs: 'References', doc_test: 'Self-test', doc_more: 'Full description of the model, the files and the limitations:', refs_all: 'All references', contact: 'Contact',
+      tri_title: 'Machine outage: all saved cases in order of priority', tri_hint: 'When a linac is down, every patient on it is affected at once. Enter the outage days: RTGap applies them to each case saved on this device and lists the patients by priority, category 1 first and then by the tumour dose at stake. RCR advises moving the highest-priority patients to a matched machine first. Tap a row to open that case with the outage applied.',
+      tri_none: 'Save some cases first (Report tab → Cases saved on this device).', tri_from: 'First day of the outage', tri_to: 'Last day of the outage', tri_n: 'saved cases', tri_unaff: 'not affected by these days', tri_err: 'could not be calculated',
+      tri_load: 'Extra sessions the suggestions would need', tri_note: 'Each row is the suggestion for that patient alone, from the case as saved. Capacity on the weekend or for second fractions is not checked: use the list of extra sessions to judge it.',
       tab_plan: 'Schedule', tab_opts: 'Options', tab_an: 'Analysis', tab_rep: 'Report',
       kpi_missed: 'Missed', kpi_left: 'fx still to give', kpi_ext: 'Prolongation', kpi_tum: 'Tumour dose', kpi_late: 'Late tissue',
       nav_label: 'Sections', nav: ['Site', 'Dose', 'Gap', 'Biology', 'Dept', 'Own plan'],
@@ -1476,6 +1486,10 @@ tr.pick { transition: background 0.12s; }
       pc_title: 'Προηγούμενη αντιστάθμιση', pc_on: 'Μια προηγούμενη αντιστάθμιση άλλαξε το υπόλοιπο της θεραπείας', pc_from: 'Από (πρώτο κλάσμα με αλλαγή)', pc_n: 'Κλάσματα από εκείνη την ημέρα', pc_d: 'Δόση ανά κλάσμα (Gy)',
       pc_hint: 'Για παράδειγμα «από 9/11, 11 × 2.45 Gy αντί 14 × 2 Gy». Τα κλάσματα από εκείνη την ημέρα μετρούν με τη νέα δόση. Οι στόχοι μένουν αυτοί της αρχικής συνταγογράφησης.',
       intr_n: 'Διακοπές', intr_total: 'συνολική παράταση χωρίς αντιστάθμιση',
+      docs_btn: 'Τεκμηρίωση', doc_method: 'Μέθοδος', doc_refs: 'Βιβλιογραφία', doc_test: 'Αυτοέλεγχος', doc_more: 'Πλήρης περιγραφή του μοντέλου, των αρχείων και των περιορισμών:', refs_all: 'Όλες οι παραπομπές', contact: 'Επικοινωνία',
+      tri_title: 'Βλάβη μηχανήματος: όλα τα αποθηκευμένα περιστατικά κατά προτεραιότητα', tri_hint: 'Όταν ένας γραμμικός μένει εκτός, επηρεάζονται ταυτόχρονα όλοι οι ασθενείς του. Δώστε τις ημέρες της βλάβης: το RTGap τις εφαρμόζει σε κάθε περιστατικό που είναι αποθηκευμένο στη συσκευή και κατατάσσει τους ασθενείς κατά προτεραιότητα, πρώτα η κατηγορία 1 και μετά η δόση όγκου που διακυβεύεται. Το RCR συνιστά να μεταφέρονται πρώτοι σε αντίστοιχο μηχάνημα οι ασθενείς με τη μεγαλύτερη προτεραιότητα. Πατήστε μια γραμμή για να ανοίξει το περιστατικό με τη βλάβη εφαρμοσμένη.',
+      tri_none: 'Αποθηκεύστε πρώτα μερικά περιστατικά (καρτέλα Αναφορά → Περιστατικά αποθηκευμένα στη συσκευή).', tri_from: 'Πρώτη ημέρα βλάβης', tri_to: 'Τελευταία ημέρα βλάβης', tri_n: 'αποθηκευμένα περιστατικά', tri_unaff: 'δεν επηρεάζεται από αυτές τις ημέρες', tri_err: 'δεν υπολογίστηκε',
+      tri_load: 'Επιπλέον συνεδρίες που θα χρειάζονταν οι προτάσεις', tri_note: 'Κάθε γραμμή είναι η πρόταση για τον ασθενή μόνο του, από το περιστατικό όπως αποθηκεύτηκε. Δεν ελέγχεται η διαθεσιμότητα το Σαββατοκύριακο ή για δεύτερα κλάσματα: κρίνετέ τη από τη λίστα των επιπλέον συνεδριών.',
       tab_plan: 'Σχήμα', tab_opts: 'Επιλογές', tab_an: 'Ανάλυση', tab_rep: 'Αναφορά',
       kpi_missed: 'Χάθηκαν', kpi_left: 'κλ. απομένουν', kpi_ext: 'Παράταση', kpi_tum: 'Δόση όγκου', kpi_late: 'Όψιμοι ιστοί',
       nav_label: 'Ενότητες', nav: ['Όγκος', 'Δόση', 'Διακοπή', 'Βιολογία', 'Τμήμα', 'Σχήμα'],
@@ -2178,6 +2192,7 @@ tr.pick { transition: background 0.12s; }
   const num = (v) => { if (v === '' || v == null) return null; const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
 
   // ------------------------------------------------------------------ department protocol (same schema as the Python package)
+  const CONTACT = '';   // e-mail shown in the footer and in "About"; empty = not shown
   const PKEY = 'rtgap.protocol', SITE_RULE_KEYS = ['ideal_extension_days', 'max_extension_days', 'max_overall_time_days'];
   function normProto(p, ignored) {
     ignored = ignored || [];
@@ -2837,7 +2852,7 @@ tr.pick { transition: background 0.12s; }
     if (heroT0 == null) heroT0 = t;
     const prog = (reduce || now === 'full') ? 1 : Math.max(0, Math.min(1, (t - heroT0) / 1600)), ease = 1 - Math.pow(1 - prog, 3);
     if (prog >= 1) heroDone = true;
-    const wide = W > 1000, x0 = wide ? W * 0.41 : W * 0.06, x1 = wide ? W * 0.535 : W - 14, y0 = 20, y1 = H - 24, Dmax = 14, decades = 5;
+    const wide = W > 1000, x0 = wide ? Math.max(W * 0.55, 700) : W * 0.06, x1 = wide ? x0 + Math.min(W * 0.14, 190) : W - 14, y0 = wide ? 66 : 20, y1 = H - 24, Dmax = 14, decades = 5;
     g.globalAlpha = wide ? 1 : 0.4;
     const X = (D) => x0 + (D / Dmax) * (x1 - x0), Y = (lg) => y0 + (-lg / decades) * (y1 - y0);
     g.lineWidth = 1; g.strokeStyle = 'rgba(159,176,207,0.10)';
@@ -2873,6 +2888,7 @@ tr.pick { transition: background 0.12s; }
     $('#herochips').innerHTML = L('chips').map((c) => `<span>${esc(c)}</span>`).join('');
     $('#foot-ver').textContent = 'v' + RT.VERSION;
     $('#foot-dev').innerHTML = esc(L('dev')) + ': <b>Konstantinos Vasilopoulos, PhD Candidate</b>';
+    $('#foot-contact').innerHTML = CONTACT ? esc(L('contact')) + ': <a href="mailto:' + esc(CONTACT) + '">' + esc(CONTACT) + '</a>' : '';
     $('#foot-lic').innerHTML = esc(L('lic')) + ' <a href="https://github.com/konsvasilopoulos/RTGap" target="_blank" rel="noopener">' + esc(L('src')) + '</a>';
     document.documentElement.lang = state.lang;
     document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === state.lang));
@@ -2884,9 +2900,11 @@ tr.pick { transition: background 0.12s; }
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('joiner_t'))} ${refs(['JOINER', 'BCR'])}</h3><p class="hint">${esc(L('joiner_h'))}</p><div class="fields">${tf('P', L('j_P'))}${tf('p', L('j_p'))}${tf('E', L('j_E'))}${tf('e', L('j_e'))}</div><div class="out" id="j-out"></div></div>
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('eq_t'))} ${refs(['FOWLER', 'BCR'])}</h3><p class="hint">EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub> · (T − T<sub>k</sub>)</p><div class="fields">${tf('n', L('eq_n'))}${tf('d', L('eq_d'))}${tf('ab', L('eq_ab'))}${tf('T', L('eq_T'))}${tf('dp', L('eq_dp'))}${tf('tk', L('eq_tk'))}</div><div class="out" id="e-out"></div></div>
       </div></div>
-      <div class="card" id="references"><h2>${esc(L('refs_title'))}</h2><p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol></div>
-      <div class="card"><h2>${esc(L('method'))}</h2><p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p>
-        <details><summary class="small">${esc(L('selftest'))}: ${SELF.filter((x) => x.ok).length}/${SELF.length} ${esc(L('st_pass'))}</summary><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div></details></div>`;
+      <div class="card" id="triage"></div>`;
+    docsParts = { method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
+      refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
+      test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
+    $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage();
     $('#disc').textContent = L('disclaimer');
     $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
@@ -2902,6 +2920,61 @@ tr.pick { transition: background 0.12s; }
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
+  let docsParts = {}, docTab = 'method';
+  function renderDocs() {
+    const L = tr.t;
+    $('#docs').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="docs-close" aria-label="close">✕</button>
+      <div class="about-head"><h2>${esc(L('docs_btn'))}</h2></div>
+      <div class="tabs flat" role="tablist">${['method', 'refs', 'test'].map((k) => `<button type="button" role="tab" data-act="docs" data-tab="${k}" aria-selected="${k === docTab}">${esc(L('doc_' + k))}</button>`).join('')}</div>
+      <div class="docbody">${docsParts[docTab] || ''}</div></div>`;
+  }
+  // ---- machine outage: every saved case at once, in order of priority (RCR: category 1 first)
+  const tri = { from: '', to: '' };
+  function triageRows() {
+    if (!tri.from || !tri.to || tri.to < tri.from) return null;
+    const a = RT.parseDate(tri.from), b = RT.parseDate(tri.to), rows = [];
+    loadCases().forEach((c, idx) => {
+      const row = { name: c.name, idx };
+      try {
+        const s2 = Object.assign(baseState(), JSON.parse(JSON.stringify(c.state))); s2.oars.forEach(fixOar);
+        s2.given = baseState().given; s2.scen = false; s2.resume = '';
+        const p0 = RT.plannerFromCase(toCase(s2), {}), b0 = p0.remaining ? RT.options(p0).find((o) => o.family === 'baseline') : null;
+        const lastDay = b0 ? b0.end : p0.plannedEnd, add = [];
+        for (let d = Math.max(a, p0.rx.start); d <= Math.min(b, lastDay); d++) if (RT.isRegular(p0, d) && !p0.missed.includes(d)) add.push(RT.iso(d));
+        row.site = tr.siteName(p0.siteId, p0.site); row.cat = p0.rules.category;
+        if (!add.length) { row.none = true; rows.push(row); return; }
+        s2.missed = s2.missed.concat(add); s2.cause = 'machine'; row.state = s2;
+        const p = RT.plannerFromCase(toCase(s2), {}), dec = RT.decide(p), base = dec.feasible.concat(dec.rejected).find((o) => o.family === 'baseline');
+        Object.assign(row, { n: add.length, ext: base.ext, dT: base.tumour.deltaPct, status: dec.status, rec: dec.recommended, head: dec.head, max: p.rules.max != null ? p.rules.max : 0 });
+      } catch (e) { row.err = true; }
+      rows.push(row);
+    });
+    const key = (r) => [r.err || r.none ? 1 : 0, r.cat == null ? 4 : r.cat, r.dT == null ? 0 : r.dT, -(r.ext || 0)];
+    rows.sort((x, y) => { const kx = key(x), ky = key(y); for (let i = 0; i < kx.length; i++) if (kx[i] !== ky[i]) return kx[i] < ky[i] ? -1 : 1; return 0; });
+    return rows;
+  }
+  function renderTriage() {
+    const box = $('#triage'); if (!box) return;
+    const L = tr.t, n = loadCases().length, rows = n ? triageRows() : null;
+    let h = `<h2>${esc(L('tri_title'))} ${refs(['RCR19'])}</h2><p class="hint">${esc(L('tri_hint'))}</p>`;
+    if (!n) h += `<p class="small">${esc(L('tri_none'))}</p>`;
+    else {
+      h += `<div class="fields" style="max-width:520px"><label class="f"><span>${esc(L('tri_from'))}</span><input type="date" id="tri-from" value="${esc(tri.from)}"></label><label class="f"><span>${esc(L('tri_to'))}</span><input type="date" id="tri-to" value="${esc(tri.to)}"></label></div><p class="small" style="margin:6px 0 10px">${n} ${esc(L('tri_n'))}</p>`;
+      if (rows) {
+        const hit = rows.filter((r) => !r.none && !r.err), load = new Map();
+        for (const r of hit) if (r.rec) { for (const f of r.rec.newFx) if (RT.weekday(f.day) >= 5) { const k = 'w' + f.day; load.set(k, (load.get(k) || 0) + 1); } for (const d of r.rec.bidDays) { const k = 'b' + d; load.set(k, (load.get(k) || 0) + 1); } }
+        h += `<div class="scroll"><table><thead><tr><th>#</th><th style="text-align:left">${esc(L('rep_case'))}</th><th>${esc(L('cat'))}</th><th>${esc(L('missed_n'))}</th><th>${esc(L('kpi_ext'))}</th><th>Δ ${esc(L('col_t'))} %</th><th style="text-align:left">${esc(L('scen_dec'))}</th></tr></thead><tbody>` +
+          rows.map((r, i) => r.err ? `<tr><td class="n">–</td><td>${esc(r.name)}</td><td colspan="5" class="small">${esc(L('tri_err'))}</td></tr>`
+            : r.none ? `<tr class="dim"><td class="n">–</td><td style="text-align:left">${esc(r.name)}<br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat || '–'}</td><td colspan="4" class="small" style="text-align:left">${esc(L('tri_unaff'))}</td></tr>`
+            : `<tr class="pick" data-act="tri-open" data-i="${i}" tabindex="0" role="button"><td class="n">${i + 1}</td><td style="text-align:left"><b>${esc(r.name)}</b><br><span class="small">${esc(r.site)}</span></td><td class="n">${r.cat ? `<span class="pill c${r.cat}">${r.cat}</span>` : '–'}</td><td class="n">${r.n} ${esc(L('fx'))}</td><td class="n ${r.ext > r.max ? 'neg' : ''}">${tr.sgi(r.ext)} ${esc(L('days'))}</td>${dcell(r.dT, true)}<td style="white-space:normal;min-width:220px;text-align:left"><span class="small">${esc(L('st_' + r.status))}</span><br>${esc(tr.head(r.head))}${r.rec && r.rec.family !== 'baseline' ? `<br><span class="small num">${esc(tr.optShort(r.rec))}</span>` : ''}</td></tr>`).join('') + '</tbody></table></div>';
+        const wl = [...load.entries()].sort((x, y) => (+x[0].slice(1)) - (+y[0].slice(1)) || (x[0] < y[0] ? -1 : 1));
+        if (wl.length) h += `<p class="small" style="margin:10px 0 0"><b>${esc(L('tri_load'))}:</b> ${wl.map(([k, v]) => esc(tr.dshort(+k.slice(1))) + (k[0] === 'b' ? ' BID' : '') + ' × ' + v).join(' · ')}</p>`;
+        h += `<p class="small" style="margin:8px 0 0">${esc(L('tri_note'))}</p>`;
+        box._rows = rows;
+      }
+    }
+    box.innerHTML = h;
+  }
   function renderTools() {
     const L = tr.t, s = toolState, el = state.lang === 'el';
     try { const j = RT.joiner(s.P, s.p, s.E, s.e); $('#j-out').textContent = `D = P − E = ${j.D.toFixed(2)} Gy\nd = (P·p − E·e) / (P − E) = ${j.d.toFixed(3)} Gy\n${L('j_res')}: ${j.nExact.toFixed(2)} → ${j.n} × ${j.practical.toFixed(2)} Gy`; }
@@ -2913,7 +2986,7 @@ tr.pick { transition: background 0.12s; }
   }
   function showRef(id) {
     const r = I.REFS.find((x) => x.id === id), pop = $('#refpop'); if (!r) return;
-    pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p>`;
+    pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">[${I.REF_NUM[id]}] ${esc(r.short)}</div><p style="margin:6px 0">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}</p><p class="small" style="margin:0">${esc(r.use[state.lang])}</p><p class="small" style="margin:6px 0 0"><button type="button" class="linkbtn" data-act="docs" data-tab="refs">${esc(tr.t('refs_all'))}</button></p>`;
     pop.hidden = false;
   }
   function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
@@ -2980,7 +3053,7 @@ tr.pick { transition: background 0.12s; }
   }
   function toggle(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(ev) {
-    if (ev.target.id === 'about') { ev.target.hidden = true; return; }
+    if (ev.target.classList && ev.target.classList.contains('modal')) { ev.target.hidden = true; return; }
     const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
     if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
@@ -3045,6 +3118,9 @@ tr.pick { transition: background 0.12s; }
     if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { if (el2.tagName === 'DETAILS') el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
+    if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'docs-close') { $('#docs').hidden = true; return; }
+    if (a === 'tri-open') { const r = ($('#triage')._rows || [])[+t.dataset.i]; if (r && r.state) { loadState(JSON.parse(JSON.stringify(r.state))); toast(r.name); window.scrollTo({ top: 0, behavior: 'smooth' }); } return; }
     if (a === 'about-close') { $('#about').hidden = true; return; }
     if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
     if (a === 'intro-try') { loadState(EXAMPLES.hn_70()); const r0 = $('#results'); if (r0 && window.innerWidth <= 900) r0.scrollIntoView({ behavior: 'smooth' }); return; }
@@ -3053,10 +3129,10 @@ tr.pick { transition: background 0.12s; }
       const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
       const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
       list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
-      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); return;
+      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); return;
     }
     if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
-    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); return; }
+    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
     if (a === 'copysum') { try { navigator.clipboard.writeText(summaryText()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
@@ -3076,6 +3152,7 @@ tr.pick { transition: background 0.12s; }
   document.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.id === 'ex') { if (t.value) loadState(EXAMPLES[t.value]()); t.value = ''; return; }
+    if (t.id === 'tri-from' || t.id === 'tri-to') { tri[t.id === 'tri-from' ? 'from' : 'to'] = t.value; if (t.id === 'tri-from' && (!tri.to || tri.to < tri.from)) tri.to = tri.from; renderTriage(); return; }
     if (t.id === 'proto-imp') {
       const f = t.files && t.files[0]; if (!f) return;
       f.text().then((txt) => {
@@ -3089,7 +3166,7 @@ tr.pick { transition: background 0.12s; }
   });
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
-  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; } });
+  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; $('#docs').hidden = true; } });
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;

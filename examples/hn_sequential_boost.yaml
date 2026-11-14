@@ -1,0 +1,19 @@
+# Sequential boost: 50 Gy / 25 fx elective + 20 Gy / 10 fx boost.
+# Two fractions missed early in the boost phase.
+title: "HNSCC sequential boost 50 + 20 Gy — 2 missed boost fractions"
+site: hn_scc
+
+prescription:
+  start: 2026-10-05
+  holidays: GR
+  primary_level: PTV70
+  phases:
+    - {name: "Phase 1", n_fractions: 25, levels: {PTV70: 2.0, PTV50: 2.0}}
+    - {name: "Boost",   n_fractions: 10, levels: {PTV70: 2.0}}
+
+oars:
+  - {name: "Late (α/β 3)", alpha_beta: 3}
+  - {name: "Spinal cord", alpha_beta: 2, dose_ratio: [0.9, 0.1], max_eqd2: 50}   # cord out of the boost fields
+
+gap:
+  missed_dates: [2026-11-16, 2026-11-17]

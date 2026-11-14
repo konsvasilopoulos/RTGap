@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use RTGap, please cite it as below."
+title: "RTGap: compensation of unscheduled radiotherapy interruptions"
+type: software
+authors:
+  - family-names: Vasilopoulos
+    given-names: Konstantinos
+version: 1.0.0
+date-released: 2026-11-14
+license: AGPL-3.0-or-later
+repository-code: "https://github.com/konsvasilopoulos/RTGap"
+url: "https://konsvasilopoulos.github.io/RTGap/"
+keywords: [radiotherapy, radiobiology, linear-quadratic model, treatment interruptions, gap compensation, BED, EQD2]

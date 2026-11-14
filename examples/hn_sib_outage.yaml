@@ -1,0 +1,28 @@
+# Head & neck SIB 70/63/56 Gy in 35 fractions. The linac broke down on
+# Wednesday 4 November and the repair date is not yet known.
+title: "HNSCC SIB 70/63/56 — linac outage, repair date unknown"
+site: hn_scc
+
+prescription:
+  start: 2026-10-05
+  holidays: GR                  # Greek public holidays (28 Oct, Easter, ...) are non-treatment days
+  primary_level: PTV70
+  phases:
+    - name: "SIB"
+      n_fractions: 35
+      levels: {PTV70: 2.0, PTV63: 1.8, PTV56: 1.6}
+
+oars:
+  - {name: "Late (α/β 3)", alpha_beta: 3}
+  - {name: "Spinal cord", alpha_beta: 2, dose_ratio: 0.65, max_eqd2: 50}
+
+gap:                            # working assumption for the main calculation
+  outage_start: 2026-11-04
+  resume_date: 2026-11-09
+
+scenarios:                      # what if the linac is back on another day?
+  outage_start: 2026-11-04
+  days: 10
+
+# sensitivity: {tumour_alpha_beta: [0.6, 1, 1.6], repopulation: [0.67, 1, 1.33],
+#               kickoff_shift_days: [-7, 0, 7], late_alpha_beta: [0.67, 1, 1.33]}

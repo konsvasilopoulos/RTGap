@@ -1,0 +1,5 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+web/xval/ref.json
+validation/results.csv

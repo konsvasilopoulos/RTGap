@@ -1,0 +1,24 @@
+# Head & neck SCC, 70 Gy / 35 fx. Linac breakdown Wed–Fri of week 5.
+# The Greek public holiday of 28 October falls inside the planned course.
+title: "HNSCC 70 Gy/35 — linac breakdown week 5"
+site: hn_scc                    # rtgap sites  → category 1, generic RCR parameters
+# protocol: protocol_example.yaml   # or pass --protocol on the command line
+
+prescription:
+  start: 2026-10-05             # Monday
+  n_fractions: 35
+  dose_per_fraction: 2.0
+  closed_dates: [2026-10-28]    # planned closures (public holidays)
+
+# Optional overrides of the site defaults
+# tumour: {dprolif_eqd2_per_day: 0.7, kickoff_days: 21}
+oars:                           # first entry = reference late tissue
+  - {name: "Late (α/β 3)", alpha_beta: 3}
+  - {name: "Spinal cord", alpha_beta: 2, dose_ratio: 0.65, max_eqd2: 50}
+
+gap:
+  missed_dates: [2026-11-04, 2026-11-05, 2026-11-06]
+  # resume_date: 2026-11-07     # default: day after the last missed date
+  # unavailable_dates: []       # further days the linac cannot treat
+
+# constraints: {...}            # case-specific, overrides the protocol

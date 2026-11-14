@@ -1,0 +1,28 @@
+# Example departmental protocol. Anything not listed keeps the default
+# (which allows every RCR method). Use it to describe what the department
+# can actually do and which trade-offs it accepts automatically.
+name: "Example department — weekdays only, no BID"
+
+constraints:
+  allow_saturday: false
+  allow_sunday: false
+  allow_bid: false
+  # bid_interval_h: 6
+  # bid_max_dose: 2.2
+  # allow_consecutive_bid: true
+  # allow_dose_change: true
+  # max_dose_per_fraction: 3.0
+  # allow_extra_fractions: true
+  # max_fractions_per_week: 6
+  # chemo_dates: [2026-10-05, 2026-10-26, 2026-11-16]
+  # chemo_daily: false
+  dose_rounding: 0.01
+  max_tumour_deficit_pct: 1.0     # tumour shortfall accepted automatically
+  max_late_increase_pct: 3.0      # late-tissue increase accepted automatically
+
+# Site overrides (merged into the library) or new sites
+sites:
+  hn_scc:
+    notes: ["Department uses the RCR generic K = 0.9 Gy10/day after 28 days."]
+  # cervix_scc_brachy: {max_extension_days: 2}
+  # my_new_site: {name: "...", category: 2, tumour: {alpha_beta: 10}}

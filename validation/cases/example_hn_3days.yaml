@@ -1,0 +1,12 @@
+# Template for retrospective validation. Replace with a real, anonymised past case.
+# The first custom option is the schedule that was actually given.
+title: "Template: HNSCC 70/35, three days lost, department gave Saturdays"
+site: hn_scc
+prescription: {start: 2026-10-05, n_fractions: 35, dose_per_fraction: 2.0, holidays: GR}
+gap: {missed_dates: [2026-11-04, 2026-11-05, 2026-11-06], cause: machine}
+custom_options:
+  - name: "given"
+    strategy: dose
+    dose: 2.0
+    dates: [2026-11-07, 2026-11-09, 2026-11-10, 2026-11-11, 2026-11-12, 2026-11-13, 2026-11-14,
+            2026-11-16, 2026-11-17, 2026-11-18, 2026-11-19, 2026-11-20, 2026-11-23, 2026-11-24]

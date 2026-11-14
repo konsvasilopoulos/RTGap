@@ -1,0 +1,19 @@
+# Basic Clinical Radiobiology, ch. 9, Example 5: 5 x 5 Gy preoperative rectum,
+# machine breakdown on Wednesday.
+title: "Rectum 5×5 Gy — Wednesday missed (BCR Example 5)"
+site: rectum
+
+prescription:
+  start: 2026-11-09
+  n_fractions: 5
+  dose_per_fraction: 5.0
+
+oars:
+  - {name: "Bowel (late)", alpha_beta: 4}
+  - {name: "Fibrosis", alpha_beta: 1.7}
+
+gap:
+  missed_dates: [2026-11-11]
+
+constraints:
+  dose_rounding: 0.1

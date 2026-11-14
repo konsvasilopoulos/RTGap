@@ -1,0 +1,215 @@
+# rtgap site library
+# ------------------
+# One entry per tumour site / histology / intent. Every field can be
+# overridden per case, or for the whole department in a protocol file.
+#
+# category                RCR category (1, 2, 3) or null
+# max_extension_days      prolongation above which compensation is required
+# ideal_extension_days    prolongation the compensation should aim for
+#                         (defaults: cat 1 -> 0 / 2, cat 2 -> 2 / 5, cat 3 -> 7 / 7)
+# max_overall_time_days   hard cap on overall treatment time (optional)
+# no_acceleration         true = weekend / BID / fewer-larger fractions not appropriate
+# tumour                  alpha_beta, k_bed_per_day (RCR K, BED/day) or
+#                         dprolif_eqd2_per_day (EQD2/day), kickoff_days
+# oars                    default organs at risk (first = reference late tissue)
+#
+# Sources
+#   RCR19  RCR, The timely delivery of radical radiotherapy, 4th ed. (2019)
+#   RCR5d  RCR, Management of unscheduled radiotherapy treatment interruptions,
+#          5th ed., draft for consultation
+#   START  Haviland et al., Lancet Oncol 2013 (alpha/beta 3.5 Gy, tumour control)
+#   VB20   Vogelius & Bentzen, IJROBP 2020 (prostate alpha/beta 1.6 Gy)
+#   STARTT Haviland et al., Radiother Oncol 2016 (breast: about 0.6 Gy/day, hypothesis-generating)
+#   VB13   Vogelius & Bentzen, IJROBP 2013 (prostate: 0.31 Gy/day, 95% CI 0.20-0.42)
+#
+# time_factor_option  published estimate of the dose lost per day of prolongation for sites whose
+#                     default has no time factor. Not applied unless the user chooses it. The
+#                     estimates are linear over the whole course (kick-off 0), so only differences
+#                     of EQD2_T between schedules are meaningful.
+#
+# The radiobiological parameters of the category-1 entries are the RCR
+# *generic* values (alpha/beta 10, K 0.9 Gy10/day after 28 d). RCR19 gives
+# no site-specific K. Departments should review them.
+
+defaults:
+  late_oar: {name: "Late (α/β 3)", alpha_beta: 3}
+  cat1_tumour: &cat1 {alpha_beta: 10, k_bed_per_day: 0.9, kickoff_days: 28}
+
+sites:
+  # ---------------- Category 1 (RCR19 / RCR5d) ----------------
+  hn_scc:
+    name: "Squamous cell carcinoma, head & neck"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Spinal cord", alpha_beta: 2}]
+    sources: [RCR19]
+  nsclc:
+    name: "Non-small cell lung cancer (radical)"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Spinal cord", alpha_beta: 2}]
+    sources: [RCR19]
+  sclc_chemort:
+    name: "Small cell lung cancer, chemoradiotherapy"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Spinal cord", alpha_beta: 2}]
+    sources: [RCR19]
+  cervix_scc:
+    name: "Squamous cell carcinoma, cervix (external beam)"
+    category: 1
+    max_overall_time_days: 56
+    tumour: *cat1
+    sources: [RCR19]
+    notes: ["RCR: overall treatment time for squamous cervix should not exceed 56 days."]
+  oesophagus_scc:
+    name: "Squamous cell carcinoma, oesophagus"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+  oesophagus_adeno:
+    name: "Adenocarcinoma, oesophagus"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+  anus_scc:
+    name: "Squamous cell carcinoma, anus"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+  skin_scc:
+    name: "Squamous cell carcinoma, skin"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+  vulva_vagina_scc:
+    name: "Squamous cell carcinoma, vulva / vagina"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+  medulloblastoma:
+    name: "Medulloblastoma / CNS embryonal tumours"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / cord", alpha_beta: 2}]
+    sources: [RCR19]
+  glioblastoma:
+    name: "Glioblastoma"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / optic", alpha_beta: 2}]
+    sources: [RCR5d]
+    notes: ["Category 1 in the 5th edition draft (not listed in the 2019 edition)."]
+  ependymoma_intracranial:
+    name: "Intracranial ependymoma"
+    category: 1
+    tumour: *cat1
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}, {name: "Brainstem / cord", alpha_beta: 2}]
+    sources: [RCR5d]
+    notes: ["Category 1 in the 5th edition draft (not listed in the 2019 edition)."]
+  bladder:
+    name: "Carcinoma of bladder (radical)"
+    category: 1
+    tumour: *cat1
+    sources: [RCR5d]
+    notes: ["Category 1 in the 5th edition draft; category 2 in the 2019 edition."]
+  short_doubling:
+    name: "Other tumour with short mass-doubling time"
+    category: 1
+    tumour: *cat1
+    sources: [RCR19]
+
+  # ---- Category 1, combined brachytherapy + external beam ----
+  cervix_scc_brachy:
+    name: "Squamous cervix, EBRT + brachytherapy"
+    category: 1
+    ideal_extension_days: 0
+    max_extension_days: 1
+    max_overall_time_days: 56
+    tumour: *cat1
+    sources: [RCR19]
+    notes: ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days (1 used here; set 2 if local protocol allows).",
+            "Overall time should not exceed 56 days."]
+  vulva_vagina_scc_brachy:
+    name: "Squamous vulva / vagina, EBRT + brachytherapy"
+    category: 1
+    ideal_extension_days: 0
+    max_extension_days: 1
+    tumour: *cat1
+    sources: [RCR19, RCR5d]
+    notes: ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]
+  tongue_scc_brachy:
+    name: "Squamous tongue, EBRT + brachytherapy"
+    category: 1
+    ideal_extension_days: 0
+    max_extension_days: 1
+    tumour: *cat1
+    sources: [RCR19]
+    notes: ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]
+  anus_scc_brachy:
+    name: "Squamous anus, EBRT + brachytherapy"
+    category: 1
+    ideal_extension_days: 0
+    max_extension_days: 1
+    tumour: *cat1
+    sources: [RCR19]
+    notes: ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]
+
+  # ---------------- Category 2 ----------------
+  breast:
+    name: "Breast adenocarcinoma (radical / adjuvant)"
+    category: 2
+    tumour: {alpha_beta: 3.5}
+    time_factor_option: {dprolif_eqd2_per_day: 0.6, kickoff_days: 0, source: STARTT}
+    oars: [{name: "Late (α/β 3)", alpha_beta: 3}]
+    sources: [RCR19, START]
+    notes: ["Tumour α/β 3.5 Gy (START, 95% CI 1.2–5.7). No time factor by default.",
+            "The 5th edition draft adds specific guidance for hypofractionated breast schedules: check it for 15- and 5-fraction regimens."]
+  prostate:
+    name: "Prostate carcinoma (radical)"
+    category: 2
+    tumour: {alpha_beta: 1.6}
+    time_factor_option: {dprolif_eqd2_per_day: 0.31, kickoff_days: 0, source: VB13}
+    oars: [{name: "Rectum (late, α/β 3)", alpha_beta: 3}]
+    sources: [RCR19, VB20]
+    notes: ["Tumour α/β 1.6 Gy (Vogelius & Bentzen 2020, 95% CI 1.3–2.0). No time factor by default.",
+            "With α/β below the late-tissue value, fewer/larger fractions favour the tumour: check both 'match' variants."]
+  bladder_rcr2019:
+    name: "Carcinoma of bladder (2019 classification)"
+    category: 2
+    tumour: {alpha_beta: 10}
+    sources: [RCR19]
+    notes: ["Use 'bladder' to follow the 5th edition draft (category 1)."]
+  rectum:
+    name: "Rectal adenocarcinoma (radical / neoadjuvant)"
+    category: 2
+    tumour: {alpha_beta: 10}
+    oars: [{name: "Bowel (late, α/β 4)", alpha_beta: 4}]
+    sources: [RCR19]
+    notes: ["Category 2 as a 'remaining radical' tumour."]
+  radical_other:
+    name: "Other radical treatment (category 2)"
+    category: 2
+    tumour: {alpha_beta: 10}
+    sources: [RCR19]
+
+  # ---------------- Category 3 ----------------
+  palliative:
+    name: "Palliative treatment"
+    category: 3
+    tumour: {alpha_beta: 10}
+    sources: [RCR19]
+
+  # ---------------- Special ----------------
+  sabr:
+    name: "SABR / stereotactic"
+    category: null
+    no_acceleration: true
+    tumour: {alpha_beta: 10}
+    sources: [RCR19]
+    notes: ["RCR: accelerated scheduling is not appropriate for SABR. The 5th edition draft has a dedicated SABR section; follow it and the local SABR protocol."]
+  generic:
+    name: "Generic (no site rules)"
+    category: null
+    tumour: {alpha_beta: 10}
+    notes: ["No category rules: set max_extension_days / ideal_extension_days in the case or protocol."]

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTGap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<header class="top">
+  <canvas id="hero" aria-hidden="true"></canvas>
+  <div class="top-in">
+    <div class="brand">
+      <div class="logo-row">
+        <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="none" stroke="currentColor" stroke-opacity=".35"/><path d="M8 12 C 16 13, 20 18, 24 26 S 33 39, 41 41" fill="none" stroke="#7fb2ff" stroke-width="2.6" stroke-linecap="round"/><path d="M8 12 C 14 12.5, 17 15, 19 19 L 19 13 C 24 14, 27 20, 29 26 L 29 19 C 33 21, 36 27, 41 33" fill="none" stroke="#f3b45a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h1>RT<i>Gap</i></h1>
+      </div>
+      <p id="tagline"></p>
+      <div class="chips" id="herochips"></div>
+    </div>
+    <div class="side">
+      <div class="eq" aria-hidden="true"><b>EQD2<sub>T</sub></b> = D · (d + α/β) / (2 + α/β) − D<sub>prolif</sub> · (T − T<sub>k</sub>)</div>
+      <div class="topctl">
+        <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
+        <select id="ex"></select>
+        <button type="button" class="ghost" id="reset"></button>
+      </div>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-live="polite"></section></div>
+  <div class="wide" id="below"></div>
+</main>
+<footer class="foot"><div class="foot-in">
+  <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-lic"></p></div>
+  <p id="disc"></p>
+</div></footer>
+<div id="refpop" role="dialog" hidden></div>
+<button type="button" class="dock" id="dock" data-act="dock"></button>
+<script>window.RTGAP_SITES = /*__SITES__*/;</script>
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__I18N__*/
+</script>
+<script>
+/*__PDF__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rtgap"
+version = "1.0.0"
+description = "LQ-based decision support for unscheduled radiotherapy gaps and dose-per-fraction errors"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Konstantinos Vasilopoulos" }]
+license = { text = "AGPL-3.0-or-later" }
+dependencies = ["pyyaml>=6"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/konsvasilopoulos/RTGap"
+
+[project.scripts]
+rtgap = "rtgap.cli:main"
+
+[tool.setuptools]
+packages = ["rtgap"]
+
+[tool.setuptools.package-data]
+rtgap = ["data/*.yaml"]

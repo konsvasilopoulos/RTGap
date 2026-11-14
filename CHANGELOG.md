@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0 — 2026-11-14
+* Department audit of the saved cases: share of courses within the RCR allowance per category,
+  table of all cases, CSV export (web app).
+* Import of many patients from a CSV file (template included) into the saved cases.
+* User guide inside the Documentation panel: five walk-throughs that open ready examples.
+
 ## 1.5.0 — 2026-11-14
 * LQ-L model as an option (`model: lql`, `lql_dt_factor`, default 2 × α/β; Astrahan 2008): linear
   above the transition dose for every tissue, in both engines, including the hand-check worksheet.

@@ -33,6 +33,8 @@ tumour and the normal tissues, which options the rules exclude and why.
 - **LQ or LQ-L**: optional linear-quadratic-linear model for large fractions.
 - **Machine outage triage**: apply an outage to all saved cases at once and
   get the patients in order of priority, with the extra sessions needed.
+- **Audit and patient lists**: import patients from CSV; audit table of the
+  saved cases per RCR category; user guide inside the app.
 - **For the department**: protocol file with local constraints and values,
   PDF report in Greek or English, treatment sheet for radiographers, link to
   share a case, cases saved on the device.

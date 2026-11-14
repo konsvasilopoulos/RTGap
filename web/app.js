@@ -578,7 +578,7 @@
   // ---- share link and cases saved on this device
   const CKEY = 'rtgap.cases';
   const loadCases = () => { try { const a = JSON.parse(localStorage.getItem(CKEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
-  const storeCases = (a) => { try { localStorage.setItem(CKEY, JSON.stringify(a.slice(0, 40))); return true; } catch (e) { return false; } };
+  const storeCases = (a) => { try { localStorage.setItem(CKEY, JSON.stringify(a.slice(0, 400))); return true; } catch (e) { return false; } };
   const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
   function shareUrl() {
@@ -768,11 +768,12 @@
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('joiner_t'))} ${refs(['JOINER', 'BCR'])}</h3><p class="hint">${esc(L('joiner_h'))}</p><div class="fields">${tf('P', L('j_P'))}${tf('p', L('j_p'))}${tf('E', L('j_E'))}${tf('e', L('j_e'))}</div><div class="out" id="j-out"></div></div>
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('eq_t'))} ${refs(['FOWLER', 'BCR'])}</h3><p class="hint">EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub> · (T − T<sub>k</sub>)</p><div class="fields">${tf('n', L('eq_n'))}${tf('d', L('eq_d'))}${tf('ab', L('eq_ab'))}${tf('T', L('eq_T'))}${tf('dp', L('eq_dp'))}${tf('tk', L('eq_tk'))}</div><div class="out" id="e-out"></div></div>
       </div></div>
-      <div class="card" id="triage"></div>`;
-    docsParts = { method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
+      <div class="card" id="triage"></div>
+      <div class="card" id="audit"></div>`;
+    docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
       refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
-    $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage();
+    $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
     $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
@@ -788,12 +789,12 @@
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
-  let docsParts = {}, docTab = 'method';
+  let docsParts = {}, docTab = 'guide';
   function renderDocs() {
     const L = tr.t;
     $('#docs').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="docs-close" aria-label="close">✕</button>
       <div class="about-head"><h2>${esc(L('docs_btn'))}</h2></div>
-      <div class="tabs flat" role="tablist">${['method', 'refs', 'test'].map((k) => `<button type="button" role="tab" data-act="docs" data-tab="${k}" aria-selected="${k === docTab}">${esc(L('doc_' + k))}</button>`).join('')}</div>
+      <div class="tabs flat" role="tablist">${['guide', 'method', 'refs', 'test'].map((k) => `<button type="button" role="tab" data-act="docs" data-tab="${k}" aria-selected="${k === docTab}">${esc(L('doc_' + k))}</button>`).join('')}</div>
       <div class="docbody">${docsParts[docTab] || ''}</div></div>`;
   }
   // ---- machine outage: every saved case at once, in order of priority (RCR: category 1 first)
@@ -821,10 +822,68 @@
     rows.sort((x, y) => { const kx = key(x), ky = key(y); for (let i = 0; i < kx.length; i++) if (kx[i] !== ky[i]) return kx[i] < ky[i] ? -1 : 1; return 0; });
     return rows;
   }
+  // ---- many patients at once: CSV import into the cases saved on this device
+  const CSV_HEAD = 'name,site,start,n_fractions,dose_per_fraction,missed_dates';
+  const importBar = () => `<div class="rowbtn" style="margin:0 0 10px"><label class="btn sm" style="position:relative;overflow:hidden">${esc(tr.t('csv_import'))}<input type="file" id="csv-imp" accept=".csv,text/csv,text/plain" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><button type="button" class="btn sm" data-act="csv-template">${esc(tr.t('csv_template'))}</button></div>`;
+  function csvDate(x) {
+    x = String(x || '').trim(); let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(x);
+    if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+    m = /^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/.exec(x);
+    return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : null;
+  }
+  function importCsv(txt) {
+    const lines = txt.replace(/^\ufeff/, '').split(/\r?\n/).filter((l) => l.trim()); if (lines.length < 2) throw new Error('empty');
+    const sep = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+    const cut = (l) => { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
+    const head = cut(lines[0]).map((x) => x.toLowerCase()), col = (k) => head.indexOf(k);
+    for (const k of ['name', 'site', 'start', 'n_fractions', 'dose_per_fraction']) if (col(k) < 0) throw new Error('header');
+    const list = loadCases(), bad = []; let ok = 0; const today = new Date().toISOString().slice(0, 10);
+    const names = Object.keys(RT.SITES).map((id) => [id, tr.siteName(id, RT.SITES[id]).toLowerCase(), String(RT.SITES[id].name || '').toLowerCase()]);
+    lines.slice(1).forEach((l, i) => {
+      const c = cut(l), name = c[col('name')], sraw = (c[col('site')] || '').toLowerCase(), start = csvDate(c[col('start')]), n = Math.round(+c[col('n_fractions')]), d = +String(c[col('dose_per_fraction')]).replace(',', '.');
+      const hit = names.find((x) => x[0] === sraw || x[1] === sraw || x[2] === sraw);
+      const missed = col('missed_dates') >= 0 && c[col('missed_dates')] ? c[col('missed_dates')].split(/[ |]+/).map(csvDate) : [];
+      if (!name || !hit || !start || !(n >= 1) || !(d > 0) || missed.includes(null)) { bad.push(i + 2); return; }
+      try {
+        const s2 = baseState({ site: hit[0], start, n, d, missed, caseRef: name, lang: state.lang }); RT.plannerFromCase(toCase(s2), {});
+        const k = list.findIndex((x) => x.name === name); if (k >= 0) list.splice(k, 1);
+        list.unshift({ name: name.slice(0, 80), when: today, sum: tr.siteName(hit[0], RT.SITES[hit[0]]), state: s2 }); ok++;
+      } catch (e) { bad.push(i + 2); }
+    });
+    storeCases(list); return { ok, bad };
+  }
+  // ---- audit of the saved cases (RCR asks departments to audit interruptions regularly)
+  function auditRows() {
+    return loadCases().map((c) => {
+      const row = { name: c.name };
+      try {
+        const s2 = Object.assign(baseState(), JSON.parse(JSON.stringify(c.state))); s2.oars.forEach(fixOar); s2.scen = false;
+        const p = RT.plannerFromCase(toCase(s2), {}), dec = RT.decide(p), all = dec.feasible.concat(dec.rejected);
+        const base = all.find((o) => o.family === 'baseline'), ch = all.find((o) => o.key === s2.sel) || dec.recommended || base;
+        Object.assign(row, { site: tr.siteName(p.siteId, p.site), cat: p.rules.category, nI: p.interruptions.length, nF: p.interruptions.reduce((a, x) => a + x[2], 0), cause: s2.cause || '',
+          ext0: base ? base.ext : 0, ext: ch ? ch.ext : 0, max: p.rules.max, dT: ch ? ch.tumour.deltaPct : 0, sched: ch && ch !== base ? tr.optTitle(ch) : '' });
+        row.within = row.max == null ? null : row.ext <= row.max;
+      } catch (e) { row.err = true; }
+      return row;
+    });
+  }
+  function renderAudit() {
+    const box = $('#audit'); if (!box) return;
+    const L = tr.t, rows = auditRows().filter((r) => !r.err);
+    let h = `<h2>${esc(L('aud_title'))} ${refs(['RCR19'])}</h2><p class="hint">${esc(L('aud_hint'))}</p>`;
+    if (!rows.length) { box.innerHTML = h + `<p class="small">${esc(L('tri_none'))}</p>`; return; }
+    const cats = [1, 2, 3, null].map((k) => { const rs = rows.filter((r) => (r.cat == null ? null : r.cat) === k), it = rs.filter((r) => r.nI > 0), wi = rs.filter((r) => r.within !== false); return { k, n: rs.length, it: it.length, days: it.reduce((a, r) => a + r.nF, 0), wi: wi.length, pct: rs.length ? Math.round(100 * wi.length / rs.length) : null }; }).filter((x) => x.n);
+    h += `<div class="kpis" style="margin-bottom:12px">${cats.map((x) => `<div class="kpi ${x.k === 1 && x.pct < 95 ? 'bad' : (x.pct < 95 ? 'warn' : 'ok')}"><span class="k">${esc(x.k ? L('cat') + ' ' + x.k : L('aud_nocat'))}</span><span class="v"><b>${x.pct}</b> %</span><span class="s">${x.wi}/${x.n} ${esc(L('aud_within'))} · ${x.it} ${esc(L('aud_int'))}</span></div>`).join('')}</div>`;
+    h += `<details class="sub"><summary>${esc(L('aud_list'))} (${rows.length})</summary><div class="scroll"><table><thead><tr><th style="text-align:left">${esc(L('rep_case'))}</th><th>${esc(L('cat'))}</th><th>${esc(L('intr_n'))}</th><th>${esc(L('missed_n'))}</th><th>${esc(L('aud_ext0'))}</th><th>${esc(L('aud_ext'))}</th><th>${esc(L('aud_ok'))}</th></tr></thead><tbody>` +
+      rows.map((r) => `<tr><td style="text-align:left">${esc(r.name)}<br><span class="small">${esc(r.site)}${r.sched ? ' · ' + esc(r.sched) : ''}</span></td><td class="n">${r.cat || '–'}</td><td class="n">${r.nI}</td><td class="n">${r.nF}</td><td class="n">${tr.sgi(r.ext0)}</td><td class="n">${tr.sgi(r.ext)}</td><td class="n ${r.within === false ? 'neg' : ''}">${r.within == null ? '–' : (r.within ? '✓' : '✗')}</td></tr>`).join('') + `</tbody></table></div></details>
+      <div class="rowbtn"><button type="button" class="btn" data-act="aud-csv">${esc(L('aud_csv'))}</button></div><p class="small" style="margin:8px 0 0">${esc(L('aud_note'))}</p>`;
+    box.innerHTML = h; box._rows = rows;
+  }
   function renderTriage() {
     const box = $('#triage'); if (!box) return;
     const L = tr.t, n = loadCases().length, rows = n ? triageRows() : null;
     let h = `<h2>${esc(L('tri_title'))} ${refs(['RCR19'])}</h2><p class="hint">${esc(L('tri_hint'))}</p>`;
+    h += importBar();
     if (!n) h += `<p class="small">${esc(L('tri_none'))}</p>`;
     else {
       h += `<div class="fields" style="max-width:520px"><label class="f"><span>${esc(L('tri_from'))}</span><input type="date" id="tri-from" value="${esc(tri.from)}"></label><label class="f"><span>${esc(L('tri_to'))}</span><input type="date" id="tri-to" value="${esc(tri.to)}"></label></div><p class="small" style="margin:6px 0 10px">${n} ${esc(L('tri_n'))}</p>`;
@@ -989,6 +1048,13 @@
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
+    if (a === 'guide-open') { $('#docs').hidden = true; if (EXAMPLES[t.dataset.ex]) { const s2 = EXAMPLES[t.dataset.ex](); s2.lang = state.lang; loadState(s2); } window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (a === 'csv-template') { saveFile('RTGap-patients-template.csv', '\ufeff' + CSV_HEAD + '\r\nRT-001,hn_scc,2026-10-05,35,2,\r\nRT-002,prostate,2026-10-12,20,3,2026-10-20 2026-10-21\r\n', 'text/csv'); return; }
+    if (a === 'aud-csv') {
+      const L = tr.t, q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"', rows = $('#audit')._rows || [];
+      const head = [L('rep_case'), L('s_site'), L('cat'), L('intr_n'), L('missed_n'), L('cause'), L('aud_ext0'), L('aud_ext'), L('allowance'), L('aud_ok'), 'Δ ' + L('col_t') + ' %', L('remaining')];
+      saveFile('RTGap-audit-' + new Date().toISOString().slice(0, 10) + '.csv', '\ufeff' + [head].concat(rows.map((r) => [r.name, r.site, r.cat || '', r.nI, r.nF, r.cause ? L('cause_' + r.cause) : '', r.ext0, r.ext, r.max == null ? '' : r.max, r.within == null ? '' : (r.within ? 1 : 0), r.dT.toFixed(1), r.sched])).map((r) => r.map(q).join(',')).join('\r\n'), 'text/csv'); return;
+    }
     if (a === 'docs-close') { $('#docs').hidden = true; return; }
     if (a === 'pre-start') { state.start = t.dataset.d; refresh(true); return; }
     if (a === 'tri-csv' || a === 'tri-pdf') {
@@ -1013,10 +1079,10 @@
       const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
       const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
       list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
-      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); return;
+      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); renderAudit(); return;
     }
     if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
-    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); return; }
+    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); renderAudit(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
     if (a === 'copysum') { try { navigator.clipboard.writeText(summaryText()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
@@ -1045,6 +1111,7 @@
         refresh(true); toast(tr.t('proto_loaded') + (ign.length ? ' ' + tr.t('proto_ignored') + ': ' + ign.slice(0, 4).join(', ') + (ign.length > 4 ? '…' : '') : ''));
       }).catch(() => toast(tr.t('proto_fail'))); return;
     }
+    if (t.id === 'csv-imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const r = importCsv(txt); renderResults(); renderTriage(); renderAudit(); toast(r.ok + ' ' + tr.t('csv_ok') + (r.bad.length ? ' · ' + tr.t('csv_bad') + ' ' + r.bad.slice(0, 8).join(', ') : '')); }).catch(() => toast(tr.t('csv_fail'))); return; }
     if (t.id === 'imp') { const f = t.files && t.files[0]; if (!f) return; f.text().then((txt) => { const j = JSON.parse(txt); loadState(fromCase(j.case || j)); }).catch(() => toast(tr.t('import_fail'))); return; }
     onInput(ev);
   });

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-11-14
+* Web app: read-out tiles, results in four tabs (schedule, options, analysis, report), section
+  navigation, first-visit guide, About panel, light/dark theme switch.
+* Link that carries a case (no server, no identifying text) and cases saved on the device.
+* README shortened; the detailed notes moved to docs/REFERENCE.md.
+
 ## 1.2.0 — 2026-11-14
 * RCR edition switch: `guidance: rcr2019` (default) or `rcr5_draft`, in the case, the protocol and the
   web app. Draft rules for 1-week and 3-week breast schedules and medulloblastoma; BID on chemotherapy

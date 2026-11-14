@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RTGap</title>
+<title>RTGap · compensation of unscheduled radiotherapy interruptions</title>
+<meta name="description" content="RTGap: linear-quadratic decision support for unscheduled radiotherapy interruptions, following the RCR guidance. Runs offline, Greek and English.">
+<meta name="theme-color" content="#07101f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%2307101f'/%3E%3Cpath d='M8 12C16 13 20 18 24 26S33 39 41 41' fill='none' stroke='%237fb2ff' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M8 12C14 12.5 17 15 19 19L19 13C24 14 27 20 29 26L29 19C33 21 36 27 41 33' fill='none' stroke='%23f3b45a' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>try{var t=localStorage.getItem('rtgap.theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -234,6 +238,67 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
 
 .warnnote { color: var(--warn); }
 
+/* ---- 1.3: read-out tiles, tabs, section nav, intro, about ---- */
+.card { scroll-margin-top: 58px; }
+.top .ghost.icon { width: 34px; padding: 6px 0; text-align: center; font-size: 1rem; line-height: 1.1; }
+.top .ghost:hover, .top select:hover { border-color: var(--glow); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 9px; display: grid; gap: 2px; box-shadow: var(--shadow); position: relative; overflow: hidden; min-width: 0; }
+.kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--good); }
+.kpi.warn::before { background: var(--warn); } .kpi.bad::before { background: var(--bad); }
+.kpi .k { font: 500 0.68rem/1.2 var(--f-num); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 400 0.95rem/1.25 var(--f-num); color: var(--muted); white-space: nowrap; }
+.kpi .v b { font: 600 1.45rem/1.1 var(--f-num); color: var(--ink); letter-spacing: -0.02em; }
+.kpi.bad .v b { color: var(--bad); } .kpi.warn .v b { color: var(--warn); } .kpi.ok .v b { color: var(--good); }
+.kpi .v s { color: var(--muted); font-size: 0.95rem; } .kpi .v .arr { color: var(--muted); }
+.kpi .s { font-size: 0.76rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 4px; padding: 5px; background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); scroll-margin-top: 8px; }
+.tabs button { flex: 1 1 0; border: 0; background: transparent; border-radius: 8px; padding: 8px 6px; cursor: pointer; font: 500 0.9rem var(--f-body); color: var(--muted); white-space: nowrap; }
+.tabs button:hover { color: var(--ink); background: var(--panel-2); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tabs .cnt { font: 500 0.7rem var(--f-num); opacity: 0.8; border: 1px solid currentColor; border-radius: 99px; padding: 0 5px; margin-left: 2px; }
+.pane { display: grid; gap: 14px; min-width: 0; }
+@media (prefers-reduced-motion: no-preference) { .pane { animation: pane-in 0.18s ease-out; } @keyframes pane-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } } }
+.steps { position: sticky; top: 0; z-index: 6; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 5px; background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.steps::-webkit-scrollbar { display: none; }
+.steps button { flex: none; border: 0; background: transparent; border-radius: 8px; padding: 6px 8px; cursor: pointer; font-size: 0.8rem; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.steps button b { font: 600 0.68rem/1 var(--f-num); color: var(--accent-ink); background: var(--accent); border-radius: 5px; padding: 3px 5px; }
+.steps button:hover { background: var(--panel-2); color: var(--ink); }
+#intro { max-width: 1320px; margin: 0 auto; padding: 16px 16px 0; } #intro[hidden] { display: none; }
+.intro-in { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
+.intro-steps { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.intro-steps div { display: flex; gap: 8px; align-items: baseline; font-size: 0.9rem; max-width: 30ch; }
+.intro-steps b { font: 600 0.72rem/1 var(--f-num); color: var(--accent); border: 1px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(4, 9, 21, 0.62); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 14px; }
+.modal[hidden] { display: none; }
+.modal-in { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; width: min(860px, 100%); max-height: calc(100vh - 28px); overflow: auto; padding: 22px 24px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4); }
+.modal-in .close { float: right; }
+.about-head h2 { font: 600 2rem/1 var(--f-display); } .about-head h2 i { color: var(--accent); } .about-head h2 span { font: 400 0.8rem var(--f-num); color: var(--muted); }
+.about-head p { margin: 8px 0 14px; max-width: 70ch; }
+.modal-in h3 { font: 600 0.74rem var(--f-num); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+.modal-in p { margin: 0 0 6px; font-size: 0.9rem; max-width: 80ch; }
+.modal-in .cite { font: 0.84rem/1.5 var(--f-num); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; user-select: all; }
+.feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.feats div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); display: grid; gap: 3px; }
+.feats b { font: 600 0.98rem var(--f-display); } .feats span { font-size: 0.84rem; color: var(--muted); }
+.savebar { display: flex; gap: 8px; } .savebar input { flex: 1 1 auto; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 7px 10px; }
+ul.saved { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+ul.saved li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border-top: 1px solid var(--line); padding-top: 6px; }
+ul.saved .linkbtn { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; text-decoration: none; }
+tr.pick { transition: background 0.12s; }
+@media (max-width: 520px) { .tabs button { font-size: 0.82rem; padding: 8px 2px; } .kpis { grid-template-columns: 1fr 1fr; } .kpi .v b { font-size: 1.2rem; } .modal-in { padding: 16px; } }
+
+.steps button { flex: 1 1 auto; justify-content: center; padding: 6px 4px; font-size: 0.78rem; }
+.feats div { align-content: start; }
+.intro-in .rowbtn { margin-left: auto !important; }
+.top .ghost.icon { display: inline-flex; align-items: center; justify-content: center; height: 34px; }
+@media (min-width: 1001px) { .top .side { position: absolute; top: 16px; right: 16px; } .top-in { min-height: 200px; } }
+.steps { gap: 0; padding: 4px; } .steps button { font-size: 0.74rem; gap: 4px; padding: 6px 2px; } .steps button b { padding: 3px 4px; }
+.intro-steps div { max-width: none; } .intro-in { flex-wrap: nowrap; } @media (max-width: 1100px) { .intro-in { flex-wrap: wrap; } }
+.intro-in .rowbtn { flex: none; flex-wrap: nowrap; }
+@media (max-width: 1100px) { .intro-in .rowbtn { flex-wrap: wrap; margin-left: 0 !important; } }
+@media (max-width: 1100px) { .intro-in .rowbtn { flex: 1 1 100%; } }
+
 </style>
 </head>
 <body>
@@ -253,11 +318,14 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
         <button type="button" class="ghost" id="reset"></button>
+        <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
+        <button type="button" class="ghost icon" id="theme" data-act="theme">◐</button>
       </div>
     </div>
   </div>
 </header>
 <main>
+  <div id="intro" hidden></div>
   <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-live="polite"></section></div>
   <div class="wide" id="below"></div>
 </main>
@@ -266,6 +334,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
   <p id="disc"></p>
 </div></footer>
 <div id="refpop" role="dialog" hidden></div>
+<div id="about" class="modal" role="dialog" aria-modal="true" hidden></div>
 <button type="button" class="dock" id="dock" data-act="dock"></button>
 <script>window.RTGAP_SITES = {"hn_scc": {"name": "Squamous cell carcinoma, head & neck", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "nsclc": {"name": "Non-small cell lung cancer (radical)", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "sclc_chemort": {"name": "Small cell lung cancer, chemoradiotherapy", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Spinal cord", "alpha_beta": 2}], "sources": ["RCR19"]}, "cervix_scc": {"name": "Squamous cell carcinoma, cervix (external beam)", "category": 1, "max_overall_time_days": 56, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: overall treatment time for squamous cervix should not exceed 56 days."]}, "oesophagus_scc": {"name": "Squamous cell carcinoma, oesophagus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "oesophagus_adeno": {"name": "Adenocarcinoma, oesophagus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "anus_scc": {"name": "Squamous cell carcinoma, anus", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "skin_scc": {"name": "Squamous cell carcinoma, skin", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "vulva_vagina_scc": {"name": "Squamous cell carcinoma, vulva / vagina", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "medulloblastoma": {"name": "Medulloblastoma / CNS embryonal tumours", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / cord", "alpha_beta": 2}], "sources": ["RCR19"], "rcr5_draft": {"target_overall_time_days": 44, "rule": "medullo"}}, "glioblastoma": {"name": "Glioblastoma", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / optic", "alpha_beta": 2}], "sources": ["RCR19", "RCR5d"], "notes": ["2019 edition: described as very fast-growing, not in the category list. Category 1 in the 5th edition draft."]}, "ependymoma_intracranial": {"name": "Intracranial ependymoma", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}, {"name": "Brainstem / cord", "alpha_beta": 2}], "sources": ["RCR5d"], "notes": ["Not mentioned in the 2019 edition. Category 1 in the 5th edition draft."]}, "bladder": {"name": "Carcinoma of bladder (radical)", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR5d"], "notes": ["Category 1 in the 5th edition draft and in the RCR bladder consensus statements, to which the RCR page of the 2019 guidance refers. The 2019 text itself lists bladder in category 2 (entry 'Carcinoma of bladder (2019 classification)')."]}, "short_doubling": {"name": "Other tumour with short mass-doubling time", "category": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"]}, "cervix_scc_brachy": {"name": "Squamous cervix, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "max_overall_time_days": 56, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days (1 used here; set 2 if local protocol allows).", "Overall time should not exceed 56 days."]}, "vulva_vagina_scc_brachy": {"name": "Squamous vulva / vagina, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19", "RCR5d"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "tongue_scc_brachy": {"name": "Squamous tongue, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "anus_scc_brachy": {"name": "Squamous anus, EBRT + brachytherapy", "category": 1, "ideal_extension_days": 0, "max_extension_days": 1, "tumour": {"alpha_beta": 10, "k_bed_per_day": 0.9, "kickoff_days": 28}, "sources": ["RCR19"], "notes": ["RCR: combined brachytherapy + EBRT, maximum prolongation 1–2 days."]}, "breast": {"name": "Breast adenocarcinoma (radical / adjuvant)", "category": 2, "tumour": {"alpha_beta": 3.5}, "time_factor_option": {"dprolif_eqd2_per_day": 0.6, "kickoff_days": 0, "source": "STARTT"}, "oars": [{"name": "Late (α/β 3)", "alpha_beta": 3}], "sources": ["RCR19", "START"], "notes": ["Tumour α/β 3.5 Gy (START, 95% CI 1.2–5.7). No time factor by default.", "The 5th edition draft adds rules for hypofractionated breast: 1-week schedules get no extra dose, 3-week schedules finish within 5 weeks (choose the 5th edition in the department settings)."], "rcr5_draft": {"by_fractions": [{"max_fractions": 5, "no_dose_compensation": true, "target_overall_time_days": 20, "rule": "breast_1wk"}, {"min_fractions": 13, "max_fractions": 16, "max_overall_time_days": 34, "rule": "breast_3wk"}]}}, "prostate": {"name": "Prostate carcinoma (radical)", "category": 2, "tumour": {"alpha_beta": 1.6}, "time_factor_option": {"dprolif_eqd2_per_day": 0.31, "kickoff_days": 0, "source": "VB13"}, "oars": [{"name": "Rectum (late, α/β 3)", "alpha_beta": 3}], "sources": ["RCR19", "VB20"], "notes": ["Tumour α/β 1.6 Gy (Vogelius & Bentzen 2020, 95% CI 1.3–2.0). No time factor by default.", "With α/β below the late-tissue value, fewer/larger fractions favour the tumour: check both 'match' variants."]}, "bladder_rcr2019": {"name": "Carcinoma of bladder (2019 classification)", "category": 2, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"], "notes": ["Use 'bladder' to follow the 5th edition draft (category 1)."]}, "rectum": {"name": "Rectal adenocarcinoma (radical / neoadjuvant)", "category": 2, "tumour": {"alpha_beta": 10}, "oars": [{"name": "Bowel (late, α/β 4)", "alpha_beta": 4}], "sources": ["RCR19"], "notes": ["Category 2 as a 'remaining radical' tumour."]}, "radical_other": {"name": "Other radical treatment (category 2)", "category": 2, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"]}, "palliative": {"name": "Palliative treatment", "category": 3, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"]}, "sabr": {"name": "SABR / stereotactic", "category": null, "no_acceleration": true, "tumour": {"alpha_beta": 10}, "sources": ["RCR19"], "notes": ["RCR (2019 and 5th edition draft): accelerated scheduling is not appropriate for SABR; after an unintended delay treatment resumes on non-consecutive days. Follow the local SABR protocol."]}, "generic": {"name": "Generic (no site rules)", "category": null, "tumour": {"alpha_beta": 10}, "notes": ["No category rules: set max_extension_days / ideal_extension_days in the case or protocol."]}};</script>
 <script>
@@ -275,7 +344,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1283,6 +1352,25 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       pc_title: 'Earlier compensation', pc_on: 'An earlier compensation changed the rest of the course', pc_from: 'From (first changed fraction)', pc_n: 'Fractions from that day', pc_d: 'Dose per fraction (Gy)',
       pc_hint: 'For example "from 9/11, 11 × 2.45 Gy instead of 14 × 2 Gy". Fractions from that day count at the new dose. The targets stay those of the original prescription.',
       intr_n: 'Interruptions', intr_total: 'total prolongation without compensation',
+      tab_plan: 'Schedule', tab_opts: 'Options', tab_an: 'Analysis', tab_rep: 'Report',
+      kpi_missed: 'Missed', kpi_left: 'fx still to give', kpi_ext: 'Prolongation', kpi_tum: 'Tumour dose', kpi_late: 'Late tissue',
+      nav_label: 'Sections', nav: ['Site', 'Dose', 'Gap', 'Biology', 'Dept', 'Own plan'],
+      about_btn: 'About', theme_auto: 'Theme: follows the device', theme_light: 'Theme: light', theme_dark: 'Theme: dark',
+      intro: ['Choose the tumour site and enter the prescription.', 'Tap the missed days on the calendar.', 'Read the suggestion, compare the options, download the report.'],
+      intro_try: 'Try an example', intro_hide: 'Hide',
+      about_lead: 'Decision support for unscheduled interruptions of radiotherapy. It places every compensation method of the RCR guidance on the real calendar, evaluates it with the linear-quadratic model and shows what each one costs the tumour and the normal tissues.',
+      feats: [['RCR decision order', 'Categories 1–3 for 26 tumour sites, 2019 edition or 5th edition draft, with the source beside every rule.'],
+        ['Real calendar', 'Weekends, Greek public holidays, machine downtime, chemotherapy days, twice-daily slots.'],
+        ['Every option, with reasons', 'Nothing is hidden: excluded options are listed with the rule that excluded them.'],
+        ['Whole treatment history', 'Several interruptions, earlier catch-up fractions, earlier plan changes and dose errors (Joiner).'],
+        ['Dose levels and brachytherapy', 'SIB, sequential boosts and HDR fractions; each level with its own overall time.'],
+        ['How sure is it?', '81-combination parameter sweep, resume-date scenarios, trade-off map, check-by-hand worksheet.'],
+        ['Ready for the department', 'Department protocol, PDF report in Greek or English, treatment sheet for radiographers.'],
+        ['Private and offline', 'One file, no server: nothing leaves the device. Open source (AGPL-3.0).']],
+      about_valid_t: 'Validation', about_valid: 'Built-in self-test against published worked examples: {a} pass on this device. The engine exists twice, in Python (69 tests) and in JavaScript, and the two agree on 651 randomised cases. Plain LQ results agree with RadComp on 9 schedules.',
+      about_use_t: 'Intended use', about_cite_t: 'How to cite',
+      share_title: 'Share this case', share_hint: 'A link that opens this case in RTGap. The case travels inside the link itself, not through a server. The title, case reference and names are left out.', share_btn: 'Copy link to this case', share_ok: 'Link copied.',
+      saved_title: 'Cases saved on this device', saved_hint: 'Kept only in this browser. Use a case number, not a patient name.', saved_name: 'Name or case number', saved_save: 'Save', saved_none: 'No saved cases yet.', saved_done: 'Case saved on this device.',
       guid_label: 'RCR guidance', guid_rcr2019: 'RCR 2019 (4th edition, published)', guid_rcr5_draft: 'RCR 5th edition (draft for consultation)', guid_short5: 'RCR 5th ed. (draft)',
       guid_19_note: 'The published edition. The 5th edition is still a draft for consultation; choose it to see its additional rules.',
       guid_draft_note: 'Draft for consultation, not final: use it with care and record the choice. It adds rules for 1- and 3-week breast schedules, a 45-day aim for medulloblastoma, and a narrower rule for BID on chemotherapy days.',
@@ -1388,6 +1476,25 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       pc_title: 'Προηγούμενη αντιστάθμιση', pc_on: 'Μια προηγούμενη αντιστάθμιση άλλαξε το υπόλοιπο της θεραπείας', pc_from: 'Από (πρώτο κλάσμα με αλλαγή)', pc_n: 'Κλάσματα από εκείνη την ημέρα', pc_d: 'Δόση ανά κλάσμα (Gy)',
       pc_hint: 'Για παράδειγμα «από 9/11, 11 × 2.45 Gy αντί 14 × 2 Gy». Τα κλάσματα από εκείνη την ημέρα μετρούν με τη νέα δόση. Οι στόχοι μένουν αυτοί της αρχικής συνταγογράφησης.',
       intr_n: 'Διακοπές', intr_total: 'συνολική παράταση χωρίς αντιστάθμιση',
+      tab_plan: 'Σχήμα', tab_opts: 'Επιλογές', tab_an: 'Ανάλυση', tab_rep: 'Αναφορά',
+      kpi_missed: 'Χάθηκαν', kpi_left: 'κλ. απομένουν', kpi_ext: 'Παράταση', kpi_tum: 'Δόση όγκου', kpi_late: 'Όψιμοι ιστοί',
+      nav_label: 'Ενότητες', nav: ['Όγκος', 'Δόση', 'Διακοπή', 'Βιολογία', 'Τμήμα', 'Σχήμα'],
+      about_btn: 'Σχετικά', theme_auto: 'Θέμα: όπως η συσκευή', theme_light: 'Θέμα: φωτεινό', theme_dark: 'Θέμα: σκούρο',
+      intro: ['Διαλέξτε εντοπισμό και δώστε τη συνταγογράφηση.', 'Πατήστε στο ημερολόγιο τις ημέρες που χάθηκαν.', 'Δείτε την πρόταση, συγκρίνετε τις επιλογές, κατεβάστε την αναφορά.'],
+      intro_try: 'Δοκιμάστε ένα παράδειγμα', intro_hide: 'Απόκρυψη',
+      about_lead: 'Υποστήριξη απόφασης για τις απρογραμμάτιστες διακοπές της ακτινοθεραπείας. Τοποθετεί κάθε μέθοδο αντιστάθμισης της οδηγίας του RCR στο πραγματικό ημερολόγιο, την αξιολογεί με το γραμμικό-τετραγωνικό μοντέλο και δείχνει τι κοστίζει η καθεμία στον όγκο και στους υγιείς ιστούς.',
+      feats: [['Σειρά αποφάσεων RCR', 'Κατηγορίες 1–3 για 26 εντοπισμούς, έκδοση 2019 ή σχέδιο 5ης έκδοσης, με την πηγή δίπλα σε κάθε κανόνα.'],
+        ['Πραγματικό ημερολόγιο', 'Σαββατοκύριακα, ελληνικές αργίες, βλάβες μηχανήματος, ημέρες χημειοθεραπείας, δύο κλάσματα την ημέρα.'],
+        ['Όλες οι επιλογές, με αιτιολόγηση', 'Τίποτα δεν κρύβεται: οι επιλογές που αποκλείονται εμφανίζονται μαζί με τον κανόνα που τις απέκλεισε.'],
+        ['Όλο το ιστορικό της θεραπείας', 'Πολλές διακοπές, κλάσματα αναπλήρωσης που ήδη δόθηκαν, προηγούμενες αλλαγές πλάνου και λάθη δόσης (Joiner).'],
+        ['Επίπεδα δόσης και βραχυθεραπεία', 'SIB, διαδοχικό boost και κλάσματα HDR· κάθε επίπεδο με τον δικό του συνολικό χρόνο.'],
+        ['Πόσο σίγουρο είναι;', 'Σάρωση 81 συνδυασμών παραμέτρων, σενάρια επανέναρξης, χάρτης επιλογών, έλεγχος με το χέρι.'],
+        ['Έτοιμο για το τμήμα', 'Πρωτόκολλο τμήματος, αναφορά PDF σε ελληνικά ή αγγλικά, φύλλο θεραπείας για τεχνολόγους.'],
+        ['Ιδιωτικό και εκτός σύνδεσης', 'Ένα αρχείο, χωρίς διακομιστή: τίποτα δεν φεύγει από τη συσκευή. Ανοιχτός κώδικας (AGPL-3.0).']],
+      about_valid_t: 'Επικύρωση', about_valid: 'Ενσωματωμένος αυτοέλεγχος με δημοσιευμένα λυμένα παραδείγματα: {a} επιτυχείς σε αυτή τη συσκευή. Η μηχανή υπάρχει δύο φορές, σε Python (69 tests) και σε JavaScript, και οι δύο συμφωνούν σε 651 τυχαία περιστατικά. Τα αποτελέσματα απλού LQ συμφωνούν με το RadComp σε 9 σχήματα.',
+      about_use_t: 'Προβλεπόμενη χρήση', about_cite_t: 'Πώς να το αναφέρετε',
+      share_title: 'Κοινοποίηση περιστατικού', share_hint: 'Σύνδεσμος που ανοίγει αυτό το περιστατικό στο RTGap. Το περιστατικό ταξιδεύει μέσα στον ίδιο τον σύνδεσμο, όχι μέσω διακομιστή. Ο τίτλος, ο κωδικός περιστατικού και τα ονόματα δεν περιλαμβάνονται.', share_btn: 'Αντιγραφή συνδέσμου περιστατικού', share_ok: 'Ο σύνδεσμος αντιγράφηκε.',
+      saved_title: 'Περιστατικά αποθηκευμένα στη συσκευή', saved_hint: 'Φυλάσσονται μόνο σε αυτόν τον browser. Χρησιμοποιήστε αριθμό περιστατικού, όχι όνομα ασθενούς.', saved_name: 'Όνομα ή αριθμός περιστατικού', saved_save: 'Αποθήκευση', saved_none: 'Δεν υπάρχουν αποθηκευμένα περιστατικά.', saved_done: 'Το περιστατικό αποθηκεύτηκε στη συσκευή.',
       guid_label: 'Οδηγία RCR', guid_rcr2019: 'RCR 2019 (4η έκδοση, δημοσιευμένη)', guid_rcr5_draft: 'RCR 5η έκδοση (σχέδιο διαβούλευσης)', guid_short5: 'RCR 5η έκδ. (σχέδιο)',
       guid_19_note: 'Η δημοσιευμένη έκδοση. Η 5η έκδοση είναι ακόμη σχέδιο διαβούλευσης· επιλέξτε την για να δείτε τους πρόσθετους κανόνες της.',
       guid_draft_note: 'Σχέδιο διαβούλευσης, όχι τελικό κείμενο: χρησιμοποιήστε το με προσοχή και καταγράψτε την επιλογή. Προσθέτει κανόνες για σχήματα μαστού 1 και 3 εβδομάδων, στόχο 45 ημερών για το μυελοβλάστωμα και στενότερο κανόνα για BID σε ημέρες χημειοθεραπείας.',
@@ -2160,7 +2267,10 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
   let state = EXAMPLES.hn_sib();
   try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; } } } catch (e) { /* storage unavailable */ }
+  let fromLink = false;
+  try { const mh = /[#&]c=([\w\-]+)/.exec(location.hash || ''); if (mh) { const lang0 = state.lang; state = fromCase(JSON.parse(b64dEarly(mh[1]))); state.lang = lang0; fromLink = true; history.replaceState(null, '', location.pathname + location.search); } } catch (e) { /* bad link: ignore */ }
   let tr = I.make(state.lang), model = null;
+  function b64dEarly(str) { return decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/')))); }
   const persist = () => { try { localStorage.setItem('rtgap.state', JSON.stringify(state)); } catch (e) { /* ignore */ } };
 
   // ------------------------------------------------------------------ state → case (same schema as the Python package)
@@ -2382,13 +2492,14 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
     }
     const c = s.c;
     el.innerHTML = `
-    <div class="card"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
+    <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}"><b>${i + 1}</b>${esc(x)}</button>`).join('')}</nav>
+    <div class="card" id="sec-1"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
       <label class="f"><span>${esc(L('s_site'))}</span><select data-bind="site" id="i-site" data-struct="1">${og('RCR ' + L('cat') + ' 1', groups[1])}${og('RCR ' + L('cat') + ' 2', groups[2])}${og('RCR ' + L('cat') + ' 3', groups[3])}${og('—', groups.x)}</select></label>
       <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}${srcRefs}</div>
       ${notes.length ? `<ul class="notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       <label class="f" style="margin-top:10px"><span>${esc(L('cat'))}</span><select data-bind="category" id="i-category" data-struct="1">${[['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join('')}</select></label>
     </div>
-    <div class="card"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
+    <div class="card" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
       <div class="fields" style="margin-bottom:10px">${fld(L('start'), 'start', s.start, 'type="date"')}</div>
       ${chk(L('levels_mode'), 'multi', s.multi)}
       <div style="margin-top:8px">${rxHtml}</div>
@@ -2397,7 +2508,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       <div style="margin-top:4px">${chk(L('brachy'), 'brachy.on', s.brachy.on)}</div>
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
     </div>
-    <div class="card"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}</p>
+    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}</p>
       <div class="seg" role="group">${['missed', 'unavail', 'chemo', 'closed', 'extra', 'err'].map((m) => `<button type="button" data-act="mark" data-m="${m}" aria-pressed="${s.mark === m}">${esc(L('m_' + m))}</button>`).join('')}</div>
       <div id="gapcal"></div>
       <div class="fields">${fld(L('resume'), 'resume', s.resume, 'type="date"')}
@@ -2414,7 +2525,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       </details>
       ${chk(L('scen'), 'scen', s.scen)}
     </div>
-    <details class="card fold" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
+    <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
         <label class="f"><span>${esc(L('rate'))}</span><select data-bind="tumour.mode" id="i-tumour-mode"><option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option></select></label>
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
@@ -2428,7 +2539,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
     </details>
-    <details class="card fold" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
+    <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
       <label class="f"><span>${esc(L('guid_label'))}${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></label>
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
@@ -2436,7 +2547,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       <div class="fields" style="margin-top:12px">${fld(L('c_tolT'), 'c.max_tumour_deficit_pct', c.max_tumour_deficit_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}${fld(L('c_tolL'), 'c.max_late_increase_pct', c.max_late_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}</div>
       <p class="small" style="margin:6px 0 0">${esc(L('tol_hint'))}</p>
     </details>
-    <details class="card fold" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
+    <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
       ${chk(L('given'), 'given.on', s.given.on)}
       ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
         : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
@@ -2518,24 +2629,25 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       updateDock(); return;
     }
     const p = m.p, dec = m.dec, rec = dec.recommended;
-    let h = `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
+    const B = { chart: '', opts: '', map: '', det: '', sens: '', scen: '', rep: '' };
+    let h = kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
       ${rec && rec.family !== 'baseline' ? `<p class="subline">${esc(tr.optShort(rec))}</p><p class="small" style="margin:0 0 8px">${esc(L('dec_note'))}</p>` : ''}
       ${m.sens && rec && rec.family !== 'baseline' ? `<p class="small" style="margin:0 0 8px"><span class="pill ${m.sens.sameFraction >= 0.9 ? 'c3' : 'c2'}">${esc(L(m.sens.sameFraction >= 0.9 ? 'robust_yes' : 'robust_no'))}</span> ${esc(L('unc'))} (${m.sens.n}): Δ ${esc(p.tumour.name === p.rx.primary || !p.rx.multilevel ? L('col_t').toLowerCase() : p.tumour.name)} ${tr.sg(m.sens.tumourPctRange[0])} … ${tr.sg(m.sens.tumourPctRange[1])} %${p.oars.length ? `, Δ ${esc(p.oars[0].name)} ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][0])} … ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][1])} %` : ''}; ${esc(L('unc_same'))} ${Math.round(100 * m.sens.sameFraction)} %.</p>` : ''}
       ${m.rec0 != null ? `<p class="small" style="margin:0 0 8px">${esc(L('rec_line'))} ${refs(['PUTORA'])}: <b>${Math.round(100 * m.rec0)} %</b> ${esc(L('rec_fixed'))}${m.rec5 != null && m.rec5 > m.rec0 + 0.005 ? `, <b>${Math.round(100 * m.rec5)} %</b> ${esc(L('rec_5'))}` : ''}.${m.base && lcText(m.base) ? ` ${esc(L('ch_uncomp'))}: ${esc(L('lc').toLowerCase())} ${esc(lcText(m.base))}.` : ''}</p>` : ''}
       ${dec.candidates.length ? `<p class="small">${esc(L('weigh'))}: ${dec.candidates.map((o) => `<a href="#detail" data-opt="${o.key}">${esc(tr.optTitle(o))}</a>`).join(' · ')}</p>` : ''}
-      <details ${dec.trace.length ? 'open' : ''}><summary class="small">${esc(L('why'))}</summary><ol class="trace">${dec.trace.map((s) => `<li>${esc(tr.trace(s))}${refs(s.refs)}</li>`).join('')}</ol></details></div>`;
+      <details data-fold="why" ${fold('why')}><summary class="small">${esc(L('why'))} (${dec.trace.length})</summary><ol class="trace">${dec.trace.map((s) => `<li>${esc(tr.trace(s))}${refs(s.refs)}</li>`).join('')}</ol></details></div>`;
     if (p.inputWarnings.length) h += `<div class="card"><h2>${esc(L('input_checks'))}</h2><ul class="warn" style="margin-top:0">${p.inputWarnings.map((w) => `<li>${esc(tr.issue(w))}</li>`).join('')}</ul></div>`;
     if (p.remaining && m.base) {
-      h += `<div class="card"><h2>${esc(L('chart_title'))} ${refs(['BCR', 'FOWLER'])}</h2><p class="hint">${esc(L('chart_sub'))}</p><div class="chartbox"><canvas id="chart" role="img" aria-label="${esc(L('chart_title'))}"></canvas></div>
+      B.chart += `<div class="card"><h2>${esc(L('chart_title'))} ${refs(['BCR', 'FOWLER'])}</h2><p class="hint">${esc(L('chart_sub'))}</p><div class="chartbox"><canvas id="chart" role="img" aria-label="${esc(L('chart_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;
-      h += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
+      B.opts += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
         ${dec.rejected.length ? `<details style="margin-top:12px"><summary class="small">${esc(L('excluded'))} (${dec.rejected.length})</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</div>`;
-      if (p.oars.length) h += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
+      if (p.oars.length) B.map += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--accent);border-radius:50%"></i>${esc(L('map_feas'))}</span><span><i style="border:1.5px solid var(--muted);border-radius:50%;background:transparent"></i>${esc(L('map_excl'))}</span>${m.given ? `<span><i style="background:var(--warn);transform:rotate(45deg)"></i>${esc(L('map_given'))}</span>` : ''}<span><i style="background:var(--ink);border-radius:50%"></i>${esc(L('ch_planned'))}</span></div></div>`;
-      if (m.sel) h += detailHtml(m.sel);
+      if (m.sel) B.det += detailHtml(m.sel);
       if (m.sens) {
         const s = m.sens, g = s.grid;
-        h += `<div class="card"><h2>${esc(L('robust'))}</h2><p class="hint">${s.n} ${esc(L('rob_grid'))}: ${esc(L('g_ab'))} ${g.tumour_alpha_beta.join(', ')}; ${esc(L('g_rep'))} ${g.repopulation.join(', ')}; ${esc(L('g_tk'))} ${g.kickoff_shift_days.join(', ')}; ${esc(L('g_late'))} ${g.late_alpha_beta.join(', ')}.</p>
+        B.sens += `<div class="card"><h2>${esc(L('robust'))}</h2><p class="hint">${s.n} ${esc(L('rob_grid'))}: ${esc(L('g_ab'))} ${g.tumour_alpha_beta.join(', ')}; ${esc(L('g_rep'))} ${g.repopulation.join(', ')}; ${esc(L('g_tk'))} ${g.kickoff_shift_days.join(', ')}; ${esc(L('g_late'))} ${g.late_alpha_beta.join(', ')}.</p>
           <p style="margin:0 0 8px">${esc(L('rob_line'))} <b>${esc(tr.optTitle(s.option))}</b></p>
           <div class="scroll"><table><thead><tr><th>${esc(L('tissues'))}</th><th>Δ EQD2 (Gy)</th><th>Δ %</th></tr></thead><tbody>
           <tr><td>${esc(p.tumour.name)}</td><td class="n">${tr.sg(s.tumourRange[0])} … ${tr.sg(s.tumourRange[1])}</td><td class="n">${tr.sg(s.tumourPctRange[0])} … ${tr.sg(s.tumourPctRange[1])}</td></tr>
@@ -2544,19 +2656,63 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
           <div class="scroll"><table><thead><tr><th>${esc(L('rob_dec'))}</th><th>${esc(L('rob_cases'))}</th><th>${esc(L('rob_drange'))}</th></tr></thead><tbody>${s.decisions.map((d) => `<tr><td>${esc(d.o ? tr.optTitle(d.o) : L('st_clinical_decision'))}</td><td class="n">${d.count} / ${s.n}</td><td class="n">${d.o ? tr.f2(d.dRange[0]) + '–' + tr.f2(d.dRange[1]) : '–'}</td></tr>`).join('')}</tbody></table></div></div>`;
       }
       if (m.scen && m.scen.length) {
-        h += `<div class="card"><h2>${esc(L('scen_title'))}</h2><p class="hint">${esc(L('scen_hint'))}</p><div class="scroll"><table><thead><tr><th>${esc(L('scen_resume'))}</th><th>${esc(L('scen_uncomp'))}</th><th>Δ ${esc(L('col_t'))}</th><th style="text-align:left">${esc(L('scen_dec'))}</th></tr></thead><tbody>
+        B.scen += `<div class="card"><h2>${esc(L('scen_title'))}</h2><p class="hint">${esc(L('scen_hint'))}</p><div class="scroll"><table><thead><tr><th>${esc(L('scen_resume'))}</th><th>${esc(L('scen_uncomp'))}</th><th>Δ ${esc(L('col_t'))}</th><th style="text-align:left">${esc(L('scen_dec'))}</th></tr></thead><tbody>
           ${m.scen.map((r) => `<tr><td class="n" style="text-align:left">${esc(tr.dshort(r.resume))}</td><td class="n">${r.nMissed} ${esc(L('fx'))} · ${tr.sgi(r.baseExt)} ${esc(L('days'))}</td>${dcell(r.baseDelta, true)}<td style="text-align:left"><span class="pill ${r.status === 'clinical_decision' ? 'c2' : r.status === 'no_action' ? 'c3' : ''}">${esc(L('st_' + r.status))}</span>${r.option && r.option.family !== 'baseline' ? `<div class="small">${esc(tr.optTitle(r.option))} · ${r.option.nNew} × ${tr.f2(r.option.d)} Gy</div>` : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
       }
     }
     const repLang = state.pdfLang || state.lang;
-    h += `<div class="card" id="report"><h2>${esc(L('record'))}</h2>
+    B.rep += `<div class="card" id="report"><h2>${esc(L('record'))}</h2>
       <div class="fields">${fld(L('case_ref'), 'caseRef', state.caseRef, 'type="text" autocomplete="off"')}${fld(L('calc_by'), 'calcBy', state.calcBy, 'type="text"')}${fld(L('checked_by'), 'checkedBy', state.checkedBy, 'type="text"')}
         <label class="f"><span>${esc(L('pdf_lang'))}</span><select data-bind="pdfLang" id="i-pdfLang"><option value="el" ${repLang === 'el' ? 'selected' : ''}>Ελληνικά</option><option value="en" ${repLang === 'en' ? 'selected' : ''}>English</option></select></label></div>
       <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button>${model.sel && model.p.remaining ? `<button type="button" class="btn" data-act="sheet">${esc(L('sheet_btn'))}</button>` : ''}<button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
         <label class="btn" style="position:relative;overflow:hidden">${esc(L('import'))}<input type="file" id="imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
+    B.rep += shareHtml() + savedHtml();
+    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen, rep: B.rep };
+    const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
+    let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
+    if (avail.length > 1) h += `<div class="tabs" role="tablist" id="tabs">${avail.map((k) => `<button type="button" role="tab" data-act="tab" data-tab="${k}" aria-selected="${k === tab}">${esc(L('tab_' + k))}${k === 'opts' ? ` <span class="cnt">${dec.feasible.length}</span>` : ''}</button>`).join('')}</div>`;
+    h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
+  }
+  function kpiHtml(m) {
+    const p = m.p, L = tr.t, b = m.base, o = m.sel;
+    if (!b || !p.remaining) return '';
+    const nMiss = p.interruptions.reduce((a, x) => a + x[2], 0), same = !o || o === b;
+    const cls = (bad) => (bad ? 'bad' : 'ok');
+    const pair = (x0, x1, fmt, unit) => same ? `<b>${fmt(x0)}</b> ${unit}` : `<s>${fmt(x0)}</s> <span class="arr">→</span> <b>${fmt(x1)}</b> ${unit}`;
+    const late = o && o.oars.length ? o.oars.reduce((a, r) => (r.deltaPct > a.deltaPct ? r : a), o.oars[0]) : null;
+    const mx = p.rules.max != null ? p.rules.max : 0, cur = same ? b : o;
+    const tiles = [
+      [L('kpi_missed'), `<b>${nMiss}</b> ${esc(L('fx'))}`, p.remaining + ' ' + L('kpi_left') + (p.doseErrors.length ? ' · ' + p.doseErrors.length + ' ' + L('lg_err') : ''), nMiss || p.doseErrors.length ? 'warn' : 'ok'],
+      [L('kpi_ext'), pair(b.ext, cur.ext, tr.sgi, esc(L('days'))), L('allowance') + ' ≤ ' + mx + ' ' + L('days'), cur.ext > mx ? 'bad' : (cur.ext > (p.rules.ideal || 0) ? 'warn' : 'ok')],
+      [L('kpi_tum'), pair(b.tumour.delta, cur.tumour.delta, (x) => tr.sg(x), 'Gy'), tr.sg(cur.tumour.deltaPct) + ' % EQD2' + (RT.hasTime(p.tumour) ? '' : ' · ' + L('sum_notime')), cls(cur.tumour.deltaPct < -1)],
+    ];
+    if (late) tiles.push([L('kpi_late'), `<b>${tr.sg(late.deltaPct)}</b> %`, late.name + ' · ' + tr.sg(late.delta) + ' Gy', late.deltaPct > 5 ? 'bad' : (late.deltaPct > 1 ? 'warn' : 'ok')]);
+    return `<div class="kpis">${tiles.map(([k, v, sub, c]) => `<div class="kpi ${c}"><span class="k">${esc(k)}</span><span class="v">${v}</span><span class="s">${esc(sub)}</span></div>`).join('')}</div>`;
+  }
+  // ---- share link and cases saved on this device
+  const CKEY = 'rtgap.cases';
+  const loadCases = () => { try { const a = JSON.parse(localStorage.getItem(CKEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const storeCases = (a) => { try { localStorage.setItem(CKEY, JSON.stringify(a.slice(0, 40))); return true; } catch (e) { return false; } };
+  const b64e = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64d = (str) => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+  function shareUrl() {
+    const c = toCase(state); delete c.title; delete c.audit;       // no free text that could identify a patient
+    let base = 'https://konsvasilopoulos.github.io/RTGap/';
+    try { if (/github\.io$|^localhost$|^127\./.test(location.hostname) || location.protocol === 'file:') base = location.href.split('#')[0]; } catch (e) { /* keep canonical */ }
+    return base + '#c=' + b64e(JSON.stringify(c));
+  }
+  function shareHtml() {
+    const L = tr.t;
+    return `<div class="card"><h2>${esc(L('share_title'))}</h2><p class="hint">${esc(L('share_hint'))}</p><div class="rowbtn" style="margin-top:0"><button type="button" class="btn" data-act="share">${esc(L('share_btn'))}</button></div></div>`;
+  }
+  function savedHtml() {
+    const L = tr.t, list = loadCases();
+    return `<div class="card"><h2>${esc(L('saved_title'))}</h2><p class="hint">${esc(L('saved_hint'))}</p>
+      <div class="savebar"><input type="text" id="save-name" placeholder="${esc(L('saved_name'))}" value="${esc(state.caseRef || '')}" autocomplete="off"><button type="button" class="btn pri" data-act="case-save">${esc(L('saved_save'))}</button></div>
+      ${list.length ? `<ul class="saved">${list.map((c, i) => `<li><button type="button" class="linkbtn" data-act="case-load" data-i="${i}">${esc(c.name)}</button><span class="small">${esc(c.when)} · ${esc(c.sum || '')}</span><button type="button" class="btn x" data-act="case-del" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></li>`).join('')}</ul>` : `<p class="small" style="margin:10px 0 0">${esc(L('saved_none'))}</p>`}</div>`;
   }
   function summaryText() {
     const m = model, p = m.p, L = tr.t, o = m.sel, lines = [];
@@ -2681,7 +2837,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
     if (heroT0 == null) heroT0 = t;
     const prog = (reduce || now === 'full') ? 1 : Math.max(0, Math.min(1, (t - heroT0) / 1600)), ease = 1 - Math.pow(1 - prog, 3);
     if (prog >= 1) heroDone = true;
-    const wide = W > 1000, x0 = wide ? W * 0.43 : W * 0.06, x1 = wide ? W * 0.6 : W - 14, y0 = 20, y1 = H - 24, Dmax = 14, decades = 5;
+    const wide = W > 1000, x0 = wide ? W * 0.41 : W * 0.06, x1 = wide ? W * 0.535 : W - 14, y0 = 20, y1 = H - 24, Dmax = 14, decades = 5;
     g.globalAlpha = wide ? 1 : 0.4;
     const X = (D) => x0 + (D / Dmax) * (x1 - x0), Y = (lg) => y0 + (-lg / decades) * (y1 - y0);
     g.lineWidth = 1; g.strokeStyle = 'rgba(159,176,207,0.10)';
@@ -2732,6 +2888,18 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       <div class="card"><h2>${esc(L('method'))}</h2><p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p>
         <details><summary class="small">${esc(L('selftest'))}: ${SELF.filter((x) => x.ok).length}/${SELF.length} ${esc(L('st_pass'))}</summary><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div></details></div>`;
     $('#disc').textContent = L('disclaimer');
+    $('#aboutbtn').textContent = L('about_btn'); setTheme(theme());
+    $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
+      <div class="about-head"><h2>RT<i>Gap</i> <span>v${RT.VERSION}</span></h2><p>${esc(L('about_lead'))}</p></div>
+      <div class="feats">${L('feats').map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>
+      <h3>${esc(L('about_valid_t'))}</h3><p>${esc(L('about_valid').replace('{a}', SELF.filter((x) => x.ok).length + '/' + SELF.length))}</p>
+      <h3>${esc(L('about_use_t'))}</h3><p>${esc(L('disclaimer'))}</p>
+      <h3>${esc(L('about_cite_t'))}</h3><p class="cite">Vasilopoulos K. RTGap: compensation of unscheduled radiotherapy interruptions. Version ${RT.VERSION}, 2026. https://github.com/konsvasilopoulos/RTGap</p>
+      <p class="small">${esc(L('dev'))}: Konstantinos Vasilopoulos, PhD Candidate · ${esc(L('lic'))} <a href="https://github.com/konsvasilopoulos/RTGap" target="_blank" rel="noopener">${esc(L('src'))}</a></p></div>`;
+    let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
+    $('#intro').hidden = seen;
+    $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
+      <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
   function renderTools() {
@@ -2812,6 +2980,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
   }
   function toggle(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(ev) {
+    if (ev.target.id === 'about') { ev.target.hidden = true; return; }
     const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
     if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
@@ -2837,7 +3006,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
       if (m === 'missed' && state.resume && state.missed.length && state.resume <= state.missed.slice().sort().pop()) state.resume = '';
       refresh(false); const r = $('#i-resume'); if (r) r.value = state.resume; return;
     }
-    if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; compute(); persist(); renderResults(); if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; compute(); persist(); renderResults(); { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
     if (a === 'mark') { state.mark = t.dataset.m; document.querySelectorAll('[data-act="mark"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === state.mark)); persist(); return; }
@@ -2872,6 +3041,22 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
     if (a === 'proto-site-rm') { if (proto) { delete proto.sites[state.site]; saveProto(); } refresh(true); return; }
     if (a === 'site-defaults') { const d = siteDefaults(state.site); state.tumour = d.tumour; state.oars = d.oars; refresh(true); return; }
     if (a === 'json') { saveFile(fileStem() + '.json', exportJson(), 'application/json'); return; }
+    if (a === 'tab') { state.ui = state.ui || {}; state.ui.tab = t.dataset.tab; persist(); renderResults(); return; }
+    if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { if (el2.tagName === 'DETAILS') el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
+    if (a === 'about') { $('#about').hidden = false; return; }
+    if (a === 'about-close') { $('#about').hidden = true; return; }
+    if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
+    if (a === 'intro-try') { loadState(EXAMPLES.hn_70()); const r0 = $('#results'); if (r0 && window.innerWidth <= 900) r0.scrollIntoView({ behavior: 'smooth' }); return; }
+    if (a === 'share') { const u = shareUrl(); try { navigator.clipboard.writeText(u).then(() => toast(tr.t('share_ok')), () => window.prompt(tr.t('share_btn'), u)); } catch (e) { toast(tr.t('save_fail')); } return; }
+    if (a === 'case-save') {
+      const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
+      const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
+      list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
+      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); return;
+    }
+    if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
+    if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
     if (a === 'copysum') { try { navigator.clipboard.writeText(summaryText()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
@@ -2879,6 +3064,12 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
     if (a === 'sheet') { const old = t.textContent; t.textContent = tr.t('busy'); t.disabled = true; makeSheet().then((blob) => blob && saveFile(fileStem() + '-sheet.pdf', blob, 'application/pdf')).catch(() => toast(tr.t('save_fail'))).then(() => { t.textContent = old; t.disabled = false; }); return; }
     if (a === 'pdf') { const old = t.textContent; t.textContent = tr.t('busy'); t.disabled = true; makePdf().then((blob) => blob && saveFile(fileStem() + '.pdf', blob, 'application/pdf')).catch(() => toast(tr.t('save_fail'))).then(() => { t.textContent = old; t.disabled = false; }); return; }
     if (a === 'dock') { const d = $('#decision') || $('#results'); d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
+  const theme = () => { try { return localStorage.getItem('rtgap.theme') || 'auto'; } catch (e) { return 'auto'; } };
+  function setTheme(v) {
+    try { localStorage.setItem('rtgap.theme', v); } catch (e) { /* ignore */ }
+    if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+    const b = $('#theme'); if (b) { b.innerHTML = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="' + (v === 'dark' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/>' + (v === 'auto' ? '<path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/>' : '') + '</svg>'; b.title = tr.t('theme_' + v); b.setAttribute('aria-label', tr.t('theme_' + v)); }
   }
   function loadState(s) { s.lang = state.lang; state = s; tr = I.make(state.lang); refresh(true); }
   document.addEventListener('input', onInput);
@@ -2898,7 +3089,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
   });
   document.addEventListener('click', onClick);
   document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
-  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') $('#refpop').hidden = true; });
+  document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') { $('#refpop').hidden = true; $('#about').hidden = true; } });
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -2917,7 +3108,7 @@ h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink)
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (heroDone) drawHero('full'); });
   if (hot && hot.snapshot) hot.snapshot(() => state);
   if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || null);
-  window.__rtgap = { fromCase, toCase, loadState, get state() { return state; } };
+  window.__rtgap = { fromCase, toCase, loadState, shareUrl, get state() { return state; } };
 })();
 
 </script>

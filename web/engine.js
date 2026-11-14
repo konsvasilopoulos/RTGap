@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;

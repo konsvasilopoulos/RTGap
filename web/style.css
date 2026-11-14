@@ -75,8 +75,8 @@ a { color: var(--accent); }
 @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; box-shadow: var(--shadow); }
-.card > h2 { font: 600 1.12rem/1.25 var(--f-display); margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.card > h2 .step { font: 600 0.72rem/1 var(--f-num); color: var(--accent-ink); background: var(--accent); border-radius: 7px; padding: 4px 7px; min-width: 22px; text-align: center; }
+.card > h2, .card > summary > h2 { font: 600 1.12rem/1.25 var(--f-display); margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card > h2 .step, .card > summary > h2 .step { font: 600 0.72rem/1 var(--f-num); color: var(--accent-ink); background: var(--accent); border-radius: 7px; padding: 4px 7px; min-width: 22px; text-align: center; }
 .hint { color: var(--muted); font-size: 0.84rem; margin: 0 0 10px; max-width: 68ch; }
 .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 12px; }
 .f { display: grid; gap: 3px; min-width: 0; }
@@ -183,7 +183,7 @@ ul.err { margin: 8px 0 0; padding-left: 18px; color: var(--bad); font-size: 0.9r
 .dock { position: fixed; left: 0; right: 0; bottom: 0; background: var(--tank); color: var(--tank-ink); padding: 9px 14px; display: none; gap: 10px; align-items: center; z-index: 20; border: 0; width: 100%; text-align: left; cursor: pointer; }
 .dock b { font: 500 0.7rem/1 var(--f-num); letter-spacing: 0.06em; text-transform: uppercase; color: var(--glow); white-space: nowrap; }
 .dock span { font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-@media (max-width: 900px) { .dock { display: flex; } }
+
 .toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 7px 14px; border-radius: 8px; font-size: 0.86rem; z-index: 40; }
 @media (max-width: 520px) {
   .top-in { padding-top: 22px; min-height: 0; } .eq { white-space: normal; font-size: .92rem; }
@@ -191,3 +191,20 @@ ul.err { margin: 8px 0 0; padding-left: 18px; color: var(--bad); font-size: 0.9r
   .brand h1 { font-size: 2.3rem; } .logo { width: 38px; height: 38px; } .headline { font-size: 1.25rem; }
 }
 @media (prefers-reduced-motion: no-preference) { .card { transition: border-color 0.15s; } }
+
+/* folded input sections */
+details.fold > summary { list-style: none; cursor: pointer; display: grid; gap: 4px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary h2 { margin: 0; align-items: center; flex-wrap: nowrap; }
+details.fold > summary h2::after { content: "▾"; margin-left: auto; color: var(--muted); font-size: 0.95rem; transition: transform 0.15s; }
+details.fold:not([open]) > summary h2::after { transform: rotate(-90deg); }
+details.fold > summary:hover h2::after { color: var(--accent); }
+.fold-sum { font: 0.8rem/1.45 var(--f-num); color: var(--muted); }
+details.fold[open] > summary { margin-bottom: 10px; }
+details.fold[open] .fold-sum { display: none; }
+.gl-row { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.help { border: 1px solid var(--line); background: var(--panel-2, transparent); color: var(--accent); border-radius: 50%; width: 19px; height: 19px; font: 600 0.7rem/1 var(--f-body); cursor: pointer; padding: 0; margin: 0 2px 0 6px; vertical-align: 1px; }
+.help:hover, .help:focus-visible { border-color: var(--accent); }
+.dock.show { display: flex; }
+@media (min-width: 901px) { .dock { left: auto; right: 20px; bottom: 20px; width: auto; max-width: 560px; border-radius: 12px; box-shadow: 0 10px 30px rgba(5, 12, 30, 0.35); } }
+.split > * { min-width: 0; } .kv dd { overflow-wrap: anywhere; }

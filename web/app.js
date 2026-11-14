@@ -47,7 +47,7 @@
   const parseRatio = (v) => { if (typeof v === 'number') return v; const parts = String(v == null ? '' : v).split('/').map((x) => num(x)).filter((x) => x != null); return parts.length > 1 ? parts : (parts.length ? parts[0] : 1); };
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
   let state = EXAMPLES.hn_sib();
-  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; } } } catch (e) { /* storage unavailable */ }
+  try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; } } } catch (e) { /* storage unavailable */ }
   let tr = I.make(state.lang), model = null;
   const persist = () => { try { localStorage.setItem('rtgap.state', JSON.stringify(state)); } catch (e) { /* ignore */ } };
 
@@ -192,6 +192,24 @@
     return `<span><i style="${st}"></i>${esc(tr.t('lg_' + k))}</span>`; }).join('') + '</div>';
 
   // ------------------------------------------------------------------ inputs
+  const fold = (k) => (state.ui && state.ui[k]) ? 'open' : '';
+  const gl = (k) => `<button type="button" class="help" data-gl="${k}" aria-label="?">?</button>`;
+  function bioSum() {
+    const s = state, L = tr.t, t = s.tumour;
+    const rate = t.rate ? (t.mode === 'dp' ? 'D_prolif ' : 'K ') + t.rate + (t.tk != null && t.tk !== '' ? ' · T_k ' + t.tk : '') : L('sum_notime');
+    return L('tumour') + ' α/β ' + t.ab + ' · ' + rate + ' · ' + s.oars.length + ' ' + L('sum_oars');
+  }
+  function deptSum() {
+    const c = state.c, L = tr.t, y = (b) => (b ? '✓' : '✗');
+    let s = tr.wd2[5] + ' ' + y(c.allow_saturday) + ' · ' + tr.wd2[6] + ' ' + y(c.allow_sunday) + ' · BID ' + y(c.allow_bid) + ' · ' + L('sum_dose') + ' ' + y(c.allow_dose_change);
+    s += ' · ' + (c.max_tumour_deficit_pct != null && c.max_late_increase_pct != null ? L('sum_tol') + ' ' + c.max_tumour_deficit_pct + '%\u00a0/\u00a0' + c.max_late_increase_pct + '%' : L('sum_notol'));
+    return s;
+  }
+  function givenSum() {
+    const g = state.given; if (!g || !g.on) return tr.t('sum_none');
+    if (g.dates) return (g.dates.length + (g.bidDates || []).length) + ' × ' + g.d + ' Gy';
+    return (g.n || '?') + ' × ' + (g.d || '?') + ' Gy';
+  }
   function renderInputs() {
     const s = state, L = tr.t, site = RT.SITES[s.site] || {}, el = $('#inputs');
     const groups = { 1: [], 2: [], 3: [], x: [] };
@@ -244,10 +262,11 @@
       <p class="small" style="margin:4px 0 8px">${esc(L('resume_auto'))}</p>
       ${chk(L('scen'), 'scen', s.scen)}
     </div>
-    <div class="card"><h2><span class="step">4</span>${esc(L('s_bio'))}</h2>
+    <details class="card fold" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
         <label class="f"><span>${esc(L('rate'))}</span><select data-bind="tumour.mode" id="i-tumour-mode"><option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option></select></label>
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
+      <p class="small gl-row">${esc(L('gl_what'))} ${gl('ab')} α/β ${gl('k')} K / D<sub>prolif</sub> ${gl('tk')} T<sub>k</sub> ${gl('repair')} T½ ${gl('eqd2')} EQD2</p>
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
       ${site.time_factor_option ? `<div class="rowbtn" style="margin:-4px 0 12px"><button type="button" class="btn sm" data-act="tf">${esc(L('tf_apply'))}: ${site.time_factor_option.dprolif_eqd2_per_day} Gy/${state.lang === 'el' ? 'ημέρα' : 'day'}</button>${refs([site.time_factor_option.source])}</div><p class="small" style="margin:-6px 0 12px">${esc(L('tf_note'))}</p>` : ''}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
@@ -255,18 +274,18 @@
         <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></div>`).join('')}
       <p class="small" style="margin:0 0 4px">${esc(L('ratio_hint'))} ${refs(['BENTZEN99', 'THAMES'])}</p>
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L('site_defaults'))}</button></div>
-    </div>
-    <div class="card"><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><p class="hint">${esc(L('dept_hint'))}</p>
+    </details>
+    <details class="card fold" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum">${esc(deptSum())}</span></summary><p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
       <div class="fields" style="margin-top:12px">${fld(L('c_tolT'), 'c.max_tumour_deficit_pct', c.max_tumour_deficit_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}${fld(L('c_tolL'), 'c.max_late_increase_pct', c.max_late_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}</div>
       <p class="small" style="margin:6px 0 0">${esc(L('tol_hint'))}</p>
-    </div>
-    <div class="card"><h2><span class="step">6</span>${esc(L('given'))}</h2><p class="hint">${esc(L('given_hint'))}</p>
+    </details>
+    <details class="card fold" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
       ${chk(L('given'), 'given.on', s.given.on)}
       ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
         : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
-    </div>`;
+    </details>`;
     renderGapCal(); renderBioNote();
   }
   function renderGapCal() {
@@ -346,7 +365,7 @@
     if (p.remaining && m.base) {
       h += `<div class="card"><h2>${esc(L('chart_title'))} ${refs(['BCR', 'FOWLER'])}</h2><p class="hint">${esc(L('chart_sub'))}</p><div class="chartbox"><canvas id="chart" role="img" aria-label="${esc(L('chart_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;
-      h += `<div class="card"><h2>${esc(L('options'))}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
+      h += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
         ${dec.rejected.length ? `<details style="margin-top:12px"><summary class="small">${esc(L('excluded'))} (${dec.rejected.length})</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</div>`;
       if (p.oars.length) h += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--accent);border-radius:50%"></i>${esc(L('map_feas'))}</span><span><i style="border:1.5px solid var(--muted);border-radius:50%;background:transparent"></i>${esc(L('map_excl'))}</span>${m.given ? `<span><i style="background:var(--warn);transform:rotate(45deg)"></i>${esc(L('map_given'))}</span>` : ''}<span><i style="background:var(--ink);border-radius:50%"></i>${esc(L('ch_planned'))}</span></div></div>`;
@@ -370,11 +389,25 @@
     h += `<div class="card" id="report"><h2>${esc(L('record'))}</h2>
       <div class="fields">${fld(L('case_ref'), 'caseRef', state.caseRef, 'type="text" autocomplete="off"')}${fld(L('calc_by'), 'calcBy', state.calcBy, 'type="text"')}${fld(L('checked_by'), 'checkedBy', state.checkedBy, 'type="text"')}
         <label class="f"><span>${esc(L('pdf_lang'))}</span><select data-bind="pdfLang" id="i-pdfLang"><option value="el" ${repLang === 'el' ? 'selected' : ''}>Ελληνικά</option><option value="en" ${repLang === 'en' ? 'selected' : ''}>English</option></select></label></div>
-      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button><button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
+      <div class="rowbtn"><button type="button" class="btn pri" data-act="pdf">${esc(L('pdf'))}</button><button type="button" class="btn" data-act="json">${esc(L('json'))}</button><button type="button" class="btn" data-act="copysum">${esc(L('copy_sum'))}</button><button type="button" class="btn" data-act="copy">${esc(L('copy_json'))}</button>
         <label class="btn" style="position:relative;overflow:hidden">${esc(L('import'))}<input type="file" id="imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
+  }
+  function summaryText() {
+    const m = model, p = m.p, L = tr.t, o = m.sel, lines = [];
+    lines.push('RTGap ' + RT.VERSION + ' — ' + L('rep_title') + (state.caseRef ? ' — ' + state.caseRef : ''));
+    lines.push(L('s_site') + ': ' + tr.siteName(p.siteId, p.site) + (p.rules.category ? ' (RCR ' + p.rules.category + ')' : ''));
+    lines.push(L('missed_n') + ': ' + (p.missed.length ? p.missed.map(tr.dshort).join(', ') : '–') + (p.rules.gapCause ? ' · ' + L('cause_' + p.rules.gapCause) : ''));
+    lines.push(L('st_' + m.dec.status) + ': ' + tr.head(m.dec.head));
+    if (o && p.remaining) {
+      lines.push(L('remaining') + ': ' + tr.optShort(o));
+      lines.push('Δ EQD2: ' + [o.tumour].concat(o.levels, o.oars).map((r) => r.name + ' ' + tr.sg(r.delta) + ' Gy').join(', ') + ' · ' + L('acute_row') + ' ' + tr.sg(o.weeklyInc) + ' %');
+      for (const w of o.warnings) lines.push('• ' + tr.reason(w));
+    }
+    lines.push(L('checksum') + ' ' + m.checksum.slice(0, 16) + '…');
+    return lines.join('\n');
   }
   function updateDock() {
     const d = $('#dock'); if (!d) return;
@@ -603,8 +636,9 @@
   }
   function toggle(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(ev) {
-    const t = ev.target.closest('[data-ref],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
+    const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
+    if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
     if (t.dataset.lang) { state.lang = t.dataset.lang; tr = I.make(state.lang); refresh(true); return; }
     if (t.dataset.day) {
       const d = t.dataset.day, m = state.mark;
@@ -629,6 +663,7 @@
     if (a === 'tf') { const o = RT.SITES[state.site].time_factor_option; state.tumour.mode = 'dp'; state.tumour.rate = o.dprolif_eqd2_per_day; state.tumour.tk = o.kickoff_days; refresh(true); return; }
     if (a === 'site-defaults') { const d = siteDefaults(state.site); state.tumour = d.tumour; state.oars = d.oars; refresh(true); return; }
     if (a === 'json') { saveFile(fileStem() + '.json', exportJson(), 'application/json'); return; }
+    if (a === 'copysum') { try { navigator.clipboard.writeText(summaryText()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
     if (a === 'copy') { try { navigator.clipboard.writeText(exportJson()).then(() => toast(tr.t('copied')), () => toast(tr.t('save_fail'))); } catch (e) { toast(tr.t('save_fail')); } return; }
     if (a === 'pdf') { const old = t.textContent; t.textContent = tr.t('busy'); t.disabled = true; makePdf().then((blob) => blob && saveFile(fileStem() + '.pdf', blob, 'application/pdf')).catch(() => toast(tr.t('save_fail'))).then(() => { t.textContent = old; t.disabled = false; }); return; }
     if (a === 'dock') { const d = $('#decision') || $('#results'); d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -642,6 +677,7 @@
     onInput(ev);
   });
   document.addEventListener('click', onClick);
+  document.addEventListener('toggle', (ev) => { const d = ev.target; if (d && d.dataset && d.dataset.fold) { state.ui = state.ui || {}; if (!!state.ui[d.dataset.fold] !== d.open) { state.ui[d.dataset.fold] = d.open; persist(); } } }, true);
   document.addEventListener('keydown', (ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('tr[data-opt]')) { ev.preventDefault(); ev.target.click(); } if (ev.key === 'Escape') $('#refpop').hidden = true; });
   $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
@@ -653,6 +689,11 @@
   const hot = window.claude && window.claude.hot;
   const start = (data) => { if (data && data.v === 3) state = Object.assign(baseState(), data); tr = I.make(state.lang); refresh(true); };
   requestAnimationFrame(drawHero);
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((es) => { for (const e of es) $('#dock').classList.toggle('show', !e.isIntersecting); }, { threshold: 0 });
+    const watch = () => { io.disconnect(); const d = $('#decision'); if (d) io.observe(d); else $('#dock').classList.remove('show'); };
+    new MutationObserver(watch).observe($('#results'), { childList: true }); watch();
+  }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (heroDone) drawHero('full'); });
   if (hot && hot.snapshot) hot.snapshot(() => state);
   if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || null);

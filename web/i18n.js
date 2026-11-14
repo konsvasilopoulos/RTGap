@@ -19,7 +19,29 @@
       s_rx: 'Prescription', start: 'First fraction', fractions: 'Fractions', dpf: 'Dose per fraction (Gy)', total: 'Total',
       levels_mode: 'Several dose levels or phases (SIB, sequential boost)', phase: 'Phase', phase_name: 'Name', add_phase: 'Add phase', add_level: 'Add level', level: 'Level', remove: 'Remove',
       primary: 'Primary level (drives the decision)', treat_days: 'Treatment days', gr_holidays: 'Greek public holidays are non-treatment days',
-      s_gap: 'Interruption', gap_hint: 'Tap the days on the calendar. The mode decides what a tap marks.',
+      s_gap: 'Interruption', gap_hint: 'Tap the days on the calendar. The mode decides what a tap marks. Mark every interruption of this course, earlier ones too: the prolongation counts over the whole course.',
+      m_extra: 'Extra fraction given', m_err: 'Dose error', lg_extra: 'fraction given outside the plan', lg_err: 'dose error',
+      hist_title: 'Treatment so far: dose errors and an earlier change of plan',
+      hist_hint: 'Use this when the course did not go exactly as planned. "Extra fraction given" on the calendar marks a fraction given on a non-treatment day or as a second fraction that day (an earlier catch-up). "Dose error" marks a delivered fraction whose dose was wrong; enter the dose actually given to the reference level (all levels scale with it).',
+      err_title: 'Dose errors', err_none: 'None entered. Tap a delivered day in "Dose error" mode, or add one here.', err_add: 'Add dose error', err_date: 'Date', err_dose: 'Dose given (Gy)',
+      err_need_delivered: 'No fraction was given that day. A fraction that was not given is a missed day.', extra_missed: 'That day is marked missed. Unmark it first.',
+      pc_title: 'Earlier compensation', pc_on: 'An earlier compensation changed the rest of the course', pc_from: 'From (first changed fraction)', pc_n: 'Fractions from that day', pc_d: 'Dose per fraction (Gy)',
+      pc_hint: 'For example "from 9/11, 11 × 2.45 Gy instead of 14 × 2 Gy". Fractions from that day count at the new dose. The targets stay those of the original prescription.',
+      intr_n: 'Interruptions', intr_total: 'total prolongation without compensation',
+      sheet_btn: 'Treatment sheet for radiographers (PDF)', sheet_title: 'Treatment sheet for radiographers', sheet_schedule: 'Schedule', sheet_to_give: 'to give',
+      sheet_newdose: 'New dose per fraction', sheet_replan: 'A rescaled or new plan must be approved in the TPS before the first of these fractions.',
+      sheet_bid: 'Two fractions on some days: at least {h} h between them.', sheet_weekend: 'Weekend treatment on the days marked.', sheet_same: 'Same plan and dose per fraction as before; only the dates change.',
+      sheet_bt: 'brachytherapy (not on the linac)', sheet_sat: 'Saturday', sheet_sun: 'Sunday', sheet_second: '≥ {h} h after the 1st', sheet_first_new: 'first fraction at the new dose',
+      sheet_s1: '1st of 2', sheet_s2: '2nd of 2', sheet_session: 'Session', sheet_dose: 'Dose per fraction', sheet_note: 'Note', sheet_given: 'Given (time)', sheet_init: 'Initials',
+      sheet_by_phys: 'Calculated (physicist)', sheet_by_md: 'Approved (radiation oncologist)', sheet_by_rt: 'Received (radiographer)',
+      sheet_foot: 'The dates and doses are those of the schedule chosen in RTGap and approved by the treating clinician. Any further interruption: inform the physicist before the next fraction.',
+      proto_title: 'Department protocol', proto_none: 'none', proto_unnamed: 'Department protocol', proto_name: 'Protocol name', proto_name_ph: 'e.g. Radiotherapy department, weekdays only',
+      proto_none_hint: 'Save the settings below as the department default: every new case then starts from them. The protocol file can be shared with colleagues and used with the Python command line.',
+      proto_matches: 'This case uses the protocol settings.', proto_differs: 'This case differs from the protocol', proto_apply: 'use the protocol settings',
+      proto_save: 'Save as department protocol', proto_update: 'Update protocol', proto_export: 'Export protocol file', proto_import: 'Import protocol file', proto_rm: 'Remove protocol',
+      proto_saved: 'Department protocol saved on this device.', proto_removed: 'Protocol removed: new cases start from the tool defaults.', proto_loaded: 'Protocol loaded.', proto_ignored: 'ignored', proto_fail: 'This file is not a protocol file (JSON).',
+      proto_site_save: 'Save as department values for this site', proto_site_rm: 'Remove department values', proto_site_saved: 'Department values saved for this site.',
+      proto_site_note: 'The department protocol has its own values for this site: they are used whenever this site is chosen.', site_defaults_dept: 'Department values',
       m_missed: 'Missed', m_unavail: 'Linac unavailable', m_chemo: 'Chemotherapy', m_closed: 'Extra closure',
       resume: 'Treatment resumes', resume_auto: 'day after the last missed fraction', scen: 'Repair date unknown: compare possible resume days', scen_days: 'Days to scan',
       lg_delivered: 'delivered', lg_missed: 'missed', lg_planned: 'planned', lg_new: 'new fraction', lg_bid: 'two fractions', lg_holiday: 'holiday / closed', lg_unavail: 'unavailable', lg_chemo: 'chemo', lg_end: 'planned last day',
@@ -43,7 +65,9 @@
         tk: ['Kick-off time T_k', 'The day, counted from the start of treatment, after which accelerated repopulation is assumed (28 days in the RCR generic values). Before T_k, prolongation costs the tumour nothing in this model.'],
         repair: ['Repair half-time T½', 'How fast a tissue repairs sublethal damage between two fractions on the same day. With long half-times (about 4 h for late effects), 6 h is not enough for full repair, so twice-daily treatment adds late-tissue dose.'],
         eqd2: ['EQD2', 'The total dose in 2-Gy fractions that would have the same biological effect. For the tumour it is also corrected for repopulation (EQD2_T). The tables show the change from the prescribed plan.'],
-        peak7: ['Peak 7-day dose', 'The largest EQD2 delivered in any 7 consecutive days: a simple indicator of how intense the treatment is for acute reactions such as mucositis. It is this tool\'s indicator, not an RCR quantity.'] }, dev: 'Developed by', lic: 'Open source under the GNU AGPL-3.0. Commercial licences are available from the author.', src: 'Source code',
+        peak7: ['Peak 7-day dose', 'The largest EQD2 delivered in any 7 consecutive days: a simple indicator of how intense the treatment is for acute reactions such as mucositis. It is this tool\'s indicator, not an RCR quantity.'],
+        proto: ['Department protocol', 'The department\'s standing settings: which days and methods are available, the dose rounding, any tolerances, and its own radiobiological values per site. It is kept on this device and starts every new case. A case file always contains the values actually used, so it can be re-calculated without the protocol.'],
+        hist: ['Several interruptions and dose errors', 'RCR counts the prolongation over the whole course, from the original end date, so earlier interruptions are marked too. A dose error is corrected with the Joiner method: the remaining dose and fraction size are chosen so that the total dose and the sum of squared fraction doses equal those intended, which brings every tissue back together whatever its α/β (exact without a time factor and incomplete repair; the number of fractions is rounded).'] }, dev: 'Developed by', lic: 'Open source under the GNU AGPL-3.0. Commercial licences are available from the author.', src: 'Source code',
       repair: 'Repair T½ (h)', bt_ratio: 'Brachy dose ratio', brachy: 'Brachytherapy (HDR) is part of the course', brachy_hint: 'Fixed dates and doses. The primary level receives the full dose, other levels none, each organ its brachytherapy dose ratio. No external beam is planned on these days, and they count in the overall time. If the dates move, enter the new ones.', bt_date: 'Date', bt_dose: 'Dose (Gy)', add_bt: 'Add fraction', lg_bt: 'brachytherapy',
       ratio_hint: 'With several phases, a dose ratio can be given per phase as 0.9/0.1. Repair T½ applies between two fractions on the same day; leave it empty for complete repair.',
       generic_note: 'These are the generic RCR values, derived mainly from head and neck data. For this site they are an assumption to review.',
@@ -95,7 +119,29 @@
       s_rx: 'Συνταγογράφηση', start: 'Πρώτο κλάσμα', fractions: 'Κλάσματα', dpf: 'Δόση ανά κλάσμα (Gy)', total: 'Σύνολο',
       levels_mode: 'Πολλά επίπεδα δόσης ή φάσεις (SIB, διαδοχικό boost)', phase: 'Φάση', phase_name: 'Όνομα', add_phase: 'Προσθήκη φάσης', add_level: 'Προσθήκη επιπέδου', level: 'Επίπεδο', remove: 'Αφαίρεση',
       primary: 'Κύριο επίπεδο (καθορίζει την απόφαση)', treat_days: 'Ημέρες θεραπείας', gr_holidays: 'Οι ελληνικές αργίες είναι ημέρες χωρίς θεραπεία',
-      s_gap: 'Διακοπή', gap_hint: 'Πατήστε τις ημέρες στο ημερολόγιο. Η επιλογή παρακάτω ορίζει τι σημειώνει το πάτημα.',
+      s_gap: 'Διακοπή', gap_hint: 'Πατήστε τις ημέρες στο ημερολόγιο. Η επιλογή παρακάτω ορίζει τι σημειώνει το πάτημα. Σημειώστε κάθε διακοπή της θεραπείας, και τις προηγούμενες: η παράταση μετρά σε όλη τη θεραπεία.',
+      m_extra: 'Έξτρα κλάσμα που δόθηκε', m_err: 'Λάθος δόση', lg_extra: 'κλάσμα εκτός πλάνου', lg_err: 'λάθος δόση',
+      hist_title: 'Πορεία ως τώρα: λάθη δόσης και προηγούμενη αλλαγή πλάνου',
+      hist_hint: 'Για όταν η θεραπεία δεν έγινε ακριβώς όπως σχεδιάστηκε. Το «Έξτρα κλάσμα που δόθηκε» στο ημερολόγιο σημειώνει κλάσμα που δόθηκε σε μη θεραπευτική ημέρα ή ως δεύτερο κλάσμα της ημέρας (προηγούμενη αναπλήρωση). Η «Λάθος δόση» σημειώνει κλάσμα που δόθηκε με λάθος δόση· δώστε τη δόση που πράγματι δόθηκε στο επίπεδο αναφοράς (όλα τα επίπεδα κλιμακώνονται μαζί).',
+      err_title: 'Λάθη δόσης', err_none: 'Κανένα. Πατήστε μια ημέρα που δόθηκε θεραπεία με επιλογή «Λάθος δόση», ή προσθέστε εδώ.', err_add: 'Προσθήκη λάθους δόσης', err_date: 'Ημερομηνία', err_dose: 'Δόση που δόθηκε (Gy)',
+      err_need_delivered: 'Εκείνη την ημέρα δεν δόθηκε κλάσμα. Κλάσμα που δεν δόθηκε σημειώνεται ως χαμένη ημέρα.', extra_missed: 'Η ημέρα είναι σημειωμένη ως χαμένη. Αφαιρέστε πρώτα τη σήμανση.',
+      pc_title: 'Προηγούμενη αντιστάθμιση', pc_on: 'Μια προηγούμενη αντιστάθμιση άλλαξε το υπόλοιπο της θεραπείας', pc_from: 'Από (πρώτο κλάσμα με αλλαγή)', pc_n: 'Κλάσματα από εκείνη την ημέρα', pc_d: 'Δόση ανά κλάσμα (Gy)',
+      pc_hint: 'Για παράδειγμα «από 9/11, 11 × 2.45 Gy αντί 14 × 2 Gy». Τα κλάσματα από εκείνη την ημέρα μετρούν με τη νέα δόση. Οι στόχοι μένουν αυτοί της αρχικής συνταγογράφησης.',
+      intr_n: 'Διακοπές', intr_total: 'συνολική παράταση χωρίς αντιστάθμιση',
+      sheet_btn: 'Φύλλο για τεχνολόγους (PDF)', sheet_title: 'Φύλλο θεραπείας για τεχνολόγους', sheet_schedule: 'Σχήμα', sheet_to_give: 'προς χορήγηση',
+      sheet_newdose: 'Νέα δόση ανά κλάσμα', sheet_replan: 'Πριν από το πρώτο από αυτά τα κλάσματα πρέπει να εγκριθεί κλιμακωμένο ή νέο πλάνο στο TPS.',
+      sheet_bid: 'Δύο κλάσματα σε κάποιες ημέρες: τουλάχιστον {h} ώρες μεταξύ τους.', sheet_weekend: 'Θεραπεία το Σαββατοκύριακο στις σημειωμένες ημέρες.', sheet_same: 'Ίδιο πλάνο και ίδια δόση ανά κλάσμα· αλλάζουν μόνο οι ημερομηνίες.',
+      sheet_bt: 'βραχυθεραπεία (όχι στον γραμμικό)', sheet_sat: 'Σάββατο', sheet_sun: 'Κυριακή', sheet_second: '≥ {h} ώρες μετά το 1ο', sheet_first_new: 'πρώτο κλάσμα με τη νέα δόση',
+      sheet_s1: '1ο από 2', sheet_s2: '2ο από 2', sheet_session: 'Συνεδρία', sheet_dose: 'Δόση ανά κλάσμα', sheet_note: 'Σημείωση', sheet_given: 'Δόθηκε (ώρα)', sheet_init: 'Μονογραφή',
+      sheet_by_phys: 'Υπολογισμός (φυσικός)', sheet_by_md: 'Έγκριση (ακτινοθεραπευτής)', sheet_by_rt: 'Παραλαβή (τεχνολόγος)',
+      sheet_foot: 'Οι ημερομηνίες και οι δόσεις είναι του σχήματος που επιλέχθηκε στο RTGap και εγκρίθηκε από τον θεράποντα ιατρό. Σε νέα διακοπή ενημερώστε τον φυσικό πριν από το επόμενο κλάσμα.',
+      proto_title: 'Πρωτόκολλο τμήματος', proto_none: 'κανένα', proto_unnamed: 'Πρωτόκολλο τμήματος', proto_name: 'Όνομα πρωτοκόλλου', proto_name_ph: 'π.χ. Ακτινοθεραπευτικό τμήμα, μόνο καθημερινές',
+      proto_none_hint: 'Αποθηκεύστε τις παρακάτω ρυθμίσεις ως προεπιλογή του τμήματος: κάθε νέο περιστατικό θα ξεκινά από αυτές. Το αρχείο πρωτοκόλλου μοιράζεται με συναδέλφους και χρησιμοποιείται και από τη γραμμή εντολών Python.',
+      proto_matches: 'Το περιστατικό χρησιμοποιεί τις ρυθμίσεις του πρωτοκόλλου.', proto_differs: 'Το περιστατικό διαφέρει από το πρωτόκολλο', proto_apply: 'χρήση των ρυθμίσεων του πρωτοκόλλου',
+      proto_save: 'Αποθήκευση ως πρωτόκολλο τμήματος', proto_update: 'Ενημέρωση πρωτοκόλλου', proto_export: 'Εξαγωγή αρχείου πρωτοκόλλου', proto_import: 'Εισαγωγή αρχείου πρωτοκόλλου', proto_rm: 'Αφαίρεση πρωτοκόλλου',
+      proto_saved: 'Το πρωτόκολλο τμήματος αποθηκεύτηκε σε αυτή τη συσκευή.', proto_removed: 'Το πρωτόκολλο αφαιρέθηκε: τα νέα περιστατικά ξεκινούν από τις προεπιλογές του εργαλείου.', proto_loaded: 'Το πρωτόκολλο φορτώθηκε.', proto_ignored: 'αγνοήθηκαν', proto_fail: 'Το αρχείο δεν είναι αρχείο πρωτοκόλλου (JSON).',
+      proto_site_save: 'Αποθήκευση ως τιμές τμήματος για τον εντοπισμό', proto_site_rm: 'Αφαίρεση τιμών τμήματος', proto_site_saved: 'Οι τιμές τμήματος αποθηκεύτηκαν για αυτόν τον εντοπισμό.',
+      proto_site_note: 'Το πρωτόκολλο του τμήματος έχει δικές του τιμές για αυτόν τον εντοπισμό: χρησιμοποιούνται όποτε επιλέγεται.', site_defaults_dept: 'Τιμές τμήματος',
       m_missed: 'Χαμένη', m_unavail: 'Μηχάνημα εκτός', m_chemo: 'Χημειοθεραπεία', m_closed: 'Επιπλέον αργία',
       resume: 'Επανέναρξη θεραπείας', resume_auto: 'η επομένη του τελευταίου χαμένου κλάσματος', scen: 'Άγνωστη ημερομηνία επισκευής: σύγκριση πιθανών ημερών επανέναρξης', scen_days: 'Ημέρες προς έλεγχο',
       lg_delivered: 'χορηγήθηκε', lg_missed: 'χάθηκε', lg_planned: 'προγραμματισμένη', lg_new: 'νέο κλάσμα', lg_bid: 'δύο κλάσματα', lg_holiday: 'αργία / κλειστά', lg_unavail: 'εκτός λειτουργίας', lg_chemo: 'χημειοθ.', lg_end: 'προγρ. τελευταία ημέρα',
@@ -119,7 +165,9 @@
         tk: ['Χρόνος έναρξης T_k', 'Η ημέρα, μετρώντας από την αρχή της θεραπείας, μετά την οποία θεωρείται ότι ξεκινά ο επιταχυνόμενος επαναπληθυσμός (28 ημέρες στις γενικές τιμές του RCR). Πριν από το T_k η παράταση δεν κοστίζει στον όγκο σε αυτό το μοντέλο.'],
         repair: ['Χρόνος ημιζωής επιδιόρθωσης T½', 'Πόσο γρήγορα ένας ιστός επιδιορθώνει την υποθανατηφόρο βλάβη μεταξύ δύο κλασμάτων της ίδιας ημέρας. Με μεγάλους χρόνους (περίπου 4 ώρες για τις όψιμες επιδράσεις) οι 6 ώρες δεν αρκούν για πλήρη επιδιόρθωση, οπότε το BID αυξάνει τη δόση στους όψιμους ιστούς.'],
         eqd2: ['EQD2', 'Η ολική δόση σε κλάσματα των 2 Gy που θα είχε το ίδιο βιολογικό αποτέλεσμα. Για τον όγκο διορθώνεται και για τον επαναπληθυσμό (EQD2_T). Οι πίνακες δείχνουν τη μεταβολή έναντι του αρχικού πλάνου.'],
-        peak7: ['Δόση αιχμής 7 ημερών', 'Η μεγαλύτερη EQD2 που δίνεται σε 7 συνεχόμενες ημέρες: απλός δείκτης της έντασης της θεραπείας για τις οξείες αντιδράσεις, όπως η βλεννογονίτιδα. Είναι δείκτης του εργαλείου, όχι μέγεθος του RCR.'] }, dev: 'Ανάπτυξη', lic: 'Ανοιχτό λογισμικό με άδεια GNU AGPL-3.0. Εμπορικές άδειες διατίθενται από τον δημιουργό.', src: 'Πηγαίος κώδικας',
+        peak7: ['Δόση αιχμής 7 ημερών', 'Η μεγαλύτερη EQD2 που δίνεται σε 7 συνεχόμενες ημέρες: απλός δείκτης της έντασης της θεραπείας για τις οξείες αντιδράσεις, όπως η βλεννογονίτιδα. Είναι δείκτης του εργαλείου, όχι μέγεθος του RCR.'],
+        proto: ['Πρωτόκολλο τμήματος', 'Οι μόνιμες ρυθμίσεις του τμήματος: ποιες ημέρες και μέθοδοι είναι διαθέσιμες, η στρογγυλοποίηση δόσης, τυχόν ανοχές, και δικές του ραδιοβιολογικές τιμές ανά εντοπισμό. Φυλάσσεται σε αυτή τη συσκευή και αποτελεί την αφετηρία κάθε νέου περιστατικού. Το αρχείο περιστατικού περιέχει πάντα τις τιμές που χρησιμοποιήθηκαν, ώστε να ξαναϋπολογίζεται και χωρίς το πρωτόκολλο.'],
+        hist: ['Πολλές διακοπές και λάθη δόσης', 'Το RCR μετρά την παράταση σε όλη τη θεραπεία, από την αρχική ημερομηνία λήξης, γι’ αυτό σημειώνονται και οι προηγούμενες διακοπές. Ένα λάθος δόσης διορθώνεται με τη μέθοδο Joiner: η υπόλοιπη δόση και το μέγεθος κλάσματος επιλέγονται ώστε η ολική δόση και το άθροισμα των τετραγώνων των δόσεων ανά κλάσμα να είναι όσα σχεδιάστηκαν, κάτι που επαναφέρει μαζί όλους τους ιστούς για οποιοδήποτε α/β (ακριβώς χωρίς παράγοντα χρόνου και ατελή επιδιόρθωση· ο αριθμός κλασμάτων στρογγυλοποιείται).'] }, dev: 'Ανάπτυξη', lic: 'Ανοιχτό λογισμικό με άδεια GNU AGPL-3.0. Εμπορικές άδειες διατίθενται από τον δημιουργό.', src: 'Πηγαίος κώδικας',
       repair: 'T½ επιδιόρθωσης (ώρες)', bt_ratio: 'Λόγος δόσης βραχυθ.', brachy: 'Το σχήμα περιλαμβάνει βραχυθεραπεία (HDR)', brachy_hint: 'Σταθερές ημερομηνίες και δόσεις. Το κύριο επίπεδο παίρνει ολόκληρη τη δόση, τα άλλα επίπεδα καμία, κάθε όργανο τον δικό του λόγο δόσης βραχυθεραπείας. Τις ημέρες αυτές δεν προγραμματίζεται εξωτερική ακτινοθεραπεία, και μετρούν στον συνολικό χρόνο. Αν οι ημερομηνίες αλλάξουν, δώστε τις νέες.', bt_date: 'Ημερομηνία', bt_dose: 'Δόση (Gy)', add_bt: 'Προσθήκη κλάσματος', lg_bt: 'βραχυθεραπεία',
       ratio_hint: 'Με πολλές φάσεις, ο λόγος δόσης δίνεται ανά φάση ως 0.9/0.1. Ο T½ επιδιόρθωσης ισχύει μεταξύ δύο κλασμάτων της ίδιας ημέρας· αφήστε τον κενό για πλήρη επιδιόρθωση.',
       generic_note: 'Πρόκειται για τις γενικές τιμές του RCR, που προέρχονται κυρίως από δεδομένα κεφαλής-τραχήλου. Για αυτόν τον εντοπισμό είναι παραδοχή προς έλεγχο.',
@@ -247,6 +295,8 @@
       } else if (b === 'extended') s = el ? 'Παράταση ' + sgi(x.ext) + ' ημ., ' + x.k + ' κλ., νέα d' : 'Prolongation ' + sgi(x.ext) + ' d, ' + x.k + ' fx, new d';
       else if (b === 'extra') s = el ? 'Παράταση ' + sgi(x.ext) + ' ημ., +' + x.extra + ' κλ. στην προγρ. δόση' : 'Prolongation ' + sgi(x.ext) + ' d, +' + x.extra + ' fx at the planned dose';
       else if (b === 'custom') s = (el ? 'Δοθέν σχήμα' : 'Entered schedule') + ': ' + o.nNew + ' × ' + o.d.toFixed(2) + ' Gy';
+      else if (b === 'error') s = (el ? 'Διόρθωση λάθους δόσης (Joiner' + (x.near ? ', πλησιέστερο n' : '') + '): ' + x.n + ' κλ.' : 'Dose error corrected (Joiner' + (x.near ? ', nearest n' : '') + '): ' + x.n + ' fx') + (acc[x.cal] ? ', ' + acc[x.cal] : '');
+      else if (b === 'err_keep') s = el ? 'Λάθος δόσης: ' + x.k + ' κλ., νέα d' : 'Dose error: ' + x.k + ' fx, new d';
       else s = o.key;
       if (x.match === 'tumour') s += el ? ' · ισοδύναμο για τον όγκο' : ' · tumour-matched';
       if (x.match === 'late') s += el ? ' · ισοδύναμο για ' + x.lateName : ' · matched to ' + x.lateName;
@@ -268,8 +318,10 @@
         same_end: el ? 'Λιγότερα και μεγαλύτερα κλάσματα μέχρι την προγραμματισμένη λήξη' : 'Fewer, larger fractions up to the planned end date',
         extended: el ? 'Αποδοχή της παράτασης και αύξηση της d' : 'Accept the prolongation and raise d',
         custom: el ? 'Σχήμα που έδωσε ο χρήστης' : 'Schedule entered by the user',
-        extra: el ? 'Επιπλέον κλάσματα στην προγραμματισμένη d, όταν ο χρόνος δεν μπορεί να κρατηθεί' : 'Extra fractions at the planned d, when the overall time cannot be kept' };
-      const refs = { baseline: [], weekend: ['RCR19'], bid: ['RCR19'], weekend_bid: ['RCR19'], accel_dose: ['RCR19', 'DALE'], same_end: ['BCR', 'RCR19'], extended: ['RCR19', 'DALE'], extra: ['RCR19'] };
+        extra: el ? 'Επιπλέον κλάσματα στην προγραμματισμένη d, όταν ο χρόνος δεν μπορεί να κρατηθεί' : 'Extra fractions at the planned d, when the overall time cannot be kept',
+        error: o.strategy === 'joiner' ? (el ? 'Joiner: η υπόλοιπη δόση και το μέγεθος κλάσματος επαναφέρουν μαζί όλους τους ιστούς (BCR εξ. 9.3–9.4)' : 'Joiner: the remaining dose and fraction size bring every tissue back together (BCR eq. 9.3–9.4)')
+          : (el ? 'Ίδιος αριθμός κλασμάτων, d για τον έναν ιστό' : 'Same number of fractions, d solved for one tissue') };
+      const refs = { baseline: [], weekend: ['RCR19'], bid: ['RCR19'], weekend_bid: ['RCR19'], accel_dose: ['RCR19', 'DALE'], same_end: ['BCR', 'RCR19'], extended: ['RCR19', 'DALE'], extra: ['RCR19'], error: ['JOINER', 'BCR'] };
       return { text: m[o.family] || '', refs: refs[o.family] || [] };
     }
     function reason(w) {
@@ -297,6 +349,8 @@
         w_large_d: el ? 'd ≥ 6 Gy: η προέκταση του μοντέλου LQ σε μεγάλες δόσεις ανά κλάσμα είναι αβέβαιη.' : 'd ≥ 6 Gy: the LQ model is uncertain at large doses per fraction.',
         w_scale: () => el ? 'Το μέγεθος κλάσματος αυξάνεται κατά ' + p.pct.toFixed(0) + ' %: το αποτέλεσμα εξαρτάται έντονα από τα α/β.' : 'Fraction size rises by ' + p.pct.toFixed(0) + ' %: the result depends strongly on the α/β values.',
         w_replan: el ? 'Η δόση ανά κλάσμα αλλάζει: το πλάνο πρέπει να κλιμακωθεί ή να ξανασχεδιαστεί στο TPS (MU, κανονικοποίηση, όρια OAR) και να ελεγχθεί ανεξάρτητα.' : 'The dose per fraction changes: the plan must be rescaled or re-planned in the TPS (MU, normalisation, OAR constraints) and checked independently.',
+        w_err_uncorrected: el ? 'Κρατά τη δόση ανά κλάσμα: το λάθος δόσης δεν διορθώνεται.' : 'Keeps the dose per fraction: the dose error is not corrected.',
+        w_joiner_multi: el ? 'Η διόρθωση Joiner είναι ακριβής μόνο για το επίπεδο αναφοράς· τα άλλα επίπεδα κλιμακώνονται μαζί του (δείτε τον πίνακα).' : 'The Joiner correction is exact for the reference level only; the other levels scale with it (see the table).',
         w_over_allowance: () => el ? 'Παράταση ' + p.ext + ' ημ. πάνω από το επιτρεπτό (' + p.max + ' ημ.)' + (p.cat ? ' της κατηγορίας ' + p.cat : '') + '.' : 'Prolongation of ' + p.ext + ' d exceeds the allowance (' + p.max + ' d)' + (p.cat ? ' of category ' + p.cat : '') + '.',
       };
       const v = m[w.code]; return typeof v === 'function' ? v() : (v || w.code);
@@ -304,8 +358,18 @@
     function trace(s) {
       const p = s.p || {};
       const m = {
+        t_multi: () => (el ? p.list.length + ' διακοπές στη θεραπεία (' : p.list.length + ' interruptions in this course (') + p.list.map((x) => dshort(x[0]) + (x[1] !== x[0] ? '–' + dshort(x[1]) : '') + ': ' + x[2] + (el ? ' ημ.' : ' d')).join(', ') + (el ? '). Η παράταση μετρά σε όλη τη θεραπεία, από την αρχική ημερομηνία λήξης.' : '). The prolongation is counted over the whole course, from the original end date.'),
+        t_plan_change: () => el ? 'Από ' + dshort(p.from) + ' το πλάνο άλλαξε σε ' + p.n + ' × ' + p.d + ' Gy (προηγούμενη αντιστάθμιση)· οι στόχοι μένουν της αρχικής συνταγογράφησης.' : 'From ' + dshort(p.from) + ' the plan was changed to ' + p.n + ' × ' + p.d + ' Gy (earlier compensation); the targets remain those of the original prescription.',
+        t_err: () => (el ? 'Λάθος δόσης σε ' + p.n + (p.n === 1 ? ' κλάσμα: ' : ' κλάσματα: ') + sg(p.dphys, 2) + ' Gy στο επίπεδο αναφοράς· EQD2 ' : 'Dose error on ' + p.n + (p.n === 1 ? ' delivered fraction: ' : ' delivered fractions: ') + sg(p.dphys, 2) + ' Gy to the reference level; EQD2 ') + (p.tname || (el ? 'όγκου' : 'tumour')) + ' ' + sg(p.t, 2) + ' Gy' + (p.lname ? ', ' + p.lname + ' ' + sg(p.l, 2) + ' Gy' : '') + (el ? ' (χωρίς παράγοντα χρόνου).' : ' (no time factor).'),
+        t_err_over: el ? 'Η δόση που δόθηκε φτάνει ήδη το συνολικό στόχο: το λάθος δεν διορθώνεται με τα υπόλοιπα κλάσματα. Κλινική απόφαση.' : 'The delivered dose already reaches the intended total: the error cannot be corrected with the remaining fractions. Clinical decision.',
+        t_err_small: el ? 'Η διόρθωση Joiner είναι μικρότερη από τη στρογγυλοποίηση της δόσης: τα υπόλοιπα κλάσματα μένουν ως έχουν.' : 'The Joiner correction is smaller than the dose rounding: the remaining fractions stay as planned.',
+        t_err_sabr: el ? 'Κανόνας εντοπισμού: χωρίς τροποποιημένο σχήμα (SABR)· το λάθος δόσης χρειάζεται κλινική απόφαση.' : 'Site rule: no modified scheduling (SABR); the dose error needs a clinical decision.',
+        t_err_pick: () => el ? 'Διόρθωση Joiner: «' + optTitle(p.o) + '» φέρνει μαζί όλους τους ιστούς στη δόση που σχεδιάστηκε (η στρογγυλοποίηση του n αφήνει τις μικρές διαφορές του πίνακα) και κρατά την παράταση στις ' + p.o.ext + ' ημ. (≤ ιδανικό ' + p.ideal + ' ημ.).' : 'Joiner correction: "' + optTitle(p.o) + '" brings every tissue back to the intended dose together (rounding n leaves the small differences in the table) and keeps the prolongation at ' + p.o.ext + ' d (≤ ideal ' + p.ideal + ' d).',
+        t_err_pick_max: () => el ? 'Διόρθωση Joiner: «' + optTitle(p.o) + '» φέρνει μαζί όλους τους ιστούς στη δόση που σχεδιάστηκε, με παράταση ' + p.o.ext + ' ημ. (≤ μέγιστο ' + p.max + ' ημ.).' : 'Joiner correction: "' + optTitle(p.o) + '" brings every tissue back to the intended dose together, with a prolongation of ' + p.o.ext + ' d (≤ maximum ' + p.max + ' d).',
+        t_err_excl: () => (el ? 'Η διόρθωση Joiner αποκλείστηκε ή ξεπερνά το επιτρεπτό: ' : 'The Joiner correction is excluded or beyond the allowance: ') + p.reasons.map(reason).join('; ') + '.',
+        t_err_none: () => el ? 'Καμία διόρθωση Joiner δεν κρατά την παράταση εντός ' + p.max + ' ημ.' : 'No Joiner correction keeps the prolongation within ' + p.max + ' d.',
         t_nocat: el ? 'Χωρίς κατηγορία RCR: στόχος να κρατηθεί η προγραμματισμένη λήξη.' : 'No RCR category: the aim is to keep the planned end date.',
-        t_rules: () => (p.cat ? (el ? 'Κατηγορία RCR ' + p.cat : 'RCR category ' + p.cat) : (el ? 'Κανόνες περιστατικού' : 'Case rules')) + (el ? ': παράταση ιδανικά ≤ ' + p.ideal + ' ημ., το πολύ ≤ ' + p.max + ' ημ.' : ': prolongation ideally ≤ ' + p.ideal + ' d, at most ≤ ' + p.max + ' d') + (p.ott ? (el ? '· συνολικός χρόνος ≤ ' + p.ott + ' ημ.' : '; overall time ≤ ' + p.ott + ' d') : '') + '.',
+        t_rules: () => ((p.cat ? (el ? 'Κατηγορία RCR ' + p.cat : 'RCR category ' + p.cat) : (el ? 'Κανόνες περιστατικού' : 'Case rules')) + (el ? ': παράταση ιδανικά ≤ ' + p.ideal + ' ημ., το πολύ ≤ ' + p.max + ' ημ.' : ': prolongation ideally ≤ ' + p.ideal + ' d, at most ≤ ' + p.max + ' d') + (p.ott ? (el ? '· συνολικός χρόνος ≤ ' + p.ott + ' ημ.' : '; overall time ≤ ' + p.ott + ' d') : '')).replace(/\.?$/, '.'),
         t_base: () => el ? 'Χωρίς αντιστάθμιση η θεραπεία λήγει ' + date(p.end) + ' (' + sgi(p.ext) + ' ημ.) και η EQD2 του όγκου αλλάζει κατά ' + sg(p.d) + ' Gy (' + sg(p.pct) + ' %).' : 'Without compensation the course ends ' + date(p.end) + ' (' + sgi(p.ext) + ' d) and the tumour EQD2 changes by ' + sg(p.d) + ' Gy (' + sg(p.pct) + ' %).',
         t_transfer: el ? 'Βλάβη μηχανήματος: το RCR συνιστά πρώτα θεραπεία την ίδια ημέρα σε αντίστοιχο (matched) μηχάνημα, αν υπάρχει.' : 'Machine fault: the RCR first advises treatment on a matched machine on the same day, if one is available.',
         t_notime: el ? 'Δεν έχει οριστεί παράγοντας χρόνου για τον όγκο: το μοντέλο δεν ποσοτικοποιεί την απώλεια από την παράταση. Το όριο της κατηγορίας εξακολουθεί να ισχύει.' : 'No time factor is set for this tumour: the model does not quantify the loss from prolongation. The category allowance still applies.',
@@ -333,6 +397,9 @@
         h_none: el ? 'Η παράταση είναι εντός του επιτρεπτού. Η θεραπεία συνεχίζεται ως έχει.' : 'The prolongation is within the allowance. Treatment continues unchanged.',
         h_none_within: () => el ? 'Παράταση ' + p.ext + ' ημ., εντός του επιτρεπτού. Η θεραπεία συνεχίζεται ως έχει.' : 'Prolongation of ' + p.ext + ' d, within the allowance. Treatment continues unchanged.',
         h_option: () => optTitle(p.o),
+        h_err_over: el ? 'Λάθος δόσης που δεν διορθώνεται με τα υπόλοιπα κλάσματα: κλινική απόφαση.' : 'A dose error that cannot be corrected with the remaining fractions: clinical decision.',
+        h_err_sabr: el ? 'Λάθος δόσης σε θεραπεία SABR: κλινική απόφαση.' : 'Dose error in a SABR course: clinical decision.',
+        h_err_clinical: el ? 'Λάθος δόσης μαζί με παράταση: κλινική απόφαση μεταξύ των επιλογών.' : 'Dose error together with a prolongation: clinical decision between the options.',
         h_tox: el ? 'Διακοπή λόγω οξείας τοξικότητας: η αντιστάθμιση είναι κλινική απόφαση.' : 'Interruption due to acute toxicity: compensation is a clinical decision.',
         h_dose_decision: el ? 'Χρειάζεται αλλαγή μεγέθους κλάσματος: κλινική απόφαση μεταξύ των επιλογών.' : 'A change of fraction size is needed: clinical decision between the options.',
         h_clinical: el ? 'Καμία επιλογή δεν επαναφέρει τη δόση του όγκου χωρίς να αυξήσει τη δόση των όψιμων ιστών πέρα από την ανοχή.' : 'No option restores the tumour dose without raising the late-tissue dose beyond the tolerance.' };
@@ -347,6 +414,18 @@
         e_missed_before: () => el ? 'Η χαμένη ημέρα ' + date(p.d) + ' είναι πριν από την έναρξη της θεραπείας (' + date(p.start) + ').' : 'Missed day ' + date(p.d) + ' is before the start of treatment (' + date(p.start) + ').',
         e_resume_before: () => el ? 'Η επανέναρξη (' + date(p.r) + ') πρέπει να είναι μετά την τελευταία χαμένη ημέρα (' + date(p.m) + ').' : 'The resume date (' + date(p.r) + ') must be after the last missed day (' + date(p.m) + ').',
         e_resume_start: () => el ? 'Η επανέναρξη (' + date(p.r) + ') είναι πριν από την έναρξη της θεραπείας.' : 'The resume date (' + date(p.r) + ') is before the start of treatment.',
+        e_extra_after: () => el ? 'Το έξτρα κλάσμα της ' + date(p.d) + ' δεν είναι πριν από την επανέναρξη.' : 'The extra fraction on ' + date(p.d) + ' is not before the resume date.',
+        e_extra_missed: () => el ? 'Η ' + date(p.d) + ' είναι σημειωμένη και ως χαμένη και ως έξτρα κλάσμα.' : date(p.d) + ' is marked both missed and as an extra fraction.',
+        e_extra_three: () => el ? 'Περισσότερα από δύο κλάσματα στις ' + date(p.d) + '.' : 'More than two fractions on ' + date(p.d) + '.',
+        e_extra_before: () => el ? 'Το έξτρα κλάσμα της ' + date(p.d) + ' είναι πριν από την έναρξη της θεραπείας.' : 'The extra fraction on ' + date(p.d) + ' is before the start of treatment.',
+        e_pc_after: el ? 'Η αλλαγή πλάνου πρέπει να αρχίζει το αργότερο την ημέρα επανέναρξης.' : 'The plan change must start on or before the resume date.',
+        e_pc_bad: el ? 'Η αλλαγή πλάνου χρειάζεται αριθμό κλασμάτων ≥ 1 και δόση > 0.' : 'The plan change needs at least 1 fraction and a dose > 0.',
+        e_pc_late: el ? 'Η αλλαγή πλάνου αρχίζει μετά το τελευταίο συνταγογραφημένο κλάσμα.' : 'The plan change starts after the last prescribed fraction.',
+        e_pc_more: el ? 'Δόθηκαν περισσότερα κλάσματα από όσα έχει το αλλαγμένο πλάνο.' : 'More fractions were given than the changed plan has.',
+        e_more: el ? 'Δόθηκαν περισσότερα κλάσματα από όσα συνταγογραφήθηκαν.' : 'More fractions were given than prescribed.',
+        e_err_none: () => el ? 'Λάθος δόσης στις ' + date(p.d) + ': εκείνη την ημέρα δεν δόθηκε κλάσμα.' : 'Dose error on ' + date(p.d) + ': no fraction was given that day.',
+        e_err_zero: () => el ? 'Λάθος δόσης στις ' + date(p.d) + ': η δόση πρέπει να είναι > 0 (κλάσμα που δεν δόθηκε είναι χαμένη ημέρα).' : 'Dose error on ' + date(p.d) + ': the dose must be > 0 (a fraction that was not given is a missed day).',
+        v_err_large: () => el ? 'Λάθος δόσης στις ' + date(p.d) + ': ' + p.a + ' Gy είναι πάνω από 2.5 × τη σχεδιασμένη δόση (' + f2(p.i) + ' Gy). Ελέγξτε την τιμή· το LQ είναι αβέβαιο σε μεγάλες δόσεις.' : 'Dose error on ' + date(p.d) + ': ' + p.a + ' Gy is more than 2.5 × the intended ' + f2(p.i) + ' Gy. Check the value; LQ is uncertain at large doses.',
         e_ratio_neg: () => el ? p.name + ': ο λόγος δόσης δεν μπορεί να είναι αρνητικός.' : p.name + ': the dose ratio cannot be negative.',
         v_missed_closed: () => el ? 'Η ' + date(p.d) + ' είναι αργία: δεν ήταν ημέρα θεραπείας.' : date(p.d) + ' is a planned closure: it was never a treatment day.',
         v_missed_noplan: () => el ? 'Η ' + date(p.d) + ' δεν ήταν προγραμματισμένη ημέρα θεραπείας και δεν επηρεάζει τον υπολογισμό.' : date(p.d) + ' was not a planned treatment day and has no effect.',

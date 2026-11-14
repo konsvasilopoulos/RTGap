@@ -13,7 +13,17 @@ Families of candidates (RCR 2019 order of consideration):
 * ``same_end``     planned end date kept, fewer and larger fractions
 * ``extended``     prolongation accepted, d raised
 * ``extra``        prolongation accepted, extra fractions at the planned d
+* ``error``        a delivered dose differed from the plan: Joiner correction of
+                   the remaining fractions, on the regular or an accelerated calendar
 * ``baseline``     no compensation
+
+Treatment history: every interruption of the course is entered as missed
+dates (earlier ones too, so the prolongation is counted over the whole
+course from the original end date). Fractions given outside the planned
+calendar (a Saturday, a second fraction on a day), delivered fractions with
+a wrong dose, and an earlier compensation that changed the rest of the
+course (``plan_change``) are entered so that the delivered course is the
+real one.
 
 Dose-solved candidates come in two variants: ``match_tumour`` (restore the
 planned time-corrected tumour EQD2) and ``match_late`` (keep the first
@@ -23,6 +33,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as dt
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Sequence
 
@@ -33,7 +44,8 @@ from .tissues import Tissue
 
 ONE_DAY = dt.timedelta(days=1)
 
-__all__ = ["Phase", "Prescription", "Constraints", "CaseRules", "GapPlanner", "Option", "TissueResult"]
+__all__ = ["Phase", "Prescription", "Constraints", "CaseRules", "GapPlanner", "Option", "TissueResult", "DoseError",
+           "allocate_phases"]
 
 
 @dataclass
@@ -247,6 +259,42 @@ class Option:
         return max((r.delta_pct for r in self.oars), default=0.0)
 
 
+def allocate_phases(phases: Sequence[int], m: int) -> list[int]:
+    """Spread the phase sequence ``phases`` (one entry per planned fraction) over ``m`` fractions.
+
+    Same length: unchanged. Longer: the extra fractions repeat the last phase.
+    Shorter: fractions are shared between the phases in proportion (largest
+    remainder), keeping their order.
+    """
+    k = len(phases)
+    if m == k:
+        return list(phases)
+    if m > k:
+        return list(phases) + [phases[-1] if phases else 0] * (m - k)
+    order: list[int] = []
+    counts: dict[int, int] = {}
+    for ph in phases:
+        if ph not in counts:
+            counts[ph] = 0
+            order.append(ph)
+        counts[ph] += 1
+    exact = {ph: counts[ph] * m / k for ph in order}
+    alloc = {ph: int(exact[ph]) for ph in order}
+    left = m - sum(alloc.values())
+    for ph in sorted(order, key=lambda x: exact[x] - alloc[x], reverse=True)[:left]:
+        alloc[ph] += 1
+    return [ph for ph in sorted(order) for _ in range(alloc[ph])]
+
+
+@dataclass
+class DoseError:
+    """A delivered fraction whose dose differed from the intended dose (reference level, Gy)."""
+    date: dt.date
+    slot: int
+    intended: float
+    actual: float
+
+
 class GapPlanner:
     def __init__(self, prescription: Prescription, tumour: Tissue | Sequence[Tissue], oars: Sequence[Tissue],
                  missed_dates: Iterable = (), resume_date: dt.date | None = None,
@@ -254,10 +302,20 @@ class GapPlanner:
                  unavailable_dates: Iterable[dt.date] = (),
                  constraints: Constraints | None = None,
                  rules: CaseRules | None = None, category: int | None = None,
-                 brachy: Sequence[tuple[dt.date, float]] = ()):
+                 brachy: Sequence[tuple[dt.date, float]] = (),
+                 extra_delivered: Iterable[dt.date] = (),
+                 dose_errors: Sequence[tuple[dt.date, int, float]] = (),
+                 plan_change: tuple[dt.date, int, float] | None = None):
+        """``extra_delivered``: dates on which a fraction was given outside the planned calendar (a
+        non-treatment day, or a second fraction on a day that already had one). ``dose_errors``:
+        ``(date, slot, dose)`` of delivered fractions whose dose differed from the intended one (dose
+        to the reference level; every level scales with it). ``plan_change``: ``(from_date, n, d)``,
+        an earlier compensation: from that date the rest of the course was n fractions with the
+        reference dose d (the first fraction on ``from_date`` included)."""
         self._init = dict(prescription=prescription, tumour=tumour, oars=oars, missed_dates=missed_dates,
                           resume_date=resume_date, delivered=delivered, unavailable_dates=unavailable_dates,
-                          constraints=constraints, rules=rules, category=category, brachy=brachy)
+                          constraints=constraints, rules=rules, category=category, brachy=brachy,
+                          extra_delivered=extra_delivered, dose_errors=dose_errors, plan_change=plan_change)
         self.rx = rx = prescription
         self.input_warnings: list[str] = []
         self.oars = list(oars)
@@ -294,24 +352,93 @@ class GapPlanner:
         self.missed = sorted(set(missed_dates))
         self.planned = rx.planned_fractions()
         self.unavailable = frozenset(unavailable_dates) | rx.closed_dates
+        self.extra_dates = sorted(extra_delivered)
+        errs_in = sorted((d, int(sl), float(x)) for d, sl, x in dose_errors)
+        self.plan_change = plan_change
 
         if resume_date is None:
-            resume_date = (self.missed[-1] + ONE_DAY) if self.missed else self.planned[-1].date + ONE_DAY
+            last = [self.missed[-1]] if self.missed else []
+            last += [d for d, _, _ in errs_in] + self.extra_dates
+            resume_date = (max(last) + ONE_DAY) if last else self.planned[-1].date + ONE_DAY
         self.resume = resume_date
 
+        n_total = rx.n_fractions
+        seq = [rx.phase_of(i) for i in range(n_total)]      # phase of the i-th fraction given
+        self.s0 = 1.0                                       # current scale of the plan (after an earlier change)
+        pc_from, pc_alloc, pc_scale = None, None, 1.0
         if delivered is None:
             missed = set(self.missed)
             dates = [f.date for f in self.planned if f.date < self.resume and f.date not in missed]
-            # the i-th fraction actually given belongs to the phase of the i-th planned fraction
-            delivered = [Fraction(d, 0, rx.ref_dose(rx.phase_of(i)), rx.phase_of(i)) for i, d in enumerate(dates)]
+            slots = [(d, 0) for d in dates]
+            have = set(dates)
+            for d in self.extra_dates:
+                if d >= self.resume:
+                    raise ValueError(f"extra fraction on {d.isoformat()} is not before the resume date")
+                if d in missed:
+                    raise ValueError(f"{d.isoformat()} is marked both missed and as an extra fraction")
+                sl = 1 if d in have else 0
+                if (d, sl) in slots:
+                    raise ValueError(f"more than two fractions on {d.isoformat()}")
+                slots.append((d, sl)); have.add(d)
+            slots.sort()
+            if plan_change is not None:
+                pc_from, pc_n, pc_d = plan_change
+                if pc_from > self.resume:
+                    raise ValueError("the plan change must start on or before the resume date")
+                if pc_n < 1 or pc_d <= 0:
+                    raise ValueError("the plan change needs n >= 1 and d > 0")
+                i0 = sum(1 for d, _ in slots if d < pc_from)
+                if i0 >= n_total:
+                    raise ValueError("the plan change starts after the last prescribed fraction")
+                pc_alloc = allocate_phases(seq[i0:], int(pc_n))
+                pc_scale = float(pc_d) / rx.ref_dose(pc_alloc[0])
+                seq = seq[:i0] + pc_alloc
+                if len(slots) > len(seq):
+                    raise ValueError("more fractions delivered than in the changed plan")
+            elif len(slots) > n_total:
+                raise ValueError("more fractions delivered than prescribed")
+            delivered = []
+            for i, (d, sl) in enumerate(slots):
+                ph = seq[i]
+                sc = pc_scale if (pc_from is not None and d >= pc_from) else 1.0
+                delivered.append(Fraction(d, sl, sc * rx.ref_dose(ph), ph))
         self.delivered = sorted(delivered)
         if any(f.date >= self.resume for f in self.delivered):
             raise ValueError("delivered fractions must be before the resume date")
-        self.remaining = rx.n_fractions - len(self.delivered)
-        if self.remaining < 0:
-            raise ValueError("more fractions delivered than prescribed")
-        self.remaining_phases = [rx.phase_of(i) for i in range(len(self.delivered), rx.n_fractions)]
+
+        # dose errors: replace the dose of the delivered fraction, keep what was intended
+        self.dose_errors: list[DoseError] = []
+        if errs_in:
+            idx = {(f.date, f.slot): i for i, f in enumerate(self.delivered)}
+            for d, sl, x in errs_in:
+                if (d, sl) not in idx:
+                    raise ValueError(f"dose error on {d.isoformat()}: no fraction was delivered that day")
+                if x <= 0:
+                    raise ValueError(f"dose error on {d.isoformat()}: the delivered dose must be > 0 "
+                                     "(a fraction that was not given is a missed date)")
+                i = idx[(d, sl)]
+                f = self.delivered[i]
+                if abs(x - f.dose) > 1e-9:
+                    self.dose_errors.append(DoseError(d, sl, f.dose, x))
+                self.delivered[i] = f.with_dose(x)
+        self.delivered_intended = list(self.delivered)
+        for e in self.dose_errors:
+            i = next(j for j, f in enumerate(self.delivered) if (f.date, f.slot) == (e.date, e.slot))
+            self.delivered_intended[i] = self.delivered[i].with_dose(e.intended)
+
+        if pc_alloc is not None:
+            self.s0 = pc_scale
+            done = len(self.delivered)
+            self.remaining = len(seq) - done
+            self.remaining_phases = seq[done:]
+        else:
+            self.remaining = rx.n_fractions - len(self.delivered)
+            if self.remaining < 0:
+                raise ValueError("more fractions delivered than prescribed")
+            self.remaining_phases = [rx.phase_of(i) for i in range(len(self.delivered), rx.n_fractions)]
         self.d_ref = rx.ref_dose(self.remaining_phases[0]) if self.remaining_phases else rx.ref_dose(0)
+        self.d_cur = self.s0 * self.d_ref
+        self.interruptions = self._interruptions()
 
         bi = self.c.bid_interval_h
         self.planned_course = sorted(self.planned + self.fixed)
@@ -319,6 +446,42 @@ class GapPlanner:
         self.planned_tumour = self.planned_levels[0]
         self.planned_oars = [o.eqd2(self.planned_course, bi) for o in self.oars]
         self.planned_weekly = self.weekly_peak(self.planned_course)
+
+    @property
+    def has_dose_error(self) -> bool:
+        return bool(self.dose_errors)
+
+    def _interruptions(self) -> list[tuple[dt.date, dt.date, int]]:
+        """Missed planned treatment days grouped into interruptions: (first, last, number of days).
+        Two missed days belong to the same interruption when no fraction was given between them."""
+        given = sorted({f.date for f in self.delivered})
+        planned = {f.date for f in self.planned}
+        days = [d for d in self.missed if d in planned]
+        out: list[list] = []
+        for d in days:
+            if out and not any(out[-1][1] < g < d for g in given):
+                out[-1][1] = d; out[-1][2] += 1
+            else:
+                out.append([d, d, 1])
+        return [tuple(x) for x in out]
+
+    def error_effect(self, tissue: Tissue) -> float:
+        """EQD2 (no time factor) delivered to ``tissue`` minus what was intended, over the delivered fractions."""
+        bi = self.c.bid_interval_h
+        return lq.eqd2_from_bed(tissue.bed_without_time(self.delivered, bi) - tissue.bed_without_time(self.delivered_intended, bi),
+                                tissue.alpha_beta)
+
+    def joiner_target(self) -> tuple[float, float] | None:
+        """Generalised Joiner correction (BCR eq. 9.3–9.4) for the remaining fractions, on the reference
+        level: the linear and quadratic dose sums still to give, L = Σd and Q = Σd², so that the whole
+        course has the sums of the intended course (delivered as intended + the current plan). Equal
+        fractions then need n = L²/Q, d = Q/L. None if no positive solution exists."""
+        rest = [self.s0 * self.rx.ref_dose(ph) for ph in self.remaining_phases]
+        L = sum(rest) + sum(e.intended - e.actual for e in self.dose_errors)
+        Q = sum(x * x for x in rest) + sum(e.intended ** 2 - e.actual ** 2 for e in self.dose_errors)
+        if L <= 1e-9 or Q <= 1e-12:
+            return None
+        return L, Q
 
     def weekly_peak(self, fractions: Sequence[Fraction]) -> float:
         """Peak dose accumulation: the largest EQD2 of the primary level (tumour alpha/beta, no time
@@ -441,30 +604,10 @@ class GapPlanner:
     # ------------------------------------------------------------------ #
     # dose solving
     def _assign(self, slots: Sequence[Fraction]) -> list[Fraction]:
-        """Give each new slot the phase it delivers (in date order).
-
-        Same number of fractions as remaining: the planned phase sequence.
-        More (extra fractions): the extra ones repeat the last phase.
-        Fewer (same end date): fractions are shared between the remaining
-        phases in proportion, keeping their order.
-        """
+        """Give each new slot the phase it delivers (in date order), see :func:`allocate_phases`."""
         slots = sorted(slots)
-        m, k = len(slots), self.remaining
-        rp = self.remaining_phases
-        if m == k:
-            phases = list(rp)
-        elif m > k:
-            last = rp[-1] if rp else len(self.rx.phases) - 1
-            phases = list(rp) + [last] * (m - k)
-        else:
-            counts: dict[int, int] = {}
-            for ph in rp:
-                counts[ph] = counts.get(ph, 0) + 1
-            exact = {ph: c * m / k for ph, c in counts.items()}
-            alloc = {ph: int(v) for ph, v in exact.items()}
-            for ph in sorted(exact, key=lambda x: exact[x] - alloc[x], reverse=True)[: m - sum(alloc.values())]:
-                alloc[ph] += 1
-            phases = [ph for ph in sorted(alloc) for _ in range(alloc[ph])]
+        rp = self.remaining_phases or [len(self.rx.phases) - 1]
+        phases = allocate_phases(rp, len(slots))
         return [s.with_phase(ph, self.rx.ref_dose(ph)) for s, ph in zip(slots, phases)]
 
     def _course_s(self, slots: Sequence[Fraction], scale: float) -> list[Fraction]:
@@ -555,7 +698,7 @@ class GapPlanner:
         """Every candidate schedule (no filtering). See :func:`rtgap.decide.decide`."""
         if self.remaining == 0:
             return []
-        d0 = self.d_ref
+        d0 = self.d_cur
         k = self.remaining
         out: list[Option] = []
 
@@ -563,8 +706,10 @@ class GapPlanner:
         base = self.evaluate("none", "No compensation", "Continue at the planned d; accept the prolongation",
                              base_slots, d0, "keep_d", family="baseline")
         out.append(base)
+        if self.has_dose_error:
+            out += self._error_options()
         if base.extension_days <= 0:
-            return out
+            return _dedupe(out)
         short = base.tumour.delta < -0.005
 
         bi_h = self.c.bid_interval_h
@@ -602,6 +747,40 @@ class GapPlanner:
                 out.append(extra)
         return _dedupe(out)
 
+    def _error_options(self) -> list[Option]:
+        """Joiner correction of the remaining fractions: n = L²/Q rounded up (Joiner's rule, it spares
+        late tissues) and, if different, rounded to the nearest integer; d = L/n. Each on the regular
+        calendar and, if that overruns the planned end, with weekend days and/or BID (RCR order)."""
+        tgt = self.joiner_target()
+        if tgt is None:
+            return []
+        L, Q = tgt
+        n_exact = L * L / Q
+        n_up = max(1, math.ceil(n_exact - 1e-9))
+        n_near = max(1, int(math.floor(n_exact + 0.5)))
+        out: list[Option] = []
+        variants = [("", "", (False, False, False)), ("_sat", ", Saturdays", (True, False, False)),
+                    ("_satsun", ", Saturdays + Sundays", (True, True, False)), ("_bid", ", BID", (False, False, True)),
+                    ("_sat_bid", ", Saturdays + BID", (True, False, True)),
+                    ("_satsun_bid", ", Saturdays + Sundays + BID", (True, True, True))]
+        for n, stem, label0 in [(n_up, "err", "Joiner"), (n_near, "errn", "Joiner, nearest n")]:
+            if stem == "errn" and n_near == n_up:
+                continue
+            for suf, label, (sat, sun, bid) in variants:
+                slots = self.pattern_standard(n) if not suf else self.pattern_accelerated(n, sat, sun, bid)
+                ref = sum(f.dose for f in self._assign(slots))
+                exact = L / ref * self.d_ref
+                o = self.evaluate(stem + suf, f"Dose error corrected ({label0}): {n} fx{label}",
+                                  "Joiner: remaining dose and fraction size restore every tissue (BCR eq. 9.3–9.4)",
+                                  slots, self._round(exact), "joiner", exact, "error")
+                out.append(o)
+                if not suf and o.extension_days <= 0:
+                    break
+        k = self.remaining
+        out += self._matches("err_keep", "error", f"Dose error: {k} fx, d solved",
+                             "Same number of fractions, d solved for one tissue (BCR ch. 9)", self.pattern_standard(k))
+        return out
+
     def _extra_fractions_option(self, k: int, d0: float) -> Option | None:
         method = "Extra fractions at the planned d (RCR: when the overall time cannot be kept)"
         best = None
@@ -625,7 +804,7 @@ class GapPlanner:
         """User-defined pattern. ``strategy``: keep_d | match_tumour | match_late | dose."""
         slots = [Fraction(d, 0) for d in dates] + [Fraction(d, 1) for d in bid_dates_]
         if strategy == "keep_d":
-            return self.evaluate("custom", title, "User defined", slots, self.d_ref, "keep_d")
+            return self.evaluate("custom", title, "User defined", slots, self.d_cur, "keep_d")
         if strategy == "dose":
             if dose is None:
                 raise ValueError("strategy 'dose' needs a dose")

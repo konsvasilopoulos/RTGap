@@ -124,6 +124,9 @@ ul.notes { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 
 .cal .c.chemo::after { content: ""; position: absolute; right: 2px; top: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
 .cal .c.endmark { box-shadow: 0 0 0 2px var(--ink); }
 .cal .c.out { opacity: 0.45; }
+.cal .c.delivered.xtra { background: #5a3fa0; border-color: #5a3fa0; }
+.cal .c.errd { box-shadow: inset 0 0 0 2px var(--warn); }
+.cal .c.errd::before { content: "!"; position: absolute; left: 3px; top: 1px; font: 700 0.6rem/1 var(--f-num); color: var(--warn); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.76rem; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--line); }
 
@@ -208,3 +211,13 @@ details.fold[open] .fold-sum { display: none; }
 .dock.show { display: flex; }
 @media (min-width: 901px) { .dock { left: auto; right: 20px; bottom: 20px; width: auto; max-width: 560px; border-radius: 12px; box-shadow: 0 10px 30px rgba(5, 12, 30, 0.35); } }
 .split > * { min-width: 0; } .kv dd { overflow-wrap: anywhere; }
+
+details.sub { border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin: 10px 0 4px; }
+details.sub > summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+h3.mini { font: 600 0.85rem var(--f-body); margin: 12px 0 4px; color: var(--ink); }
+.intr { margin: 2px 0 8px; }
+
+.proto { border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+.proto-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.proto-head .pill { margin-left: auto; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font: inherit; text-decoration: underline; cursor: pointer; }

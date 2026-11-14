@@ -1,0 +1,21 @@
+# Head & neck 70 Gy / 35 fx with a treatment history:
+#  - a first interruption (Wed-Thu of week 2), caught up with a Saturday fraction,
+#  - fraction on Fri 30/10 delivered at 2.6 Gy instead of 2.0 Gy (dose error),
+#  - a second interruption now (machine fault, Wed-Thu of week 5).
+# RTGap counts the prolongation over the whole course and corrects the dose error
+# with the Joiner method on the calendar the department allows.
+title: "H&N 70/35 - two interruptions and a dose error"
+site: hn_scc
+prescription:
+  start: 2026-10-05
+  n_fractions: 35
+  dose_per_fraction: 2.0
+  holidays: GR
+gap:
+  missed_dates: [2026-10-14, 2026-10-15, 2026-11-04, 2026-11-05]
+  extra_delivered: [2026-10-17]
+  dose_errors:
+    - {date: 2026-10-30, dose: 2.6}
+  cause: machine
+constraints:
+  allow_sunday: false

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0 — 2026-11-14
+* Several interruptions in one course: the prolongation counts over the whole course; earlier
+  catch-up fractions (`extra_delivered`) and an earlier change of plan (`plan_change`) are entered.
+* Dose errors inside the gap workflow (`dose_errors`): generalised Joiner correction on the regular
+  or an accelerated calendar, with same-count alternatives; new decision branch and trace.
+* Resume-date scenarios start from the latest interruption and keep the earlier history.
+* Department protocol in the web app: save, export, import; per-site values; status of the case
+  against the protocol. Protocol files work with the Python command line.
+* Treatment sheet for radiographers (PDF).
+* Simpler header; advanced inputs fold away with a one-line summary; "?" help for the
+  radiobiological terms; copy-summary button; floating decision bar on desktop.
+* 63 Python tests; JavaScript engine cross-validated on 428 cases (2879 schedules), no mismatches.
+
 ## 1.0.0 — 2026-11-14
 First public release.
 * Web application in one file (Greek and English), runs offline; PDF report with the input attached.

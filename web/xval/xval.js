@@ -34,7 +34,7 @@ ref.forEach((r, i) => {
   if (R.sens) { const s = RT.sensitivity(p, dec);
     if (s.n !== R.sens.n || !close(s.sameFraction, R.sens.same) || !close(s.tumourRange[0], R.sens.t[0]) || !close(s.tumourRange[1], R.sens.t[1])) fail(i, 'sens ' + JSON.stringify([s.n, s.sameFraction, s.tumourRange]) + ' py ' + JSON.stringify(R.sens));
     for (const k of Object.keys(R.sens.oar)) if (!close(s.oarPctRanges[k][0], R.sens.oar[k][0]) || !close(s.oarPctRanges[k][1], R.sens.oar[k][1])) fail(i, 'sens oar'); }
-  if (R.scen) { const rows = RT.resumeScenarios(p, p.missed[0], RT.candidateResumeDates(p, p.missed[0], 10));
+  if (R.scen) { const os = RT.currentOutageStart(p); const rows = RT.resumeScenarios(p, os, RT.candidateResumeDates(p, os, 10));
     if (rows.length !== R.scen.length) fail(i, 'scen len');
     rows.forEach((x, q) => { const y = R.scen[q]; if (!y) return; if (RT.iso(x.resume) !== y.r || x.nMissed !== y.n || x.baseExt !== y.ext || !close(x.baseDelta, y.d) || x.status !== y.status || (x.option ? x.option.key : null) !== y.rec) fail(i, 'scen row ' + q); }); }
 });

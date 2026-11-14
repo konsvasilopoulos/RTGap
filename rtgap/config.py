@@ -4,7 +4,10 @@ Case file (YAML or JSON)::
 
     site: hn_scc                 # id from the site library (rtgap sites)
     prescription: {start, n_fractions, dose_per_fraction, treatment_weekdays, closed_dates}
-    gap: {missed_dates, resume_date, unavailable_dates, delivered}
+    gap: {missed_dates, resume_date, unavailable_dates, cause,
+          extra_delivered: [dates],            # fractions given outside the planned calendar
+          dose_errors: [{date, slot, dose}],   # delivered with a dose different from the plan
+          plan_change: {from, n_fractions, dose_per_fraction}}   # earlier compensation
     tumour: {...}                # optional overrides of the site tumour parameters
     oars: [...]                  # optional; replaces the site default OARs
     rules: {category, ideal_extension_days, max_extension_days, max_overall_time_days, no_acceleration}
@@ -139,11 +142,16 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
         if gap["cause"] not in ("machine", "holiday", "toxicity", "patient", "other"):
             raise ValidationError([f"unknown gap cause {gap['cause']!r}"])
         rules = dataclasses.replace(rules, gap_cause=gap["cause"])
+    extra = [parse_date(d) for d in gap.get("extra_delivered", []) or []]
+    errors = [(parse_date(e["date"]), int(e.get("slot", 0)), float(e["dose"])) for e in gap.get("dose_errors", []) or []]
+    pc = gap.get("plan_change")
+    plan_change = (parse_date(pc["from"]), int(pc["n_fractions"]), float(pc["dose_per_fraction"])) if pc else None
     try:
         planner = GapPlanner(
             rx, tumour, oars, missed_dates=sorted(missed), resume_date=resume, delivered=delivered,
             unavailable_dates=[parse_date(d) for d in gap.get("unavailable_dates", []) or []],
             constraints=constraints, rules=rules, brachy=brachy,
+            extra_delivered=extra, dose_errors=errors, plan_change=plan_change,
         )
     except ValueError as exc:
         raise ValidationError([str(exc)]) from exc

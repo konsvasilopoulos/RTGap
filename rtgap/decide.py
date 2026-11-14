@@ -15,6 +15,12 @@ Decision flow (RCR 2019 order of consideration):
 6. If nothing qualifies, no option is recommended: the feasible candidates
    are listed with their trade-offs for a clinical decision.
 
+A delivered dose that differed from the plan (dose error) is handled first:
+the Joiner correction of the remaining fractions restores every tissue at
+once (BCR eq. 9.3–9.4) and is suggested on the first calendar (regular,
+then weekends, then BID) that keeps the prolongation within the ideal,
+then the maximum, allowance. Otherwise the choice is a clinical decision.
+
 Infeasible candidates are never dropped silently: each is kept with the
 rule(s) that excluded it.
 """
@@ -26,7 +32,7 @@ from dataclasses import dataclass, field
 from .gap import GapPlanner, Option
 from .schedule import bid_dates, has_consecutive_bid
 
-FAMILY_RANK = {"weekend": 1, "bid": 2, "weekend_bid": 3, "accel_dose": 4, "same_end": 5,
+FAMILY_RANK = {"error": 0, "weekend": 1, "bid": 2, "weekend_bid": 3, "accel_dose": 4, "same_end": 5,
                "extended": 6, "extra": 7, "custom": 8}
 SAME_D = {"weekend", "bid", "weekend_bid"}
 DOSE_CHANGE = {"accel_dose", "same_end", "extended", "extra"}
@@ -64,7 +70,7 @@ def rejection_reasons(p: GapPlanner, o: Option) -> list[str]:
                 why.append("BID on a chemotherapy day (RCR 5th ed. draft: not with non-daily chemo or d > 1.5 Gy)")
         if not c.allow_consecutive_bid and has_consecutive_bid(o.new_fractions):
             why.append("BID on consecutive days (local)")
-    if abs(o.scale - 1.0) > 1e-9 and not c.allow_dose_change:
+    if abs(o.scale - p.s0) > 1e-9 and not c.allow_dose_change:
         why.append("change of dose per fraction not permitted (local)")
     if o.family == "extra" and not c.allow_extra_fractions:
         why.append("extra fractions not permitted (local)")
@@ -101,9 +107,14 @@ def warnings_for(p: GapPlanner, o: Option) -> list[str]:
         w.append("d ≥ 6 Gy: LQ extrapolation is uncertain at large doses per fraction.")
     elif o.scale > 1.25:
         w.append(f"Fraction size +{100 * (o.scale - 1):.0f} %: results are sensitive to the α/β values.")
-    if abs(o.scale - 1.0) > 1e-9:
+    if abs(o.scale - p.s0) > 1e-9:
         w.append("Dose per fraction changed: the plan must be rescaled / re-planned in the TPS "
                  "(MU, normalisation, OAR constraints) and independently checked.")
+    if p.has_dose_error and (o.family in SAME_D or o.family == "baseline"):
+        w.append("Keeps the dose per fraction: the dose error is not corrected.")
+    if o.family == "error" and p.rx.is_multilevel:
+        w.append("The Joiner correction is exact for the reference dose level only; the other levels are "
+                 "scaled with it (check them in the table).")
     if o.weekly_increase_pct > ACUTE_WARN_PCT:
         w.append(f"Peak 7-day dose {o.weekly_peak:.1f} Gy EQD2 (+{o.weekly_increase_pct:.0f} % vs plan): "
                  "faster dose accumulation, expect stronger acute reactions.")
@@ -177,6 +188,21 @@ def decide(p: GapPlanner, options: list[Option] | None = None) -> Decision:
         trace.append("No time factor is set for this tumour: the model does not quantify the loss from prolongation. "
                      "The category allowance still applies.")
 
+    if len(p.interruptions) > 1:
+        trace.append(f"{len(p.interruptions)} interruptions in this course ("
+                     + ", ".join(f"{a.isoformat()}" + (f" to {b.isoformat()}" if b != a else "") + f": {n} d"
+                                 for a, b, n in p.interruptions)
+                     + "). The prolongation is counted over the whole course, from the original end date.")
+    if p.plan_change is not None:
+        f0, n0, d0 = p.plan_change
+        trace.append(f"The plan was changed from {f0.isoformat()} to {n0} × {d0:g} Gy (earlier compensation); "
+                     f"the targets remain those of the original prescription.")
+
+    if p.has_dose_error:
+        res = _decide_error(p, opts, feasible, rejected, base, ideal, mx, trace, done)
+        if res is not None:
+            return res
+
     if r.no_acceleration:
         trace.append("Site rule: no accelerated or modified scheduling; continue the course as planned.")
         if base.feasible:
@@ -240,6 +266,56 @@ def decide(p: GapPlanner, options: list[Option] | None = None) -> Decision:
     cands = _tradeoff_candidates(within + beyond)
     return done("clinical_decision", "Clinical decision needed: no option restores the tumour dose "
                 "without raising the late-tissue dose beyond tolerance.", candidates=cands)
+
+
+def _decide_error(p: GapPlanner, opts, feasible, rejected, base, ideal, mx, trace, done):
+    """Dose-error branch. Returns a Decision, or None to continue with the gap flow."""
+    errs = p.dose_errors
+    dphys = sum(e.actual - e.intended for e in errs)
+    t_eff = p.error_effect(p.tumour)
+    l_eff = p.error_effect(p.oars[0]) if p.oars else None
+    trace.append(f"Dose error on {len(errs)} delivered fraction{'s' if len(errs) > 1 else ''}: {dphys:+.2f} Gy to the reference level; "
+                 f"EQD2 {p.tumour.name} {t_eff:+.2f} Gy"
+                 + (f", {p.oars[0].name} {l_eff:+.2f} Gy" if l_eff is not None else "") + " (no time factor).")
+    err_all = [o for o in opts if o.family == "error"]
+    if p.joiner_target() is None:
+        trace.append("The delivered dose already reaches the intended total: the error cannot be corrected by "
+                     "adjusting the remaining fractions. Clinical decision.")
+        return done("clinical_decision", "Dose error that cannot be corrected with the remaining fractions: "
+                    "clinical decision.", candidates=feasible[:3])
+    if not err_all:
+        trace.append("The Joiner correction is smaller than the dose rounding: the remaining fractions stay as planned.")
+        return None
+    if p.rules.no_acceleration:
+        trace.append("Site rule: no modified scheduling (SABR): the dose error needs a clinical decision.")
+        return done("clinical_decision", "Dose error in a SABR course: clinical decision.",
+                    candidates=[o for o in feasible if o.family == "error"][:3])
+    # fewest calendar changes first; on a tie Joiner's rounding up (spares late tissues) before the nearest n
+    ok = sorted([o for o in feasible if o.family == "error" and o.strategy == "joiner"],
+                key=lambda o: (o.burden, max(0, o.extension_days), o.key.startswith("errn")))
+    if p.rules.gap_cause == "toxicity":
+        ok = [o for o in ok if not (o.n_weekend_fractions or o.n_bid_days)]
+    pick = next((o for o in ok if o.extension_days <= ideal), None)
+    if pick:
+        trace.append(f"Joiner correction: '{pick.title}' brings every tissue back to the intended dose together "
+                     f"(the rounding of n leaves the small differences shown in the table) and keeps the "
+                     f"prolongation at {pick.extension_days} d (≤ ideal {ideal} d).")
+        return done("recommended", f"{pick.title}: {_short(pick)}", pick)
+    pick = next((o for o in ok if o.extension_days <= mx), None)
+    if pick:
+        trace.append(f"Joiner correction: '{pick.title}' brings every tissue back to the intended dose together, "
+                     f"with a prolongation of {pick.extension_days} d (≤ maximum {mx} d).")
+        return done("recommended", f"{pick.title}: {_short(pick)}", pick)
+    excl = [o for o in rejected if o.family == "error" and o.strategy == "joiner"]
+    if excl:
+        reasons = sorted({w for o in excl for w in o.rejected})
+        trace.append("Joiner correction excluded or beyond the allowance: " + "; ".join(reasons) + ".")
+    else:
+        trace.append(f"No Joiner correction keeps the prolongation within {mx} d.")
+    cands = ok[:1] + _tradeoff_candidates([o for o in feasible if o.family in DOSE_CHANGE
+                                           or (o.family == "error" and o.strategy != "joiner")])
+    return done("clinical_decision", "Dose error together with a prolongation: clinical decision between the options.",
+                candidates=cands[:3])
 
 
 def _tradeoff_candidates(opts: list[Option]) -> list[Option]:

@@ -11,7 +11,7 @@ in any browser; it works offline).
 
 Developed by **Konstantinos Vasilopoulos, PhD Candidate**.
 
-> Version 1.0.0. Decision support for research and education, **not a medical
+> Version 1.1.0. Decision support for research and education, **not a medical
 > device**. All parameters and every modified schedule must be checked by the
 > treating team. See [docs/INTENDED_USE.md](docs/INTENDED_USE.md).
 
@@ -35,6 +35,38 @@ public holidays, twice-daily slots). For each candidate it reports:
 > **Not a medical device.** This is a research and educational tool. Every
 > parameter must be confirmed by the treating team, and every modified schedule
 > must be checked independently before clinical use.
+
+## New in 1.1
+
+* **Several interruptions in one course.** Mark every interruption, earlier
+  ones too: the prolongation is counted over the whole course from the
+  original end date, as the RCR allowance requires. Fractions given outside
+  the plan (an earlier Saturday or second fraction) and an earlier
+  compensation that changed the rest of the course (`plan_change`) are
+  entered so that the delivered course is the real one.
+* **Dose errors inside the gap workflow.** A delivered fraction with a wrong
+  dose (`dose_errors`) is corrected with the generalised Joiner method
+  (BCR eq. 9.3–9.4): the remaining dose and fraction size restore the total
+  dose and the sum of squared fraction doses, which brings every tissue back
+  together whatever its α/β. The number of fractions is offered rounded up
+  (Joiner's rule) and to the nearest integer, on the regular calendar and,
+  when that overruns, with weekend days and BID in the RCR order.
+* **Department protocol in the web app.** Save the department settings and
+  its own values per site as the default for every new case, export them as
+  a protocol file for colleagues and for the Python command line, and import
+  one. A case file still contains every value used.
+* **Treatment sheet for radiographers (PDF).** The remaining fractions with
+  date, session, dose per level and blank columns for time given and
+  initials, plus the key instructions (new dose and re-plan, BID spacing,
+  weekend days) and signature lines.
+
+```yaml
+gap:
+  missed_dates: [2026-10-14, 2026-10-15, 2026-11-04, 2026-11-05]   # both interruptions
+  extra_delivered: [2026-10-17]                                     # Saturday catch-up already given
+  dose_errors: [{date: 2026-10-30, dose: 2.6}]                      # given instead of 2.0 Gy
+  plan_change: {from: 2026-10-19, n_fractions: 27, dose_per_fraction: 2.05}   # optional
+```
 
 ## How a case is decided
 
@@ -60,7 +92,8 @@ public holidays, twice-daily slots). For each candidate it reports:
    - otherwise prolongation ≤ maximum → accept it;
    - otherwise the first same-d option within the maximum;
    - otherwise the first dose-modified option within the tolerances
-     (`max_tumour_deficit_pct`, `max_late_increase_pct`, default 1 %);
+     (`max_tumour_deficit_pct`, `max_late_increase_pct`; not set by default,
+     so a change of fraction size is a clinical decision);
    - otherwise **clinical decision**: the report lists the trade-off
      candidates (best match-tumour, best match-late, extra fractions).
 
@@ -271,14 +304,11 @@ should be revisited when it is published.
 
 ## Roadmap
 
-* Brachytherapy component for combined EBRT + brachytherapy sites
-* Dose-per-fraction errors inside the gap workflow (currently `rtgap error`)
 * DVH-based OAR evaluation from DICOM RT Dose (cf. O'Shea et al., JACMP 2022)
-* Parameter-uncertainty bands (α/β, D_prolif ranges)
-* Greek report language
 * Incomplete repair across consecutive BID days
+* Dose errors on the second fraction of a BID day in the web app (the case file already supports `slot`)
 * Update the library when the RCR 5th edition is final
-* Web front-end
+* Retrospective validation on real cases and an independent second check
 
 ## References
 

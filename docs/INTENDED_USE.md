@@ -26,17 +26,31 @@ software under its own quality system (in the EU: MDR Article 5(5)).
 * The LQ model is uncertain at large doses per fraction and is not meant for
   SABR.
 * A change of dose per fraction always needs a new or rescaled plan in the TPS.
+* Dose errors are corrected with the Joiner method, which restores every tissue
+  exactly only without a time factor and without incomplete repair, and only
+  for the reference dose level. Rounding the number of fractions leaves small
+  differences, which the tables show. A dose error is entered as the dose to
+  the reference level; every level is assumed to scale with it (an output or
+  MU error), not a geometric miss.
+* An earlier change of plan is described by one date, a number of fractions
+  and a dose per fraction. More complex histories need the delivered fractions
+  listed one by one (`gap.delivered` in the case file).
+* The department protocol of the web app is kept in this browser on this
+  device. Export it as a file to keep a record and to share it.
 
 ## Commissioning checklist for a department
 1. Read the method section and the references, and agree on the site
    parameters (alpha/beta, repopulation, kick-off) and on the constraints
    (weekend, BID, maximum dose per fraction, tolerances).
-2. Run the built-in self-test and `pytest`; record the version and results.
-3. Recalculate at least five cases by hand, or with another tool, using the
+2. Save the agreed constraints and site values as the department protocol,
+   export the protocol file and file it with the commissioning record.
+3. Run the built-in self-test and `pytest`; record the version and results.
+4. Recalculate at least five cases by hand, or with another tool, using the
    "check by hand" block, and file the comparison.
-4. Recalculate past interruptions of the department and compare with what was
-   decided at the time.
-5. Decide who may use the tool, who checks each report, and where reports are
+5. Recalculate past interruptions of the department and compare with what was
+   decided at the time, including courses with more than one interruption
+   and any dose errors.
+6. Decide who may use the tool, who checks each report, and where reports are
    filed. Each report carries the input checksum and sign-off lines.
-6. Repeat steps 2 and 3 after every update of the software or of the RCR
+7. Repeat steps 3 and 4 after every update of the software or of the RCR
    guidance.

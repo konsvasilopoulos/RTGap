@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -98,6 +98,7 @@
     return total;
   }
   const tissueEqd2 = (t, fx, bidH) => eqd2FromBed(tissueBed(t, fx, bidH), t.ab);
+  const tissueBedNoTime = (t, fx, bidH) => tissueBed(Object.assign({}, t, { dprolif: 0 }), fx, bidH);
 
   // ------------------------------------------------------------------ rules / constraints
   const CATEGORY_DEFAULTS = { 1: [0, 2], 2: [2, 5], 3: [7, 7] };
@@ -189,19 +190,69 @@
     p.planned = rx.planned();
     p.plannedEnd = p.planned[p.planned.length - 1].day;
     p.unavailable = new Set([...(a.unavailable || []), ...rx.closed]);
-    p.resume = a.resume != null ? a.resume : (p.missed.length ? p.missed[p.missed.length - 1] + 1 : p.plannedEnd + 1);
+    p.extraDates = (a.extra || []).slice().sort((x, y) => x - y);
+    const errsIn = (a.errors || []).map((e) => ({ day: e.day, slot: e.slot || 0, dose: +e.dose })).sort(fxSort);
+    p.planChange = a.planChange || null;
+    if (a.resume != null) p.resume = a.resume;
+    else {
+      const last = (p.missed.length ? [p.missed[p.missed.length - 1]] : []).concat(errsIn.map((e) => e.day), p.extraDates);
+      p.resume = last.length ? Math.max(...last) + 1 : p.plannedEnd + 1;
+    }
+    let seq = []; for (let i = 0; i < rx.n; i++) seq.push(rx.phaseOf(i));
+    p.s0 = 1;
+    let pcFrom = null, pcAlloc = null, pcScale = 1;
+    const HE = (code, pp) => { const e = new Error(code); e.code = code; e.p = pp || {}; return e; };
     if (a.delivered) p.delivered = a.delivered.slice().sort(fxSort);
     else {
       const ms = new Set(p.missed);
-      p.delivered = p.planned.filter((f) => f.day < p.resume && !ms.has(f.day))
-        .map((f, i) => ({ day: f.day, slot: 0, dose: rx.refDose(rx.phaseOf(i)), phase: rx.phaseOf(i) }));
+      const slots = p.planned.filter((f) => f.day < p.resume && !ms.has(f.day)).map((f) => ({ day: f.day, slot: 0 }));
+      const have = new Set(slots.map((x) => x.day));
+      for (const d of p.extraDates) {
+        if (d >= p.resume) throw HE('e_extra_after', { d });
+        if (ms.has(d)) throw HE('e_extra_missed', { d });
+        const sl = have.has(d) ? 1 : 0;
+        if (slots.some((x) => x.day === d && x.slot === sl)) throw HE('e_extra_three', { d });
+        slots.push({ day: d, slot: sl }); have.add(d);
+      }
+      slots.sort(fxSort);
+      if (p.planChange) {
+        pcFrom = p.planChange.from; const pcN = p.planChange.n, pcD = p.planChange.d;
+        if (pcFrom > p.resume) throw HE('e_pc_after');
+        if (!(pcN >= 1) || !(pcD > 0)) throw HE('e_pc_bad');
+        const i0 = slots.filter((x) => x.day < pcFrom).length;
+        if (i0 >= rx.n) throw HE('e_pc_late');
+        pcAlloc = allocatePhases(seq.slice(i0), Math.round(pcN));
+        pcScale = pcD / rx.refDose(pcAlloc[0]);
+        seq = seq.slice(0, i0).concat(pcAlloc);
+        if (slots.length > seq.length) throw HE('e_pc_more');
+      } else if (slots.length > rx.n) throw HE('e_more');
+      p.delivered = slots.map((x, i) => { const ph = seq[i], sc = (pcFrom != null && x.day >= pcFrom) ? pcScale : 1; return { day: x.day, slot: x.slot, dose: sc * rx.refDose(ph), phase: ph }; });
     }
     if (p.delivered.some((f) => f.day >= p.resume)) throw new Error('delivered fractions must be before the resume date');
-    p.remaining = rx.n - p.delivered.length;
-    if (p.remaining < 0) throw new Error('more fractions delivered than prescribed');
-    p.remainingPhases = [];
-    for (let i = p.delivered.length; i < rx.n; i++) p.remainingPhases.push(rx.phaseOf(i));
+    p.doseErrors = [];
+    for (const e of errsIn) {
+      const i = p.delivered.findIndex((f) => f.day === e.day && f.slot === e.slot);
+      if (i < 0) throw HE('e_err_none', { d: e.day });
+      if (!(e.dose > 0)) throw HE('e_err_zero', { d: e.day });
+      const f = p.delivered[i];
+      if (Math.abs(e.dose - f.dose) > 1e-9) p.doseErrors.push({ day: e.day, slot: e.slot, intended: f.dose, actual: e.dose });
+      p.delivered[i] = Object.assign({}, f, { dose: e.dose });
+    }
+    p.deliveredIntended = p.delivered.map((f) => { const e = p.doseErrors.find((x) => x.day === f.day && x.slot === f.slot); return e ? Object.assign({}, f, { dose: e.intended }) : f; });
+    if (pcAlloc) {
+      p.s0 = pcScale;
+      p.remaining = seq.length - p.delivered.length;
+      p.remainingPhases = seq.slice(p.delivered.length);
+    } else {
+      p.remaining = rx.n - p.delivered.length;
+      if (p.remaining < 0) throw new Error('more fractions delivered than prescribed');
+      p.remainingPhases = [];
+      for (let i = p.delivered.length; i < rx.n; i++) p.remainingPhases.push(rx.phaseOf(i));
+    }
     p.dRef = rx.refDose(p.remainingPhases.length ? p.remainingPhases[0] : 0);
+    p.dCur = p.s0 * p.dRef;
+    p.hasDoseError = p.doseErrors.length > 0;
+    p.interruptions = interruptions(p);
     const bi = p.c.bid_interval_h;
     p.plannedCourse = p.planned.concat(p.fixed).sort(fxSort);
     p.plannedLevels = p.tumours.map((t) => tissueEqd2(t, p.plannedCourse, bi));
@@ -209,6 +260,38 @@
     p.plannedOars = p.oars.map((o) => tissueEqd2(o, p.plannedCourse, bi));
     p.plannedWeekly = weeklyPeak(p, p.plannedCourse);
     return p;
+  }
+  /** Missed planned treatment days grouped into interruptions: [first, last, number of days]. */
+  function interruptions(p) {
+    const given = [...new Set(p.delivered.map((f) => f.day))].sort((x, y) => x - y), planned = new Set(p.planned.map((f) => f.day)), out = [];
+    for (const d of p.missed.filter((x) => planned.has(x))) {
+      const last = out[out.length - 1];
+      if (last && !given.some((g) => g > last[1] && g < d)) { last[1] = d; last[2]++; } else out.push([d, d, 1]);
+    }
+    return out;
+  }
+  function allocatePhases(phases, m) {
+    const k = phases.length;
+    if (m === k) return phases.slice();
+    if (m > k) return phases.concat(Array(m - k).fill(k ? phases[k - 1] : 0));
+    const order = [], counts = {};
+    for (const ph of phases) { if (!(ph in counts)) { counts[ph] = 0; order.push(ph); } counts[ph]++; }
+    const exact = {}, alloc = {};
+    for (const ph of order) { exact[ph] = counts[ph] * m / k; alloc[ph] = Math.floor(exact[ph]); }
+    const left = m - order.reduce((s2, ph) => s2 + alloc[ph], 0);
+    order.slice().sort((x, y) => (exact[y] - alloc[y]) - (exact[x] - alloc[x])).slice(0, left).forEach((ph) => { alloc[ph]++; });
+    const out = [];
+    for (const ph of order.slice().sort((x, y) => x - y)) for (let i = 0; i < alloc[ph]; i++) out.push(ph);
+    return out;
+  }
+  /** EQD2 (no time factor) delivered to a tissue minus what was intended, over the delivered fractions. */
+  const errorEffect = (p, t) => { const bi = p.c.bid_interval_h; return eqd2FromBed(tissueBedNoTime(t, p.delivered, bi) - tissueBedNoTime(t, p.deliveredIntended, bi), t.ab); };
+  /** Generalised Joiner correction (BCR eq. 9.3–9.4): linear and quadratic dose sums L, Q still to give. */
+  function joinerTarget(p) {
+    const rest = p.remainingPhases.map((ph) => p.s0 * p.rx.refDose(ph));
+    let L = rest.reduce((a2, x) => a2 + x, 0), Q = rest.reduce((a2, x) => a2 + x * x, 0);
+    for (const e of p.doseErrors) { L += e.intended - e.actual; Q += e.intended * e.intended - e.actual * e.actual; }
+    return (L <= 1e-9 || Q <= 1e-12) ? null : [L, Q];
   }
   /** Largest EQD2 of the primary level (tumour α/β, no time factor) delivered within any 7 consecutive days. */
   function weeklyPeak(p, fx) {
@@ -270,20 +353,7 @@
 
   function assign(p, slots) {
     slots = slots.slice().sort(fxSort);
-    const m = slots.length, k = p.remaining, rp = p.remainingPhases;
-    let phases;
-    if (m === k) phases = rp.slice();
-    else if (m > k) { const last = rp.length ? rp[rp.length - 1] : p.rx.phases.length - 1; phases = rp.concat(Array(m - k).fill(last)); }
-    else {
-      const order = [], counts = {};
-      for (const ph of rp) { if (!(ph in counts)) { counts[ph] = 0; order.push(ph); } counts[ph]++; }
-      const exact = {}, alloc = {};
-      for (const ph of order) { exact[ph] = counts[ph] * m / k; alloc[ph] = Math.floor(exact[ph]); }
-      const left = m - order.reduce((s, ph) => s + alloc[ph], 0);
-      order.slice().sort((x, y) => (exact[y] - alloc[y]) - (exact[x] - alloc[x])).slice(0, left).forEach((ph) => { alloc[ph]++; });
-      phases = [];
-      for (const ph of order.slice().sort((x, y) => x - y)) for (let i = 0; i < alloc[ph]; i++) phases.push(ph);
-    }
+    const phases = allocatePhases(p.remainingPhases.length ? p.remainingPhases : [p.rx.phases.length - 1], slots.length);
     return slots.map((s, i) => ({ day: s.day, slot: s.slot, phase: phases[i], dose: p.rx.refDose(phases[i]) }));
   }
   const courseS = (p, slots, scale) => p.delivered.concat(assign(p, slots).map((f) => Object.assign({}, f, { dose: scale * f.dose })), p.fixed).sort(fxSort);
@@ -347,14 +417,43 @@
     }
     return out;
   }
+  /** Joiner correction of the remaining fractions: n = L²/Q rounded up (Joiner) and, if different, to the
+   *  nearest integer; d = L/n; regular calendar, then weekend days and/or BID if that overruns (RCR order). */
+  function errorOptions(p) {
+    const tg = joinerTarget(p); if (!tg) return [];
+    const [L, Q] = tg, nEx = L * L / Q, nUp = Math.max(1, Math.ceil(nEx - 1e-9)), nNear = Math.max(1, Math.floor(nEx + 0.5));
+    let out = [];
+    const vars = [['', null], ['_sat', [true, false, false]], ['_satsun', [true, true, false]], ['_bid', [false, false, true]], ['_sat_bid', [true, false, true]], ['_satsun_bid', [true, true, true]]];
+    for (const [n, stem] of [[nUp, 'err'], [nNear, 'errn']]) {
+      if (stem === 'errn' && nNear === nUp) continue;
+      for (const [suf, f] of vars) {
+        const slots = f ? patternAccelerated(p, n, f[0], f[1], f[2]) : patternStandard(p, n);
+        const ref = assign(p, slots).reduce((a2, x) => a2 + x.dose, 0), exact = L / ref * p.dRef;
+        const o = evaluate(p, stem + suf, 'error', { base: 'error', n, cal: suf.slice(1), near: stem === 'errn' }, slots, roundDose(p, exact), 'joiner', exact);
+        out.push(o);
+        if (!f && o.ext <= 0) break;
+      }
+    }
+    out = out.concat(matches(p, 'err_keep', 'error', { base: 'err_keep', k: p.remaining }, patternStandard(p, p.remaining)));
+    return out;
+  }
+  const dedupe = (out) => {
+    const seen = new Set(), ded = [];
+    for (const o of out) {
+      const sig = o.newFx.map((f) => f.day + ':' + f.slot).join(',') + '|' + o.d.toFixed(6);
+      if (!seen.has(sig)) { seen.add(sig); ded.push(o); }
+    }
+    return ded;
+  };
   function options(p) {
     if (p.remaining === 0) return [];
-    const d0 = p.dRef, k = p.remaining;
+    const d0 = p.dCur, k = p.remaining;
     let out = [];
     const baseSlots = patternStandard(p, k);
     const base = evaluate(p, 'none', 'baseline', { base: 'none' }, baseSlots, d0, 'keep_d');
     out.push(base);
-    if (base.ext <= 0) return out;
+    if (p.hasDoseError) out = out.concat(errorOptions(p));
+    if (base.ext <= 0) return dedupe(out);
     const short = base.tumour.delta < -0.005;
     const accel = [['sat', 'weekend', true, false, false], ['satsun', 'weekend', true, true, false], ['bid', 'bid', false, false, true],
       ['sat_bid', 'weekend_bid', true, false, true], ['satsun_bid', 'weekend_bid', true, true, true]];
@@ -380,17 +479,12 @@
       if (hit) out.push(hit);
       else if (best) { best.warnings.push({ code: 'w_extra_insufficient', p: {}, refs: ['BCR'] }); out.push(best); }
     }
-    const seen = new Set(), ded = [];
-    for (const o of out) {
-      const sig = o.newFx.map((f) => f.day + ':' + f.slot).join(',') + '|' + o.d.toFixed(6);
-      if (!seen.has(sig)) { seen.add(sig); ded.push(o); }
-    }
-    return ded;
+    return dedupe(out);
   }
 
   // ------------------------------------------------------------------ decision
   const ACUTE_WARN_PCT = 10;
-  const FAMILY_RANK = { weekend: 1, bid: 2, weekend_bid: 3, accel_dose: 4, same_end: 5, extended: 6, extra: 7, custom: 8 };
+  const FAMILY_RANK = { error: 0, weekend: 1, bid: 2, weekend_bid: 3, accel_dose: 4, same_end: 5, extended: 6, extra: 7, custom: 8 };
   const SAME_D = ['weekend', 'bid', 'weekend_bid'], DOSE_CHANGE = ['accel_dose', 'same_end', 'extended', 'extra', 'custom'];
   function rejectionReasons(p, o) {
     const c = p.c, r = p.rules, d = o.maxLevelDose, why = [];
@@ -406,7 +500,7 @@
       }
       if (!c.allow_consecutive_bid && o.consecutiveBid) R('x_bid_consec');
     }
-    if (Math.abs(o.scale - 1) > 1e-9 && !c.allow_dose_change) R('x_dose_change');
+    if (Math.abs(o.scale - p.s0) > 1e-9 && !c.allow_dose_change) R('x_dose_change');
     if (o.family === 'extra' && !c.allow_extra_fractions) R('x_extra');
     if (c.max_dose_per_fraction != null && d > c.max_dose_per_fraction + 1e-9) R('x_max_d', { d, max: c.max_dose_per_fraction });
     if (c.max_fractions_per_week != null) {
@@ -429,7 +523,9 @@
     }
     if (d >= 6) w.push({ code: 'w_large_d', p: {}, refs: ['BCR'] });
     else if (o.scale > 1.25) w.push({ code: 'w_scale', p: { pct: 100 * (o.scale - 1) }, refs: ['RCR19'] });
-    if (Math.abs(o.scale - 1) > 1e-9) w.push({ code: 'w_replan', p: {}, refs: [] });
+    if (Math.abs(o.scale - p.s0) > 1e-9) w.push({ code: 'w_replan', p: {}, refs: [] });
+    if (p.hasDoseError && (SAME_D.includes(o.family) || o.family === 'baseline')) w.push({ code: 'w_err_uncorrected', p: {}, refs: [] });
+    if (o.family === 'error' && p.rx.multilevel) w.push({ code: 'w_joiner_multi', p: {}, refs: ['JOINER'] });
     if (o.weeklyInc > ACUTE_WARN_PCT) w.push({ code: 'w_weekly', p: { peak: o.weeklyPeak, inc: o.weeklyInc }, refs: [] });
     if (p.rules.gapCause === 'toxicity' && o.family !== 'baseline') w.push({ code: 'w_tox', p: {}, refs: [] });
     const mx = p.rules.max;
@@ -447,7 +543,7 @@
       o.warnings = o.warnings.concat(warningsFor(p, o).filter((x) => !have.has(x.code)));
       o.rejected = rejectionReasons(p, o);
       const mx0 = p.rules.max;
-      o.rank = o.family === 'baseline' ? ((mx0 != null && o.ext <= mx0) ? 0 : 9) : (FAMILY_RANK[o.family] || 8);
+      o.rank = o.family === 'baseline' ? ((mx0 != null && o.ext <= mx0) ? 0 : 9) : (o.family in FAMILY_RANK ? FAMILY_RANK[o.family] : 8);
       o.recommended = false;
     }
     const byKey = (a, b) => cmpKey(sortKey(a), sortKey(b));
@@ -470,6 +566,12 @@
     if (r.gapCause === 'machine') TRC('t_transfer', {}, ['RCR19']);
     if (!hasTime(p.tumour) && base.ext > 0) TRC('t_notime', {}, ['RCR19']);
 
+    if (p.interruptions.length > 1) TRC('t_multi', { list: p.interruptions }, ['RCR19']);
+    if (p.planChange) TRC('t_plan_change', { from: p.planChange.from, n: p.planChange.n, d: p.planChange.d }, []);
+    if (p.hasDoseError) {
+      const res = decideError(p, opts, feasible, rejected, ideal, mx, TRC, done);
+      if (res) return res;
+    }
     if (r.noAccel) {
       TRC('t_noaccel', {}, ['RCR19', 'RCR5d']);
       if (!base.rejected.length) return done('no_action', { code: 'h_noaccel', p: {} }, base);
@@ -504,6 +606,29 @@
     if (pick) { TRC('t_s5', { o: pick, tolT, tolL }, ['RCR19', 'BCR']); return done('recommended', H(pick), pick); }
     TRC('t_s5_none', { tolT, tolL }, ['RCR19']);
     return done('clinical_decision', { code: 'h_clinical', p: {} }, null, tradeoff());
+  }
+
+  function decideError(p, opts, feasible, rejected, ideal, mx, TRC, done) {
+    const errs = p.doseErrors, dphys = errs.reduce((a2, e) => a2 + e.actual - e.intended, 0);
+    TRC('t_err', { n: errs.length, dphys, tname: p.rx.multilevel ? p.tumour.name : null, t: errorEffect(p, p.tumour), lname: p.oars.length ? p.oars[0].name : null, l: p.oars.length ? errorEffect(p, p.oars[0]) : null }, ['JOINER', 'BCR']);
+    const errAll = opts.filter((o) => o.family === 'error');
+    if (!joinerTarget(p)) { TRC('t_err_over', {}, ['JOINER']); return done('clinical_decision', { code: 'h_err_over', p: {} }, null, feasible.slice(0, 3)); }
+    if (!errAll.length) { TRC('t_err_small', {}, ['JOINER']); return null; }
+    if (p.rules.noAccel) { TRC('t_err_sabr', {}, ['RCR19']); return done('clinical_decision', { code: 'h_err_sabr', p: {} }, null, feasible.filter((o) => o.family === 'error').slice(0, 3)); }
+    const k3 = (o) => [o.burden, Math.max(0, o.ext), o.key.indexOf('errn') === 0 ? 1 : 0];
+    let ok = feasible.filter((o) => o.family === 'error' && o.strategy === 'joiner').sort((a2, b2) => cmpKey(k3(a2), k3(b2)));
+    if (p.rules.gapCause === 'toxicity') ok = ok.filter((o) => !(o.nSat + o.nSun) && !o.nBid);
+    let pick = ok.find((o) => o.ext <= ideal);
+    if (pick) { TRC('t_err_pick', { o: pick, ideal }, ['JOINER', 'BCR']); return done('recommended', { code: 'h_option', p: { o: pick } }, pick); }
+    pick = ok.find((o) => o.ext <= mx);
+    if (pick) { TRC('t_err_pick_max', { o: pick, max: mx }, ['JOINER', 'RCR19']); return done('recommended', { code: 'h_option', p: { o: pick } }, pick); }
+    const excl = rejected.filter((o) => o.family === 'error' && o.strategy === 'joiner');
+    if (excl.length) { const seenR = new Map(); for (const o of excl) for (const w of o.rejected) if (!seenR.has(w.code)) seenR.set(w.code, w); TRC('t_err_excl', { reasons: [...seenR.values()] }, ['JOINER']); }
+    else TRC('t_err_none', { max: mx }, ['JOINER']);
+    const pool = feasible.filter((o) => DOSE_CHANGE.includes(o.family) || (o.family === 'error' && o.strategy !== 'joiner'));
+    const cs = ok.slice(0, 1);
+    for (const pred of [(o) => o.strategy === 'match_tumour', (o) => o.strategy === 'match_late', (o) => o.family === 'extra']) { const o = pool.find((x) => pred(x) && !cs.includes(x)); if (o) cs.push(o); }
+    return done('clinical_decision', { code: 'h_err_clinical', p: {} }, null, cs.slice(0, 3));
   }
 
   // ------------------------------------------------------------------ analysis
@@ -544,10 +669,14 @@
     for (let i = 1; i <= days; i++) if (isRegular(p, outageStart + i)) out.push(outageStart + i);
     return out;
   }
+  const currentOutageStart = (p) => p.interruptions.length ? p.interruptions[p.interruptions.length - 1][0] : (p.missed.length ? p.missed[0] : null);
   function resumeScenarios(p, outageStart, dates) {
+    const earlier = p.missed.filter((d) => d < outageStart), I0 = p._init;
+    const extra = (I0.extra || []).filter((d) => d < outageStart), errors = (I0.errors || []).filter((e) => e.day < outageStart);
+    const pc = I0.planChange && I0.planChange.from <= outageStart ? I0.planChange : null;
     return dates.slice().sort((a, b) => a - b).map((r) => {
       const missed = p.planned.filter((f) => f.day >= outageStart && f.day < r).map((f) => f.day);
-      const q = variant(p, { missed, resume: r, delivered: null });
+      const q = variant(p, { missed: earlier.concat(missed), resume: r, delivered: null, extra, errors, planChange: pc });
       const dec = decide(q);
       const base = q.remaining ? dec.feasible.concat(dec.rejected).find((o) => o.family === 'baseline') : null;
       return { resume: r, nMissed: missed.length, baseExt: base ? base.ext : 0, baseDelta: base ? base.tumour.delta : 0, status: dec.status, head: dec.head, option: dec.recommended };
@@ -736,10 +865,13 @@
     }
     if (gap.cause) { if (!['machine', 'holiday', 'toxicity', 'patient', 'other'].includes(gap.cause)) throw ValidationError([{ code: 'e_generic', p: { msg: 'gap cause' } }]); rules = mkRules(Object.assign({}, rules, { gapCause: gap.cause })); }
     const delivered = gap.delivered && gap.delivered.length ? gap.delivered.map((f) => ({ day: parseDate(f.date), slot: f.slot || 0, dose: +f.dose, phase: f.phase || 0 })) : null;
+    const extra = (gap.extra_delivered || []).map(parseDate);
+    const errors = (gap.dose_errors || []).map((e) => ({ day: parseDate(e.date), slot: e.slot || 0, dose: +e.dose }));
+    const pc = gap.plan_change ? { from: parseDate(gap.plan_change.from), n: Math.round(+gap.plan_change.n_fractions), d: +gap.plan_change.dose_per_fraction } : null;
     let p;
     try {
-      p = mkPlanner({ rx, tumour, oars, missed: [...missed], resume, delivered, unavailable: (gap.unavailable_dates || []).map(parseDate), c, rules, fixed: brachy });
-    } catch (e) { throw ValidationError([{ code: 'e_generic', p: { msg: e.message } }]); }
+      p = mkPlanner({ rx, tumour, oars, missed: [...missed], resume, delivered, unavailable: (gap.unavailable_dates || []).map(parseDate), c, rules, fixed: brachy, extra, errors, planChange: pc });
+    } catch (e) { throw ValidationError([e.code ? { code: e.code, p: e.p } : { code: 'e_generic', p: { msg: e.message } }]); }
     p.site = site; p.siteId = cfg.site || null;
     const iss = validate(p);
     if (iss.errors.length) throw ValidationError(iss.errors);
@@ -757,7 +889,9 @@
     }
     if (p.missed.length && p.resume <= p.missed[p.missed.length - 1]) E('e_resume_before', { r: p.resume, m: p.missed[p.missed.length - 1] });
     if (p.resume < rx.start) E('e_resume_start', { r: p.resume });
-    if (!p.missed.length && p.resume <= end) W('v_no_missed');
+    if (!p.missed.length && p.resume <= end && !(p.doseErrors.length || p.extraDates.length || p.planChange)) W('v_no_missed');
+    for (const d of p.extraDates) if (d < rx.start) E('e_extra_before', { d });
+    for (const e of p.doseErrors) if (e.actual > 2.5 * e.intended) W('v_err_large', { d: e.day, a: e.actual, i: e.intended });
     if (p.remaining === 0) W('v_all_delivered');
     for (const d of p.unavailable) if (d < p.resume && !rx.closed.has(d)) W('v_unavail_past', { d });
     for (const d of p.c.chemo_dates) if (d < start || d > end + (p.resume - start)) W('v_chemo_out', { d });
@@ -807,6 +941,7 @@
   const api = { VERSION, parseDate, iso, weekday, ymd, mkDate, orthodoxEaster, greekHolidays, holidayMap, bed, eqd2, eqd2FromBed, kFromDprolif, dprolifFromK,
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
     solveScale, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
-    plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID };
+    plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
+    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
 })(typeof window !== 'undefined' ? window : globalThis);

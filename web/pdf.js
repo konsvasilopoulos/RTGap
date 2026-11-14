@@ -42,8 +42,8 @@
     d.kv = (rows) => {
       const kw = 150;
       for (const [k, v] of rows) {
-        d.font(10, 400); const lines = d.wrap(v, CW - kw), h = lines.length * 14.2 + 3; d.ensure(h);
-        d.font(10, 400); d.g.fillStyle = COL.muted; d.g.fillText(k, M, d.y + 10);
+        d.font(10, 400); const lines = d.wrap(v, CW - kw), klines = d.wrap(k, kw - 10), h = Math.max(lines.length, klines.length) * 14.2 + 3; d.ensure(h);
+        d.font(10, 400); d.g.fillStyle = COL.muted; klines.forEach((ln, i) => d.g.fillText(ln, M, d.y + 10 + i * 14.2));
         d.g.fillStyle = COL.ink; lines.forEach((ln, i) => d.g.fillText(ln, M + kw, d.y + 10 + i * 14.2)); d.y += h;
       }
       d.y += 4;
@@ -81,6 +81,8 @@
     d.font(8, 400, MONO); g.fillStyle = COL.muted;
     tr.wd2.forEach((w, i) => g.fillText(w, x0 + lw + i * (cs + gap) + 5, y0 + 9));
     const delivered = new Set(p.delivered.map((f) => f.day)), missed = new Set(p.missed), planned = new Set(p.planned.map((f) => f.day)), nw = o ? RT.groupByDay(o.newFx) : new Map();
+    const nDel = new Map(); for (const f of p.delivered) nDel.set(f.day, (nDel.get(f.day) || 0) + 1);
+    const errD = new Set(p.doseErrors.map((e) => e.day)), xtra = new Set(p.extraDates);
     for (let w = 0; w < weeks; w++) {
       const mon = first + 7 * w, yy = y0 + 16 + w * (cs + gap), q = RT.ymd(mon);
       d.font(8, 400, MONO); g.fillStyle = COL.muted; g.fillText(q.d + '/' + q.m, x0, yy + 15);
@@ -90,7 +92,8 @@
         if (p.rx.closed.has(day)) { fill = '#e6e9ef'; }
         const isBt = p.fixed.some((f) => f.day === day); if (isBt) { fill = '#7a3fb8'; stroke = fill; ink = '#fff'; txt = 'BT'; }
         if (missed.has(day)) { fill = '#fff'; stroke = COL.bad; sw = 2; ink = COL.bad; }
-        else if (delivered.has(day)) { fill = COL.delivered; stroke = fill; ink = '#fff'; }
+        else if (delivered.has(day)) { fill = xtra.has(day) ? '#5a3fa0' : COL.delivered; stroke = fill; ink = '#fff'; if (nDel.get(day) > 1) txt += '×2'; }
+        if (errD.has(day)) { stroke = COL.warn; sw = 2.4; }
         else if (!o && planned.has(day)) { fill = COL.planned; stroke = fill; ink = COL.ink; }
         if (nw.has(day)) { const n = nw.get(day).length; fill = n > 1 ? COL.bid : COL.accent; stroke = fill; ink = '#fff'; if (n > 1) txt += '×2'; }
         g.fillStyle = fill; g.fillRect(xx, yy, cs, cs); g.strokeStyle = stroke; g.lineWidth = sw; g.strokeRect(xx + sw / 2, yy + sw / 2, cs - sw, cs - sw);
@@ -104,10 +107,12 @@
     const leg = [[COL.delivered, tr.t('lg_delivered')], [null, tr.t('lg_missed')], o ? [COL.accent, tr.t('lg_new')] : [COL.planned, tr.t('lg_planned')]];
     if (o && o.nBid) leg.push([COL.bid, tr.t('lg_bid')]);
     if (p.fixed.length) leg.push(['#7a3fb8', tr.t('lg_bt')]);
+    if (p.extraDates.length) leg.push(['#5a3fa0', tr.t('lg_extra')]);
+    if (p.doseErrors.length) leg.push(['err', tr.t('lg_err')]);
     leg.push(['#e6e9ef', tr.t('lg_holiday')], ['end', tr.t('lg_end')]);
     d.font(8.5, 400);
     for (const [c, label] of leg) {
-      if (c === null) { g.strokeStyle = COL.bad; g.lineWidth = 2; g.strokeRect(lx + 1, ly - 8, 9, 9); } else if (c === 'end') { g.strokeStyle = COL.ink; g.lineWidth = 1.6; g.strokeRect(lx + 1, ly - 8, 9, 9); } else { g.fillStyle = c; g.fillRect(lx, ly - 9, 11, 11); }
+      if (c === null) { g.strokeStyle = COL.bad; g.lineWidth = 2; g.strokeRect(lx + 1, ly - 8, 9, 9); } else if (c === 'end') { g.strokeStyle = COL.ink; g.lineWidth = 1.6; g.strokeRect(lx + 1, ly - 8, 9, 9); } else if (c === 'err') { g.strokeStyle = COL.warn; g.lineWidth = 2.4; g.strokeRect(lx + 1, ly - 8, 9, 9); } else { g.fillStyle = c; g.fillRect(lx, ly - 9, 11, 11); }
       g.fillStyle = COL.muted; g.fillText(label, lx + 17, ly); ly += 15;
     }
     d.y += Math.max(h, ly - y0) + 8;
@@ -154,12 +159,16 @@
     d.kv([
       [L('rx_line'), rxLine + (p.fixed.length ? ' + ' + L('lg_bt') + ' ' + p.fixed.map((f) => f.dose + ' Gy (' + tr.dshort(f.day) + ')').join(', ') : '')], [L('start') + ' → ' + L('ends'), tr.date(p.planned[0].day) + ' → ' + tr.date(p.plannedEnd) + ' (T = ' + T0 + ' ' + L('days') + ')'],
       [L('missed_n'), p.missed.length ? p.missed.map(tr.dshort).join(', ') : '–'], [L('cause'), L('cause_' + (p.rules.gapCause || ''))],
+    ].concat(p.interruptions.length > 1 ? [[L('intr_n'), p.interruptions.map((x, i) => (i + 1) + ') ' + tr.dshort(x[0]) + (x[1] !== x[0] ? '–' + tr.dshort(x[1]) : '') + ' (' + x[2] + ' ' + L('fx') + ')').join(' · ')]] : [],
+      p.extraDates.length ? [[L('lg_extra'), p.extraDates.map(tr.dshort).join(', ')]] : [],
+      p.doseErrors.length ? [[L('err_title'), p.doseErrors.map((e) => tr.dshort(e.day) + ': ' + tr.f2(e.actual) + ' Gy (' + L('planned_c').toLowerCase() + ' ' + tr.f2(e.intended) + ')').join(' · ')]] : [],
+      p.planChange ? [[L('pc_title'), tr.dshort(p.planChange.from) + ': ' + p.planChange.n + ' × ' + p.planChange.d + ' Gy']] : [], [
       [L('status_line'), p.delivered.length + ' ' + L('delivered_n') + ', ' + p.remaining + ' ' + L('remaining_n') + '; ' + L('resume').toLowerCase() + ' ' + tr.date(p.resume)],
       [L('allowance'), p.rules.max != null ? L('ideal') + ' ≤ ' + p.rules.ideal + ', ' + L('max') + ' ≤ ' + p.rules.max + ' ' + L('days') + (p.rules.maxOTT ? '; ' + L('ott_cap') + ' ≤ ' + p.rules.maxOTT + ' ' + L('days') : '') + ' [1]' : '–'],
       [L('tumour'), tum],
     ].concat(p.oars.map((o, i) => [o.name, 'α/β = ' + o.ab + ' Gy; ' + L('ratio').toLowerCase() + ' ' + (Array.isArray(o.ratio) ? o.ratio.map((x) => +x.toFixed(3)).join('/') : o.ratio) + (o.repairH ? '; T½ ' + o.repairH + ' h' : '') + (o.maxEqd2 != null ? '; ' + L('limit') + ' ' + o.maxEqd2 : '') + '; EQD2 ' + p.plannedOars[i].toFixed(1) + ' Gy'])).concat([
-      [L('dept_line'), L('c_sat') + ': ' + yn(c.allow_saturday) + ' · ' + L('c_sun') + ': ' + yn(c.allow_sunday) + ' · BID: ' + yn(c.allow_bid) + ' (≥ ' + c.bid_interval_h + ' h, d ≤ ' + c.bid_max_dose + ' Gy) · ' + L('c_dose') + ': ' + yn(c.allow_dose_change) + ' · ' + L('c_extra') + ': ' + yn(c.allow_extra_fractions) + (c.max_dose_per_fraction != null ? ' · d ≤ ' + c.max_dose_per_fraction + ' Gy' : '') + (c.max_fractions_per_week != null ? ' · ≤ ' + c.max_fractions_per_week + ' ' + L('fx') + '/wk' : '') + (c.max_weekly_increase_pct != null ? ' · ' + L('c_weekly') + ' ' + c.max_weekly_increase_pct : '') + ' · ' + L('c_tolT') + ' ' + (c.max_tumour_deficit_pct == null ? L('not_set') : c.max_tumour_deficit_pct) + ' · ' + L('c_tolL') + ' ' + (c.max_late_increase_pct == null ? L('not_set') : c.max_late_increase_pct)],
-    ]));
+      [L('dept_line'), (m.cfg && m.cfg.audit && m.cfg.audit.protocol ? L('proto_title') + ': ' + m.cfg.audit.protocol + ' · ' : '') + L('c_sat') + ': ' + yn(c.allow_saturday) + ' · ' + L('c_sun') + ': ' + yn(c.allow_sunday) + ' · BID: ' + yn(c.allow_bid) + ' (≥ ' + c.bid_interval_h + ' h, d ≤ ' + c.bid_max_dose + ' Gy) · ' + L('c_dose') + ': ' + yn(c.allow_dose_change) + ' · ' + L('c_extra') + ': ' + yn(c.allow_extra_fractions) + (c.max_dose_per_fraction != null ? ' · d ≤ ' + c.max_dose_per_fraction + ' Gy' : '') + (c.max_fractions_per_week != null ? ' · ≤ ' + c.max_fractions_per_week + ' ' + L('fx') + '/wk' : '') + (c.max_weekly_increase_pct != null ? ' · ' + L('c_weekly') + ' ' + c.max_weekly_increase_pct : '') + ' · ' + L('c_tolT') + ' ' + (c.max_tumour_deficit_pct == null ? L('not_set') : c.max_tumour_deficit_pct) + ' · ' + L('c_tolL') + ' ' + (c.max_late_increase_pct == null ? L('not_set') : c.max_late_increase_pct)],
+    ])));
     const notes = tr.siteNotes(p.siteId, p.site); if (notes.length) { d.text(L('site_notes'), { size: 10, weight: 600, after: 3 }); d.bullets(notes); }
 
     // schedule
@@ -228,6 +237,70 @@
     return assemble(jpgs, a.inputJson || '');
   }
 
+  /* One-page (or longer) treatment sheet for the radiographers: the remaining fractions of the selected
+   * schedule, with date, session, dose and blank columns for "given" and initials. No radiobiology. */
+  async function buildSheet(a) {
+    const m = a.model, tr = a.tr, L = tr.t, p = m.p, rx = p.rx, o = m.sel, meta = a.meta || {};
+    if (!o || !p.remaining) return null;
+    if (document.fonts && document.fonts.load) {
+      const want = Promise.all(['400 10px "IBM Plex Sans"', '600 10px "IBM Plex Sans"', '600 14px "STIX Two Text"', '400 9px "JetBrains Mono"'].map((f) => document.fonts.load(f, 'αβγ Ωμέγα abc').catch(() => null)));
+      await Promise.race([want, new Promise((res) => setTimeout(res, 2500))]);
+    }
+    const d = Doc(), g0 = d.g, now = new Date();
+    const stamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    d.font(22, 600, SERIF); g0.fillStyle = COL.ink; g0.fillText('RTGap', M, d.y + 20);
+    d.font(11, 400); g0.fillStyle = COL.muted; g0.fillText(L('sheet_title'), M + 82, d.y + 19);
+    d.font(9, 400, MONO); const right = L('generated') + ' ' + stamp; g0.fillText(right, PW - M - g0.measureText(right).width, d.y + 19);
+    d.y += 30; g0.strokeStyle = COL.ink; g0.lineWidth = 1.5; g0.beginPath(); g0.moveTo(M, d.y); g0.lineTo(PW - M, d.y); g0.stroke(); d.y += 12;
+    const rxLine = rx.multilevel ? rx.levelNames.map((k) => k + ' ' + (+rx.totalLevel(k).toFixed(2)) + ' Gy').join(', ') : rx.n + ' × ' + rx.refDose(0) + ' Gy = ' + (+rx.totalDose.toFixed(2)) + ' Gy';
+    d.kv([[L('rep_case'), (meta.caseRef || '–') + (meta.title ? ' · ' + meta.title : '')], [L('s_site'), tr.siteName(p.siteId, p.site)], [L('rx_line'), rxLine],
+      [L('sheet_schedule'), tr.optTitle(o)], [L('status_line'), p.delivered.length + ' ' + L('delivered_n') + ' · ' + o.nNew + ' ' + L('sheet_to_give') + ' · ' + L('ends').toLowerCase() + ' ' + tr.date(o.end)]]);
+    // key instructions
+    const notes = [];
+    const changed = Math.abs(o.scale - p.s0) > 1e-9;
+    const lvTxt = (ph) => Object.entries(o.phaseDoses[ph] || {}).map(([k, v]) => (rx.multilevel ? k + ' ' : '') + v.toFixed(2) + ' Gy').join(' · ');
+    if (changed) notes.push(L('sheet_newdose') + ': ' + Object.keys(o.phaseDoses).sort().map((ph) => lvTxt(ph)).join('; ') + '. ' + L('sheet_replan'));
+    if (o.nBid) notes.push(L('sheet_bid').replace('{h}', p.c.bid_interval_h));
+    if (o.nSat || o.nSun) notes.push(L('sheet_weekend'));
+    if (!notes.length) notes.push(L('sheet_same'));
+    const top = d.y; d.y += 8;
+    for (const n of notes) { d.font(10.5, 600); d.text('• ' + n, { size: 10.5, weight: 600, indent: 12, after: 3 }); }
+    d.y += 4; g0.fillStyle = changed ? COL.warn : COL.accent; g0.fillRect(M, top, 4, d.y - top); d.y += 8;
+    // table
+    const chemo = new Set(p.c.chemo_dates), first = p.delivered.length, total = p.delivered.length + o.nNew;
+    const lvls = [rx.primary].concat(rx.levelNames.filter((x) => x !== rx.primary));
+    const byDay = RT.groupByDay(o.newFx);
+    const rows = [];
+    const all = o.newFx.map((f) => ({ f, bt: false })).concat(p.fixed.filter((f) => f.day >= p.resume).map((f) => ({ f, bt: true }))).sort((x, y) => x.f.day - y.f.day || x.f.slot - y.f.slot);
+    let k = first;
+    for (const it of all) {
+      const f = it.f, wd = RT.weekday(f.day), note = [];
+      if (it.bt) { rows.push([{ t: '' }, { t: tr.date(f.day), mono: true }, { t: L('lg_bt') }].concat(lvls.map((_, q) => ({ t: q === 0 ? (+f.dose).toFixed(2) : '', mono: true })), [{ t: L('sheet_bt'), color: COL.muted }, '', ''])); continue; }
+      k++;
+      const two = (byDay.get(f.day) || []).length > 1;
+      if (wd === 5) note.push(L('sheet_sat')); if (wd === 6) note.push(L('sheet_sun'));
+      if (two && f.slot === 1) note.push(L('sheet_second').replace('{h}', p.c.bid_interval_h));
+      if (chemo.has(f.day)) note.push(L('m_chemo'));
+      if (changed && k === first + 1) note.push(L('sheet_first_new'));
+      const sess = two ? (f.slot === 0 ? L('sheet_s1') : L('sheet_s2')) : '1';
+      const pd = o.phaseDoses[f.phase] || {};
+      rows.push([{ t: k + '/' + total, mono: true }, { t: tr.date(f.day), mono: true, weight: wd >= 5 ? 600 : 400 }, { t: sess }].concat(lvls.map((lv) => ({ t: pd[lv] != null ? pd[lv].toFixed(2) : '–', mono: true, weight: changed ? 600 : 400 })), [{ t: note.join(' · '), color: note.length ? COL.warn : COL.ink }, '', '']));
+    }
+    const lw = Math.min(0.13, 0.3 / lvls.length), noteW = 1 - 0.07 - 0.17 - 0.09 - 0.11 - 0.11 - lw * lvls.length;
+    d.table([{ label: '#', w: 0.07 }, { label: L('date'), w: 0.17 }, { label: L('sheet_session'), w: 0.09 }].concat(lvls.map((lv) => ({ label: (rx.multilevel ? lv : L('sheet_dose')) + ' (Gy)', w: lw, align: 'r' })), [{ label: L('sheet_note'), w: noteW }, { label: L('sheet_given'), w: 0.11 }, { label: L('sheet_init'), w: 0.11 }]), rows, { size: 9.6 });
+    d.ensure(110); d.y += 10;
+    for (const lab of [L('sheet_by_phys'), L('sheet_by_md'), L('sheet_by_rt')]) {
+      d.font(10, 400); d.g.fillStyle = COL.muted; d.g.fillText(lab, M, d.y + 10);
+      d.g.strokeStyle = COL.ink; d.g.lineWidth = 0.8; d.g.beginPath(); d.g.moveTo(M + 200, d.y + 12); d.g.lineTo(M + 440, d.y + 12); d.g.moveTo(M + 520, d.y + 12); d.g.lineTo(PW - M, d.y + 12); d.g.stroke();
+      d.g.fillStyle = COL.muted; d.g.fillText(L('date'), M + 460, d.y + 10); d.y += 30;
+    }
+    d.text(L('sheet_foot'), { size: 8.6, color: COL.muted });
+    d.pages.forEach((cv, i) => { const g = cv.getContext('2d'); g.font = '400 8px ' + MONO; g.fillStyle = COL.muted; g.fillText('RTGap ' + RT.VERSION + ' · ' + L('sheet_title') + ' · SHA-256 ' + m.checksum.slice(0, 12) + '…', M, PH - 30); const pg = (i + 1) + '/' + d.pages.length; g.fillText(pg, PW - M - g.measureText(pg).width, PH - 30); });
+    const jpgs = [];
+    for (const cv of d.pages) { const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.93)); jpgs.push(new Uint8Array(await blob.arrayBuffer())); }
+    return assemble(jpgs, a.inputJson || '');
+  }
+
   /* Minimal PDF 1.4 writer: one JPEG per A4 page + the input JSON as an embedded file. */
   function assemble(jpgs, inputJson) {
     const enc = new TextEncoder(), parts = [], offsets = []; let pos = 0;
@@ -254,5 +327,5 @@
     push(x + 'trailer\n<< /Size ' + cnt + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n');
     return new Blob(parts, { type: 'application/pdf' });
   }
-  root.RTPDF = { build, assemble };
+  root.RTPDF = { build, buildSheet, assemble };
 })(window);

@@ -65,6 +65,22 @@ def _constraints_line(p: GapPlanner) -> str:
 
 
 # --------------------------------------------------------------------------- #
+def history_lines(p: GapPlanner) -> list[str]:
+    """Interruptions, fractions given outside the plan, an earlier plan change and dose errors."""
+    out = []
+    if len(p.interruptions) > 1:
+        out.append(f"{len(p.interruptions)} interruptions: " + "; ".join(
+            a.isoformat() + (f" to {b.isoformat()}" if b != a else "") + f" ({n} d)" for a, b, n in p.interruptions))
+    if p.extra_dates:
+        out.append("fractions given outside the plan: " + ", ".join(d.isoformat() for d in p.extra_dates))
+    if p.plan_change:
+        f0, n0, d0 = p.plan_change
+        out.append(f"plan changed from {f0.isoformat()}: {n0} × {d0:g} Gy")
+    if p.dose_errors:
+        out.append("dose errors: " + "; ".join(f"{x.date.isoformat()} {x.actual:g} Gy (intended {x.intended:g})" for x in p.dose_errors))
+    return out
+
+
 def text_report(p: GapPlanner, dec: Decision, sens=None, scenarios=None) -> str:
     s = p.summary()
     rx = p.rx
@@ -73,6 +89,7 @@ def text_report(p: GapPlanner, dec: Decision, sens=None, scenarios=None) -> str:
          f"Dates        : start {_fmt_date(rx.start)}, planned end {_fmt_date(s['planned_end'])} (T = {s['planned_T']} d)",
          f"Missed       : {', '.join(d.isoformat() for d in s['missed']) or '-'}",
          f"Status       : {s['delivered']} delivered, {s['remaining']} remaining, resume {_fmt_date(s['resume'])}",
+         *[f"History      : {h}" for h in history_lines(p)],
          f"Rules        : {_rules_line(p)}",
          f"Local        : {_constraints_line(p)}",
          f"Tumour       : {p.tumour.describe()} · planned EQD2_T {s['planned_tumour_eqd2']:.2f} Gy"]
@@ -409,6 +426,7 @@ window.addEventListener('beforeprint',()=>document.querySelectorAll('details').f
 <dt>Prescription</dt><dd>{e(rx.describe())} · {_fmt_date(rx.start)} → {_fmt_date(s['planned_end'])} (T = {s['planned_T']} d)</dd>
 <dt>Missed</dt><dd>{', '.join(_fmt_date(d) for d in s['missed']) or '-'}</dd>
 <dt>Status</dt><dd>{s['delivered']} delivered, {s['remaining']} remaining, resume {_fmt_date(s['resume'])}</dd>
+{''.join(f"<dt>History</dt><dd>{e(h)}</dd>" for h in history_lines(p))}
 <dt>Rules</dt><dd>{e(_rules_line(p))}</dd>{notes_block}{proto}
 <dt>Local</dt><dd>{e(_constraints_line(p))}</dd>
 <dt>Tumour</dt><dd>{e(p.tumour.describe())} · planned EQD2<sub>T</sub> {levels_txt}</dd>

@@ -9,7 +9,8 @@ CASE_KEYS = {"title", "site", "protocol", "category", "prescription", "gap", "tu
              "constraints", "options", "custom_options", "sensitivity", "scenarios", "audit", "brachy"}
 RX_KEYS = {"start", "n_fractions", "dose_per_fraction", "treatment_weekdays", "closed_dates", "holidays",
            "phases", "primary_level"}
-GAP_KEYS = {"missed_dates", "resume_date", "unavailable_dates", "delivered", "outage_start", "cause"}
+GAP_KEYS = {"missed_dates", "resume_date", "unavailable_dates", "delivered", "outage_start", "cause",
+            "extra_delivered", "dose_errors", "plan_change"}
 
 
 class ValidationError(ValueError):
@@ -64,8 +65,16 @@ def check_planner(p) -> Issues:
         err.append(f"Resume date {_d(p.resume)} must be after the last missed date ({_d(p.missed[-1])}).")
     if p.resume < rx.start:
         err.append(f"Resume date {_d(p.resume)} is before the start of treatment.")
-    if not p.missed and p.resume <= end:
+    history = p.dose_errors or p.extra_dates or p.plan_change
+    if not p.missed and p.resume <= end and not history:
         warn.append("No missed dates given: only the resume date defines the gap.")
+    for d in p.extra_dates:
+        if d < rx.start:
+            err.append(f"Extra fraction on {_d(d)} is before the start of treatment.")
+    for e in p.dose_errors:
+        if e.actual > 2.5 * e.intended:
+            warn.append(f"Dose error on {_d(e.date)}: {e.actual:g} Gy is more than 2.5 × the intended "
+                        f"{e.intended:g} Gy. Check the value; LQ is uncertain at large doses.")
     if p.remaining == 0:
         warn.append("All prescribed fractions have been delivered: nothing to compensate.")
 

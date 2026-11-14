@@ -131,11 +131,28 @@ def candidate_resume_dates(p: GapPlanner, outage_start: dt.date, days: int) -> l
     return out
 
 
+def current_outage_start(p: GapPlanner) -> dt.date | None:
+    """First day of the latest interruption (earlier interruptions are history)."""
+    if p.interruptions:
+        return p.interruptions[-1][0]
+    return p.missed[0] if p.missed else None
+
+
 def resume_scenarios(p: GapPlanner, outage_start: dt.date, resume_dates) -> list[ScenarioRow]:
+    """Decision for each possible resume date of the current outage. Earlier interruptions, extra
+    fractions and dose errors before the outage are kept."""
     rows = []
+    earlier = [d for d in p.missed if d < outage_start]
+    init = p._init
+    extra = [d for d in (init.get("extra_delivered") or ()) if d < outage_start]
+    errs = [e for e in (init.get("dose_errors") or ()) if e[0] < outage_start]
+    pc = init.get("plan_change")
+    if pc is not None and pc[0] > outage_start:
+        pc = None
     for r in sorted(resume_dates):
         missed = outage_missed(p, outage_start, r)
-        q = p.variant(missed_dates=missed, resume_date=r, delivered=None)
+        q = p.variant(missed_dates=earlier + missed, resume_date=r, delivered=None,
+                      extra_delivered=extra, dose_errors=errs, plan_change=pc)
         dec = decide(q)
         base = next(o for o in dec.feasible + dec.rejected if o.family == "baseline") if q.remaining else None
         rows.append(ScenarioRow(

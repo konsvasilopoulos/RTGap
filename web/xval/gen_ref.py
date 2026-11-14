@@ -4,7 +4,7 @@ sys.path.insert(0, ".")
 import yaml
 from rtgap.config import planner_from_dict, load_file
 from rtgap.decide import decide
-from rtgap.analysis import sensitivity, resume_scenarios, candidate_resume_dates
+from rtgap.analysis import sensitivity, resume_scenarios, candidate_resume_dates, current_outage_start
 from rtgap.rules import load_library
 from rtgap.validation import ValidationError
 
@@ -26,7 +26,8 @@ def run(cfg, proto):
         s = sensitivity(p, dec)
         if s: out["sens"] = dict(n=s.n, t=list(s.tumour_range), same=s.same_fraction, oar={k: list(v) for k, v in s.oar_pct_ranges.items()})
     if p.missed and cfg.get("_scen"):
-        rows = resume_scenarios(p, p.missed[0], candidate_resume_dates(p, p.missed[0], 10))
+        os_ = current_outage_start(p)
+        rows = resume_scenarios(p, os_, candidate_resume_dates(p, os_, 10))
         out["scen"] = [dict(r=r.resume.isoformat(), n=r.n_missed, ext=r.baseline_extension, d=r.baseline_tumour_delta, status=r.status,
                             rec=r.option.key if r.option else None) for r in rows]
     return out
@@ -79,6 +80,44 @@ for i in range(260):
         cfg["brachy"] = dict(fractions=[dict(date=(first_bt + dt.timedelta(days=7 * q)).isoformat(), dose=random.choice([5.5, 7, 7.5])) for q in range(k)])
         if cfg.get("oars"): cfg["oars"][-1]["brachy_ratio"] = random.choice([0.6, 0.75])
     if random.random() < 0.1: cfg["gap"]["unavailable_dates"] = [(dt.date.fromisoformat(missed[-1]) + dt.timedelta(days=random.randrange(1, 12))).isoformat()]
+    cases.append((cfg, {}))
+# treatment history: several interruptions, extra fractions given, an earlier plan change, dose errors
+random.seed(11)
+for i in range(160):
+    rx = dict(random.choice(RX))
+    start = dt.date(2026, 1, 5) + dt.timedelta(days=random.randrange(0, 330))
+    rx["start"] = start.isoformat()
+    if random.random() < 0.5: rx["holidays"] = "GR"
+    n = rx.get("n_fractions") or sum(p["n_fractions"] for p in rx["phases"])
+    span = int(n * 1.4)
+    a = random.randrange(3, max(4, span // 2))
+    gap = {"missed_dates": [(start + dt.timedelta(days=a + j)).isoformat() for j in range(random.choice([1, 2, 3]))]}
+    if random.random() < 0.7:
+        b = a + random.randrange(5, max(6, span // 2))
+        gap["missed_dates"] += [(start + dt.timedelta(days=b + j)).isoformat() for j in range(random.choice([1, 2, 3, 5]))]
+    last = max(dt.date.fromisoformat(x) for x in gap["missed_dates"])
+    if random.random() < 0.35:   # an earlier catch-up: a Saturday or a second fraction after the first interruption
+        sat = start + dt.timedelta(days=a + (5 - (start + dt.timedelta(days=a)).weekday()) % 7)
+        cand = [sat, start + dt.timedelta(days=a + random.randrange(3, 9))]
+        gap["extra_delivered"] = sorted({d.isoformat() for d in random.sample(cand, random.choice([1, 2])) if d < last})
+    if random.random() < 0.3:
+        frm = start + dt.timedelta(days=a + random.choice([1, 2, 3, 4, 7]))
+        if frm <= last:
+            gap["plan_change"] = {"from": frm.isoformat(), "n_fractions": max(1, n - a // 2 - random.randrange(0, 5)), "dose_per_fraction": random.choice([2.1, 2.2, 2.4, 3.0])}
+    if random.random() < 0.5:
+        k = random.choice([1, 1, 2, 3])
+        errs = []
+        for _ in range(k):
+            d = start + dt.timedelta(days=random.randrange(0, max(1, (last - start).days)))
+            errs.append({"date": d.isoformat(), "dose": random.choice([0.5, 1.0, 1.4, 2.5, 3.0, 4.0, 6.0])})
+        gap["dose_errors"] = errs
+    if random.random() < 0.15: gap.pop("missed_dates")
+    c = {}
+    for k in ("allow_saturday", "allow_sunday", "allow_bid", "allow_dose_change"):
+        if random.random() < 0.3: c[k] = False
+    if random.random() < 0.3: c["max_late_increase_pct"] = 3; c["max_tumour_deficit_pct"] = 2
+    cfg = dict(site=random.choice(sites), prescription=rx, gap=gap, constraints=c, _sens=(i % 8 == 0), _scen=(i % 10 == 0))
+    if random.random() < 0.2: cfg["gap"]["cause"] = random.choice(["machine", "toxicity"])
     cases.append((cfg, {}))
 ref = [dict(case=c, protocol=p, result=run(c, p)) for c, p in cases]
 json.dump(ref, open("web/xval/ref.json", "w"), default=str)

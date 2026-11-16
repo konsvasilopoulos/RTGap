@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.9.0';
+  const VERSION = '1.10.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -697,6 +697,30 @@
       decisions: [...counts.entries()].sort((a, b) => b[1].count - a[1].count).map(([k, v]) => ({ o: v.o, count: v.count, dRange: rng(dR.get(k)) })),
       sameFraction: same / n, worst };
   }
+  /* Probabilistic analysis: the radiobiological parameters are drawn from distributions centred on the
+     entered values (log-normal factors for α/β and repopulation, a normal shift for T_k) and every schedule
+     is re-evaluated, as it stands, for each draw. The widths are this tool's assumptions, not guidance values. */
+  const MC_SD = { tumour_alpha_beta: 0.30, repopulation: 0.30, kickoff_days: 5, late_alpha_beta: 0.25 };
+  function rng32(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function monteCarlo(p, opts, n, seed, spread) {
+    if (!p.remaining || !opts.length) return null;
+    n = n || 1000; spread = spread == null ? 1 : spread;
+    const u = rng32(seed == null ? 20261116 : seed);
+    const gauss = () => { let x = 0; while (x === 0) x = u(); return Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * u()); };
+    const time = hasTime(p.tumour), sd = MC_SD;
+    const res = opts.map((o) => ({ o, tumour: new Float64Array(n), tumourPct: new Float64Array(n), late: new Float64Array(n) }));
+    for (let i = 0; i < n; i++) {
+      const fab = Math.exp(spread * sd.tumour_alpha_beta * gauss()), frep = time ? Math.exp(spread * sd.repopulation * gauss()) : 1,
+        sh = time ? spread * sd.kickoff_days * gauss() : 0, fl = Math.exp(spread * sd.late_alpha_beta * gauss());
+      const tumours = p.tumours.map((t) => Object.assign({}, t, { ab: t.ab * fab, dprolif: t.dprolif * frep, tk: t.tk == null ? null : Math.max(0, t.tk + sh) }));
+      const oars = p.oars.map((o) => Object.assign({}, o, { ab: o.ab * fl }));
+      const q = variant(p, { tumours, oars });
+      res.forEach((r) => { const e = evaluate(q, r.o.key, r.o.family, r.o.t, r.o.newFx, r.o.d, r.o.strategy); r.tumour[i] = e.tumour.delta; r.tumourPct[i] = e.tumour.deltaPct; r.late[i] = e.oars.length ? e.maxLateIncPct : 0; });
+    }
+    const qt = (a, f) => { const s2 = Float64Array.from(a).sort(), x = f * (s2.length - 1), k = Math.floor(x); return s2[k] + (x - k) * ((s2[Math.min(k + 1, s2.length - 1)]) - s2[k]); };
+    for (const r of res) { r.tq = [qt(r.tumour, 0.05), qt(r.tumour, 0.5), qt(r.tumour, 0.95)]; r.tpq = [qt(r.tumourPct, 0.05), qt(r.tumourPct, 0.5), qt(r.tumourPct, 0.95)]; r.lq = [qt(r.late, 0.05), qt(r.late, 0.5), qt(r.late, 0.95)]; }
+    return { n, spread, sd, time, hasOar: p.oars.length > 0, res };
+  }
   function candidateResumeDates(p, outageStart, days) {
     const out = [];
     for (let i = 1; i <= days; i++) if (isRegular(p, outageStart + i)) out.push(outageStart + i);
@@ -995,7 +1019,7 @@
 
   const api = { VERSION, parseDate, iso, weekday, ymd, mkDate, orthodoxEaster, greekHolidays, holidayMap, bed, eqd2, eqd2FromBed, kFromDprolif, dprolifFromK,
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
-    solveScale, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
+    solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
     allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;

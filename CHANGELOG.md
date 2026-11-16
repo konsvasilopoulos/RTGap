@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.0 — 2026-11-16
+* Own schedule on a calendar: tap a day for one fraction, again for two (BID), once more to clear.
+  The schedule is evaluated at once beside the calculated options; it can start from the suggestion.
+* Probabilistic analysis (web app): 1000 random draws of tumour α/β, repopulation, T_k and late α/β
+  around the entered values; median and 5–95 % range per schedule, share of draws inside the
+  department tolerances, and one schedule against another. Fixed seed, three widths of uncertainty.
+* Guided tour of the page on a ready example; the open case is put back when the tour closes.
+* Validation page (validation.html): self-test and the RadComp comparison calculated live, numbers of
+  the Python–JavaScript cross-validation, and the schedules waiting for LQL-Equiv
+  (values go into validation/lql_equiv.json).
+
 ## 1.9.0 — 2026-11-16
 * Input checks on every number and date field. Values that cannot be right (negative or zero doses,
   fractional fraction counts, a resume date before the first fraction, a mistyped year) are refused,

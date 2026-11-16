@@ -370,6 +370,40 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
 #tip .tip-more { display: block; margin-top: 5px; opacity: .7; font-size: 0.74rem; }
 @media print { #tip, .vbar { display: none !important; } }
 
+/* own schedule picked on a calendar */
+.bcal button.c:hover { border-color: var(--accent); }
+.gb-sum { margin: 6px 0 0; line-height: 1.6; }
+.gb-sum .neg { color: var(--bad); } .gb-sum .pos { color: var(--good, #0a7d4f); }
+.gb-warn { color: var(--warn); margin: 4px 0 0; }
+.legend i.lg-new { background: var(--accent); } .legend i.lg-bid { background: #0d3a99; } .legend i.lg-end { background: var(--panel); box-shadow: 0 0 0 2px var(--ink); }
+
+/* probabilistic analysis */
+.mc-ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+.seg.lite { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg.lite button { border: 0; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.8rem; padding: 5px 11px; cursor: pointer; }
+.seg.lite button + button { border-left: 1px solid var(--line); }
+.seg.lite button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.mc-fig { margin: 0 0 6px; } .mc-fig figcaption { font-size: 0.82rem; font-weight: 600; margin-bottom: 2px; } .mc-fig figcaption .small { font-weight: 400; }
+.mc-fig svg { width: 100%; height: auto; display: block; max-width: 640px; }
+.mc-grid { stroke: var(--line); stroke-width: 1; } .mc-zero { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.mc-tick { font: 10px var(--f-num); fill: var(--muted); } .mc-lab { font: 11px var(--f-body); fill: var(--ink); } .mc-sub { font: 9.5px var(--f-body); fill: var(--muted); }
+.mc-wh { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; opacity: .55; } .mc-box { fill: var(--accent); opacity: .45; } .mc-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.mc-row.on .mc-lab { font-weight: 700; } .mc-row:hover rect:first-of-type { fill: var(--panel-2); }
+.mc-pairs { margin: 10px 0 0; padding-left: 18px; font-size: 0.86rem; } .mc-pairs li { margin: 2px 0; }
+
+/* guided tour */
+#tour .tour-block { position: fixed; inset: 0; z-index: 90; }
+#tour .tour-hole { position: fixed; z-index: 91; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(7, 16, 31, .62), 0 0 0 2px var(--accent); pointer-events: none; transition: left .18s, top .18s, width .18s, height .18s; }
+#tour .tour-card { position: fixed; z-index: 92; width: min(360px, calc(100vw - 16px)); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+#tour .tour-card h3 { margin: 2px 0 6px; font: 600 1.02rem/1.3 var(--f-head, var(--f-body)); }
+#tour .tour-card p { margin: 0 0 12px; font-size: 0.88rem; line-height: 1.5; }
+#tour .tour-n { font: 0.7rem var(--f-num); color: var(--muted); letter-spacing: .08em; }
+#tour .rowbtn { margin: 0; align-items: center; }
+body.touring .dock { display: none !important; }
+@media (max-width: 699px) { #tour .tour-card { width: auto; } }
+@media (prefers-reduced-motion: reduce) { #tour .tour-hole { transition: none; } }
+@media print { #tour { display: none !important; } }
+
 </style>
 </head>
 <body>
@@ -421,7 +455,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.9.0';
+  const VERSION = '1.10.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1114,6 +1148,30 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       decisions: [...counts.entries()].sort((a, b) => b[1].count - a[1].count).map(([k, v]) => ({ o: v.o, count: v.count, dRange: rng(dR.get(k)) })),
       sameFraction: same / n, worst };
   }
+  /* Probabilistic analysis: the radiobiological parameters are drawn from distributions centred on the
+     entered values (log-normal factors for α/β and repopulation, a normal shift for T_k) and every schedule
+     is re-evaluated, as it stands, for each draw. The widths are this tool's assumptions, not guidance values. */
+  const MC_SD = { tumour_alpha_beta: 0.30, repopulation: 0.30, kickoff_days: 5, late_alpha_beta: 0.25 };
+  function rng32(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function monteCarlo(p, opts, n, seed, spread) {
+    if (!p.remaining || !opts.length) return null;
+    n = n || 1000; spread = spread == null ? 1 : spread;
+    const u = rng32(seed == null ? 20261116 : seed);
+    const gauss = () => { let x = 0; while (x === 0) x = u(); return Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * u()); };
+    const time = hasTime(p.tumour), sd = MC_SD;
+    const res = opts.map((o) => ({ o, tumour: new Float64Array(n), tumourPct: new Float64Array(n), late: new Float64Array(n) }));
+    for (let i = 0; i < n; i++) {
+      const fab = Math.exp(spread * sd.tumour_alpha_beta * gauss()), frep = time ? Math.exp(spread * sd.repopulation * gauss()) : 1,
+        sh = time ? spread * sd.kickoff_days * gauss() : 0, fl = Math.exp(spread * sd.late_alpha_beta * gauss());
+      const tumours = p.tumours.map((t) => Object.assign({}, t, { ab: t.ab * fab, dprolif: t.dprolif * frep, tk: t.tk == null ? null : Math.max(0, t.tk + sh) }));
+      const oars = p.oars.map((o) => Object.assign({}, o, { ab: o.ab * fl }));
+      const q = variant(p, { tumours, oars });
+      res.forEach((r) => { const e = evaluate(q, r.o.key, r.o.family, r.o.t, r.o.newFx, r.o.d, r.o.strategy); r.tumour[i] = e.tumour.delta; r.tumourPct[i] = e.tumour.deltaPct; r.late[i] = e.oars.length ? e.maxLateIncPct : 0; });
+    }
+    const qt = (a, f) => { const s2 = Float64Array.from(a).sort(), x = f * (s2.length - 1), k = Math.floor(x); return s2[k] + (x - k) * ((s2[Math.min(k + 1, s2.length - 1)]) - s2[k]); };
+    for (const r of res) { r.tq = [qt(r.tumour, 0.05), qt(r.tumour, 0.5), qt(r.tumour, 0.95)]; r.tpq = [qt(r.tumourPct, 0.05), qt(r.tumourPct, 0.5), qt(r.tumourPct, 0.95)]; r.lq = [qt(r.late, 0.05), qt(r.late, 0.5), qt(r.late, 0.95)]; }
+    return { n, spread, sd, time, hasOar: p.oars.length > 0, res };
+  }
   function candidateResumeDates(p, outageStart, days) {
     const out = [];
     for (let i = 1; i <= days; i++) if (isRegular(p, outageStart + i)) out.push(outageStart + i);
@@ -1412,7 +1470,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
 
   const api = { VERSION, parseDate, iso, weekday, ymd, mkDate, orthodoxEaster, greekHolidays, holidayMap, bed, eqd2, eqd2FromBed, kFromDprolif, dprolifFromK,
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
-    solveScale, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
+    solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
     allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
@@ -1484,6 +1542,20 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       about_btn: 'About', theme_auto: 'Theme: follows the device', theme_light: 'Theme: light', theme_dark: 'Theme: dark',
       intro: ['Choose the tumour site and enter the prescription.', 'Tap the missed days on the calendar.', 'Read the suggestion, compare the options, download the report.'],
       intro_try: 'Try an example', intro_hide: 'Hide',
+      tour_btn: 'Take the tour', tour_next: 'Next', tour_prev: 'Back', tour_close: 'Close', tour_done: 'Finish', val_link: 'Validation page',
+      tour: [
+        ['1 · Tumour site', 'The site sets the RCR category, the prolongation that is allowed and the default radiobiological values. Here: squamous head and neck, category 1, at most 2 days.'],
+        ['2 · Prescription', 'First fraction, number of fractions and dose per fraction. Sequential boost, SIB and brachytherapy are entered here too.'],
+        ['3 · The interruption', 'Tap the days that were missed. In this example a whole week was lost to a machine fault. The same calendar takes chemotherapy days, closed days and dose errors.'],
+        ['What the interruption costs', 'Fractions missed, prolongation without and with compensation, change of the tumour EQD2 and of the most affected late tissue.'],
+        ['Suggestion for discussion', 'The first schedule that passes the RCR order: weekend at the same dose, then BID, then a change of dose per fraction only inside the department tolerances. "How the decision was reached" lists every step with its reference.'],
+        ['The schedule day by day', 'The calendar of the selected schedule and each tissue against the plan. The Schedule tab also has the tumour-dose timeline.'],
+        ['Every option, and why some are excluded', 'All calculated schedules in one table. Tap a row to select it; the excluded ones show the rule they break. Two schedules can be compared side by side below.'],
+        ['How sure is the result?', 'The same schedules for 1000 random draws of α/β, repopulation and T_k. The bars show the range of each result; the table gives the share of draws inside your tolerances.'],
+        ['Your own schedule', 'Enter what the department proposes, or pick the days on a calendar, and it is evaluated beside the calculated options with the same rules.'],
+        ['Report', 'PDF report in Greek or English, treatment sheet for the radiographers, hand-check worksheet and a link that carries the case.'],
+        ['Help and documentation', 'Every field has a (?) with what it defines and which rule applies. Documentation holds the user guide, the method, the references and the self-test. The case you had open is now put back.'],
+      ],
       about_lead: 'Decision support for unscheduled interruptions of radiotherapy. It places every compensation method of the RCR guidance on the real calendar, evaluates it with the linear-quadratic model and shows what each one costs the tumour and the normal tissues.',
       feats: [['RCR decision order', 'Categories 1–3 for 26 tumour sites, 2019 edition or 5th edition draft, with the source beside every rule.'],
         ['Real calendar', 'Weekends, Greek public holidays, machine downtime, chemotherapy days, twice-daily slots.'],
@@ -1553,6 +1625,16 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       lc: 'Local control (rule of thumb)', lc_txt: 'about −{a} to −{b} %', lc_none: 'no loss expected', lc_hint: 'Tumour shortfall expressed in days of repopulation × 1.0–1.4 % per day. A rough guide for fast-growing tumours, not a TCP model.',
       rec_line: 'Recoverable share of the uncompensated tumour loss', rec_fixed: 'without raising any late dose', rec_5: 'accepting up to +5 % late dose',
       given: 'Schedule that was given, or your own', given_hint: 'Enter a schedule to evaluate it beside the calculated options. Useful for checking past decisions.', given_n: 'Fractions after the gap', given_d: 'Dose per fraction (Gy)', given_sat: 'Uses Saturdays', given_sun: 'Uses Sundays', given_bid: 'BID days', given_title: 'Entered schedule',
+      mc_title: 'Probabilistic analysis', mc_sub: 'The same schedules, re-evaluated for {n} random draws of the radiobiological parameters around the values you entered. It shows how much each result depends on parameters nobody knows exactly.',
+      mc_wait: 'Calculating…', mc_rep: 'repopulation rate', mc_spread: 'Uncertainty of the parameters', mc_s1: 'narrow', mc_s2: 'standard', mc_s3: 'wide', mc_median: 'median', mc_late: 'Δ most affected late tissue', mc_late_s: 'late tissues',
+      mc_right: 'further right is better', mc_left: 'further left is better', mc_legend: 'median · half of the draws · 5–95 %',
+      mc_pT: 'Tumour shortfall ≤ {x} %', mc_pL: 'Late increase ≤ {x} %', mc_both: 'Both',
+      mc_role_rec: 'suggestion', mc_role_sel: 'selected', mc_role_given: 'your schedule', mc_role_base: 'no compensation',
+      mc_pair: '"{a}" against "{b}"', mc_pair_t: 'higher tumour dose in', mc_pair_l: 'lower late-tissue dose in',
+      mc_assume: 'Assumed spread around the entered values:', mc_90: '90 % of the draws', mc_caveat: 'The parameters are drawn independently. These widths are assumptions of this tool, not values from a guideline; the percentages are shares of the draws, not clinical probabilities.',
+      gb_open: 'Pick the days on a calendar', gb_hint: 'Tap a day: one fraction, tap again for two (BID), once more to clear. The result updates at once.', gb_k0: 'no fraction', gb_k1: 'one fraction', gb_k2: 'two fractions (BID)',
+      gb_left: 'remaining in the plan', gb_empty: 'No days picked yet.', gb_fewer: '{n} fewer than the fractions that remain in the plan.', gb_more: '{n} more than the fractions that remain in the plan.',
+      gb_copy: 'Start from the suggestion', gb_clear: 'Clear days', gb_quick: 'Back to quick entry',
       tf_apply: 'Apply the published time factor', tf_note: 'Published estimate of the dose lost per day of prolongation for this site. It is linear over the whole course (T_k = 0), so only differences of EQD2_T between schedules are meaningful.', st_no_action: 'No compensation needed', st_clinical_decision: 'Clinical decision needed', st_no_gap: 'Nothing to compensate', st_error: 'Check the input',
       why: 'How the decision was reached', weigh: 'Options to weigh',
       chart_title: 'Biological dose to the tumour over time', chart_sub: 'Cumulative EQD2 of the primary level, corrected for repopulation after T_k',
@@ -1637,6 +1719,20 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       about_btn: 'Σχετικά', theme_auto: 'Θέμα: όπως η συσκευή', theme_light: 'Θέμα: φωτεινό', theme_dark: 'Θέμα: σκούρο',
       intro: ['Διαλέξτε εντοπισμό και δώστε τη συνταγογράφηση.', 'Πατήστε στο ημερολόγιο τις ημέρες που χάθηκαν.', 'Δείτε την πρόταση, συγκρίνετε τις επιλογές, κατεβάστε την αναφορά.'],
       intro_try: 'Δοκιμάστε ένα παράδειγμα', intro_hide: 'Απόκρυψη',
+      tour_btn: 'Ξενάγηση', tour_next: 'Επόμενο', tour_prev: 'Πίσω', tour_close: 'Κλείσιμο', tour_done: 'Τέλος', val_link: 'Σελίδα επικύρωσης',
+      tour: [
+        ['1 · Εντοπισμός όγκου', 'Ο εντοπισμός ορίζει την κατηγορία RCR, την επιτρεπόμενη παράταση και τις προεπιλεγμένες ραδιοβιολογικές τιμές. Εδώ: πλακώδες κεφαλής-τραχήλου, κατηγορία 1, το πολύ 2 ημέρες.'],
+        ['2 · Συνταγογράφηση', 'Πρώτο κλάσμα, αριθμός κλασμάτων και δόση ανά κλάσμα. Εδώ δίνονται επίσης το διαδοχικό boost, το SIB και η βραχυθεραπεία.'],
+        ['3 · Η διακοπή', 'Πατήστε τις ημέρες που χάθηκαν. Στο παράδειγμα χάθηκε μία ολόκληρη εβδομάδα από βλάβη μηχανήματος. Στο ίδιο ημερολόγιο σημειώνονται ημέρες χημειοθεραπείας, κλειστές ημέρες και λάθη δόσης.'],
+        ['Τι κοστίζει η διακοπή', 'Χαμένα κλάσματα, παράταση χωρίς και με αντιστάθμιση, μεταβολή της EQD2 του όγκου και του πιο επιβαρυμένου όψιμου ιστού.'],
+        ['Πρόταση προς συζήτηση', 'Το πρώτο σχήμα που περνά τη σειρά του RCR: Σαββατοκύριακο με ίδια δόση, μετά BID, μετά αλλαγή δόσης ανά κλάσμα μόνο μέσα στις ανοχές του τμήματος. Το «Πώς προέκυψε η απόφαση» δείχνει κάθε βήμα με την παραπομπή του.'],
+        ['Το σχήμα ημέρα προς ημέρα', 'Το ημερολόγιο του επιλεγμένου σχήματος και κάθε ιστός σε σύγκριση με το πλάνο. Στην καρτέλα Σχήμα υπάρχει και η πορεία της δόσης του όγκου στον χρόνο.'],
+        ['Όλες οι επιλογές, και γιατί κάποιες αποκλείονται', 'Όλα τα υπολογισμένα σχήματα σε έναν πίνακα. Πατήστε μια γραμμή για να την επιλέξετε· τα αποκλεισμένα δείχνουν τον κανόνα που παραβιάζουν. Πιο κάτω συγκρίνονται δύο σχήματα δίπλα-δίπλα.'],
+        ['Πόσο σίγουρο είναι το αποτέλεσμα;', 'Τα ίδια σχήματα για 1000 τυχαίες δειγματοληψίες των α/β, του επαναπληθυσμού και του T_k. Οι μπάρες δείχνουν το εύρος κάθε αποτελέσματος· ο πίνακας δίνει το μερίδιο των δειγματοληψιών μέσα στις ανοχές σας.'],
+        ['Το δικό σας σχήμα', 'Δώστε αυτό που προτείνει το τμήμα, ή διαλέξτε τις ημέρες σε ημερολόγιο, και αξιολογείται δίπλα στις υπολογισμένες επιλογές με τους ίδιους κανόνες.'],
+        ['Αναφορά', 'Αναφορά PDF στα ελληνικά ή στα αγγλικά, φύλλο θεραπείας για τους χειριστές, φύλλο ελέγχου με το χέρι και σύνδεσμος που μεταφέρει το περιστατικό.'],
+        ['Βοήθεια και τεκμηρίωση', 'Κάθε πεδίο έχει ένα (?) με το τι ορίζει και ποιος κανόνας ισχύει. Η Τεκμηρίωση έχει τον οδηγό χρήσης, τη μέθοδο, τις παραπομπές και το self-test. Το περιστατικό που είχατε ανοιχτό επανέρχεται τώρα.'],
+      ],
       about_lead: 'Υποστήριξη απόφασης για τις απρογραμμάτιστες διακοπές της ακτινοθεραπείας. Τοποθετεί κάθε μέθοδο αντιστάθμισης της οδηγίας του RCR στο πραγματικό ημερολόγιο, την αξιολογεί με το γραμμικό-τετραγωνικό μοντέλο και δείχνει τι κοστίζει η καθεμία στον όγκο και στους υγιείς ιστούς.',
       feats: [['Σειρά αποφάσεων RCR', 'Κατηγορίες 1–3 για 26 εντοπισμούς, έκδοση 2019 ή σχέδιο 5ης έκδοσης, με την πηγή δίπλα σε κάθε κανόνα.'],
         ['Πραγματικό ημερολόγιο', 'Σαββατοκύριακα, ελληνικές αργίες, βλάβες μηχανήματος, ημέρες χημειοθεραπείας, δύο κλάσματα την ημέρα.'],
@@ -1706,6 +1802,16 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       lc: 'Τοπικός έλεγχος (εμπειρικός κανόνας)', lc_txt: 'περίπου −{a} έως −{b} %', lc_none: 'δεν αναμένεται απώλεια', lc_hint: 'Το έλλειμμα του όγκου εκφρασμένο σε ημέρες επαναπληθυσμού × 1.0–1.4 % ανά ημέρα. Αδρή εκτίμηση για ταχέως αναπτυσσόμενους όγκους, όχι μοντέλο TCP.',
       rec_line: 'Ανακτήσιμο μέρος της απώλειας του όγκου', rec_fixed: 'χωρίς αύξηση δόσης στους όψιμους ιστούς', rec_5: 'με αποδοχή έως +5 % στους όψιμους',
       given: 'Σχήμα που δόθηκε, ή δικό σας', given_hint: 'Δώστε ένα σχήμα για να αξιολογηθεί δίπλα στις υπολογισμένες επιλογές. Χρήσιμο για έλεγχο παλαιών αποφάσεων.', given_n: 'Κλάσματα μετά τη διακοπή', given_d: 'Δόση ανά κλάσμα (Gy)', given_sat: 'Με Σάββατα', given_sun: 'Με Κυριακές', given_bid: 'Ημέρες BID', given_title: 'Δοθέν σχήμα',
+      mc_title: 'Πιθανοτική ανάλυση', mc_sub: 'Τα ίδια σχήματα, υπολογισμένα ξανά για {n} τυχαίες δειγματοληψίες των ραδιοβιολογικών παραμέτρων γύρω από τις τιμές που δώσατε. Δείχνει πόσο εξαρτάται κάθε αποτέλεσμα από παραμέτρους που κανείς δεν γνωρίζει ακριβώς.',
+      mc_wait: 'Υπολογισμός…', mc_rep: 'ρυθμός επαναπληθυσμού', mc_spread: 'Αβεβαιότητα των παραμέτρων', mc_s1: 'μικρή', mc_s2: 'τυπική', mc_s3: 'μεγάλη', mc_median: 'διάμεσος', mc_late: 'Δ πιο επιβαρυμένου όψιμου ιστού', mc_late_s: 'όψιμων ιστών',
+      mc_right: 'δεξιότερα είναι καλύτερα', mc_left: 'αριστερότερα είναι καλύτερα', mc_legend: 'διάμεσος · οι μισές δειγματοληψίες · 5–95 %',
+      mc_pT: 'Έλλειμμα όγκου ≤ {x} %', mc_pL: 'Αύξηση όψιμων ≤ {x} %', mc_both: 'Και τα δύο',
+      mc_role_rec: 'πρόταση', mc_role_sel: 'επιλεγμένο', mc_role_given: 'το σχήμα σας', mc_role_base: 'χωρίς αντιστάθμιση',
+      mc_pair: '«{a}» έναντι «{b}»', mc_pair_t: 'υψηλότερη δόση όγκου στο', mc_pair_l: 'χαμηλότερη δόση όψιμων ιστών στο',
+      mc_assume: 'Διασπορά που υποτίθεται γύρω από τις τιμές που δώσατε:', mc_90: '90 % των δειγματοληψιών', mc_caveat: 'Οι παράμετροι δειγματοληπτούνται ανεξάρτητα. Τα εύρη αυτά είναι παραδοχές του εργαλείου, όχι τιμές οδηγίας· τα ποσοστά είναι μερίδια των δειγματοληψιών, όχι κλινικές πιθανότητες.',
+      gb_open: 'Διαλέξτε τις ημέρες στο ημερολόγιο', gb_hint: 'Πατήστε μια ημέρα: ένα κλάσμα· ξανά για δύο (BID)· άλλη μία για καθαρισμό. Το αποτέλεσμα ενημερώνεται αμέσως.', gb_k0: 'χωρίς κλάσμα', gb_k1: 'ένα κλάσμα', gb_k2: 'δύο κλάσματα (BID)',
+      gb_left: 'απομένουν στο πλάνο', gb_empty: 'Δεν έχετε διαλέξει ημέρες ακόμη.', gb_fewer: '{n} λιγότερα από τα κλάσματα που απομένουν στο πλάνο.', gb_more: '{n} περισσότερα από τα κλάσματα που απομένουν στο πλάνο.',
+      gb_copy: 'Ξεκινήστε από την πρόταση', gb_clear: 'Καθαρισμός ημερών', gb_quick: 'Πίσω στη γρήγορη εισαγωγή',
       tf_apply: 'Εφαρμογή δημοσιευμένου παράγοντα χρόνου', tf_note: 'Δημοσιευμένη εκτίμηση της δόσης που χάνεται ανά ημέρα παράτασης για αυτόν τον εντοπισμό. Είναι γραμμική σε όλη τη θεραπεία (T_k = 0), άρα νόημα έχουν μόνο οι διαφορές EQD2_T μεταξύ σχημάτων.', st_no_action: 'Δεν χρειάζεται αντιστάθμιση', st_clinical_decision: 'Χρειάζεται κλινική απόφαση', st_no_gap: 'Τίποτα προς αντιστάθμιση', st_error: 'Ελέγξτε τα στοιχεία',
       why: 'Πώς προέκυψε η απόφαση', weigh: 'Επιλογές προς στάθμιση',
       chart_title: 'Βιολογική δόση στον όγκο στον χρόνο', chart_sub: 'Αθροιστική EQD2 του κύριου επιπέδου, διορθωμένη για επαναπληθυσμό μετά το T_k',
@@ -1851,6 +1957,8 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       'c.max_tumour_deficit_pct': ['Accepted tumour shortfall', 'Local tolerance, not an RCR value. Together with the late-tissue tolerance it lets the tool recommend a change of fraction size by itself. Empty: such schedules remain a clinical decision.'],
       'c.max_late_increase_pct': ['Accepted late-tissue increase', 'Local tolerance, not an RCR value. Together with the tumour tolerance it lets the tool recommend a change of fraction size by itself. Empty: such schedules remain a clinical decision.'],
       'given.on': ['Your own schedule', 'Enter the schedule the department proposes or has already decided, to compare it with the options. It is evaluated with the same model and rules.'],
+      mc: ['Probabilistic analysis (Monte Carlo)', 'α/β of the tumour, the repopulation rate and α/β of the late tissues are multiplied by log-normal factors, and T_k is shifted by a normally distributed number of days. Every schedule is kept exactly as it is (same days, same dose per fraction) and re-evaluated against the plan for each draw. The table gives the median and the 5–95 % range, and the share of draws in which the tumour shortfall and the late-tissue increase stay within the department tolerances (1 % and 3 % when none are set). The draws use a fixed seed, so the same case always gives the same numbers.', ['BCR', 'FOWLER']],
+      gbuild: ['Schedule on the calendar', 'Build any schedule day by day and see at once what it does to the tumour and the late tissues. It is evaluated with the same model as the calculated options and appears with them in the Options tab, where it can be compared side by side. All fractions use the dose per fraction above; the rules (BID interval, chemotherapy days, limits) are checked and any breach is listed.'],
       'given.n': ['Fractions of your schedule', 'Number of fractions still to be given in your schedule from the resume day.'],
       'given.d': ['Dose per fraction of your schedule', 'Physical dose per fraction of your schedule at the reference point, in Gy.'],
       'given.bid': ['BID days', 'How many days of your schedule have two fractions.'],
@@ -1908,6 +2016,8 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       'c.max_tumour_deficit_pct': ['Αποδεκτό έλλειμμα όγκου', 'Τοπική ανοχή, όχι τιμή του RCR. Μαζί με την ανοχή των όψιμων ιστών επιτρέπει στο εργαλείο να προτείνει μόνο του αλλαγή μεγέθους κλάσματος. Κενό: τέτοια σχήματα μένουν κλινική απόφαση.'],
       'c.max_late_increase_pct': ['Αποδεκτή αύξηση στους όψιμους ιστούς', 'Τοπική ανοχή, όχι τιμή του RCR. Μαζί με την ανοχή του όγκου επιτρέπει στο εργαλείο να προτείνει μόνο του αλλαγή μεγέθους κλάσματος. Κενό: τέτοια σχήματα μένουν κλινική απόφαση.'],
       'given.on': ['Το δικό σας σχήμα', 'Δώστε το σχήμα που προτείνει ή έχει ήδη αποφασίσει το τμήμα, για να συγκριθεί με τις επιλογές. Αξιολογείται με το ίδιο μοντέλο και τους ίδιους κανόνες.'],
+      mc: ['Πιθανοτική ανάλυση (Monte Carlo)', 'Το α/β του όγκου, ο ρυθμός επαναπληθυσμού και το α/β των όψιμων ιστών πολλαπλασιάζονται με λογαριθμοκανονικούς συντελεστές και το T_k μετατοπίζεται κατά κανονικά κατανεμημένο αριθμό ημερών. Κάθε σχήμα μένει ακριβώς όπως είναι (ίδιες ημέρες, ίδια δόση ανά κλάσμα) και συγκρίνεται ξανά με το πλάνο σε κάθε δειγματοληψία. Ο πίνακας δίνει τη διάμεσο και το εύρος 5–95 %, καθώς και το μερίδιο των δειγματοληψιών στο οποίο το έλλειμμα του όγκου και η αύξηση στους όψιμους ιστούς μένουν μέσα στις ανοχές του τμήματος (1 % και 3 % όταν δεν έχουν οριστεί). Η δειγματοληψία έχει σταθερό seed, ώστε το ίδιο περιστατικό να δίνει πάντα τους ίδιους αριθμούς.', ['BCR', 'FOWLER']],
+      gbuild: ['Σχήμα στο ημερολόγιο', 'Φτιάξτε οποιοδήποτε σχήμα ημέρα προς ημέρα και δείτε αμέσως τι κάνει στον όγκο και στους όψιμους ιστούς. Αξιολογείται με το ίδιο μοντέλο όπως οι υπολογισμένες επιλογές και εμφανίζεται μαζί τους στην καρτέλα Επιλογές, όπου συγκρίνεται δίπλα-δίπλα. Όλα τα κλάσματα έχουν τη δόση ανά κλάσμα που δίνετε παραπάνω· οι κανόνες (διάστημα BID, ημέρες χημειοθεραπείας, όρια) ελέγχονται και κάθε παραβίαση αναφέρεται.'],
       'given.n': ['Κλάσματα του σχήματός σας', 'Ο αριθμός κλασμάτων που απομένουν στο σχήμα σας από την ημέρα επανέναρξης.'],
       'given.d': ['Δόση ανά κλάσμα του σχήματός σας', 'Η φυσική δόση ανά κλάσμα του σχήματός σας στο σημείο αναφοράς, σε Gy.'],
       'given.bid': ['Ημέρες BID', 'Πόσες ημέρες του σχήματός σας έχουν δύο κλάσματα.'],
@@ -2999,10 +3109,56 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     </details>
     <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
       ${chk(L('given'), 'given.on', s.given.on)}
-      ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
-        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
+      ${s.given.on ? (s.given.dates ? `<div class="fields" style="margin-top:8px">${fld(L('given_d'), 'given.d', s.given.d)}</div><div id="gbuild">${builderHtml()}</div>`
+        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div><div class="rowbtn"><button type="button" class="btn sm pri" data-act="given-cal">${esc(L('gb_open'))}</button>${hbtn('gbuild')}</div>`) : ''}
     </details>`;
     renderGapCal(); renderBioNote(); validateAll();
+  }
+  // Own schedule picked day by day: a tap cycles none -> one fraction -> two fractions (BID) -> none.
+  function builderHtml() {
+    const g = state.given, L = tr.t; if (!model || !model.p) return '';
+    const p = model.p, one = new Set(g.dates || []), two = new Set(g.bidDates || []);
+    let last0 = p.plannedEnd; for (const d of one) last0 = Math.max(last0, RT.parseDate(d));
+    if (model.dec) for (const o of model.dec.feasible) if (o.family !== 'custom' && o.end > last0) last0 = o.end;
+    last0 += 7;
+    const first = p.resume - RT.weekday(p.resume), last = last0 + (6 - RT.weekday(last0));
+    const delivered = new Set(p.delivered.map((f) => f.day)), bt = new Set(p.fixed.map((f) => f.day)), chemo = new Set(p.c.chemo_dates);
+    let h = '<div class="cal bcal" role="grid"><div class="wl"></div>' + tr.wd2.map((w) => `<div class="hd">${w}</div>`).join('');
+    for (let mon = first; mon <= last; mon += 7) {
+      const q = RT.ymd(mon); h += `<div class="wl">${q.d}/${q.m}</div>`;
+      for (let d = mon; d < mon + 7; d++) {
+        const iso = RT.iso(d), cls = ['c'], dn = RT.ymd(d).d; let txt = String(dn), lab = tr.date(d);
+        if (RT.weekday(d) >= 5) cls.push('wk');
+        if (p.rx.closed.has(d)) { cls.push('closed'); const hn = p.rx.holidayNames.get(d); if (hn) lab += ' · ' + tr.hol(hn); }
+        if (chemo.has(d)) cls.push('chemo');
+        if (d === p.plannedEnd) cls.push('endmark');
+        if (bt.has(d)) { h += `<div class="c bt" title="${esc(lab)}">BT</div>`; continue; }
+        if (d < p.resume) { h += `<div class="c out ${delivered.has(d) ? 'delivered' : ''}" title="${esc(lab)}">${txt}</div>`; continue; }
+        const k = two.has(iso) ? 2 : one.has(iso) ? 1 : 0;
+        if (k === 2) { cls.push('bid'); txt = dn + '<small>×2</small>'; } else if (k === 1) cls.push('new');
+        lab += ' · ' + L('gb_k' + k);
+        h += `<button type="button" class="${cls.join(' ')}" data-act="bday" data-d="${iso}" title="${esc(lab)}" aria-label="${esc(lab)}">${txt}</button>`;
+      }
+    }
+    h += '</div>';
+    const n = one.size + two.size, o = model.given;
+    let sum = `<b>${n}</b> ${esc(L('fx'))} · ${esc(L('gb_left'))} <b>${p.remaining}</b>`;
+    if (o) sum += ` · ${esc(L('col_end'))} <b>${esc(tr.dshort(o.end))}</b> (${tr.sgi(o.ext)} ${esc(L('days'))})` + (o.nBid ? ` · BID ×${o.nBid}` : '') + `<br>Δ ${esc(L('col_t'))} <b class="${o.tumour.delta < -0.05 ? 'neg' : 'pos'}">${tr.sg(o.tumour.delta)} Gy</b>` + (o.oars[0] ? ` · Δ ${esc(o.oars[0].name)} <b class="${o.oars[0].delta > 0.05 ? 'neg' : 'pos'}">${tr.sg(o.oars[0].deltaPct)} %</b>` : '');
+    const warn = '';
+    return `<p class="hint" style="margin:10px 0 0">${esc(L('gb_hint'))}${hbtn('gbuild')}</p>${h}
+      <div class="legend"><span><i class="lg-new"></i>${esc(L('gb_k1'))}</span><span><i class="lg-bid"></i>${esc(L('gb_k2'))}</span><span><i class="lg-end"></i>${esc(L('lg_end'))}</span></div>
+      <p class="small gb-sum" aria-live="polite">${n ? sum : esc(L('gb_empty'))}</p>${warn}
+      <div class="rowbtn"><button type="button" class="btn sm" data-act="given-copy">${esc(L('gb_copy'))}</button><button type="button" class="btn sm" data-act="given-clear">${esc(L('gb_clear'))}</button><button type="button" class="btn sm" data-act="given-quick">${esc(L('gb_quick'))}</button><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`;
+  }
+  function builderRefresh(focusIso) {
+    refresh(false);
+    const b = $('#gbuild'); if (b) b.innerHTML = builderHtml();
+    const fs = document.querySelector('#sec-6 .fold-sum'); if (fs) fs.textContent = givenSum();
+    if (focusIso) { const x = document.querySelector('#gbuild [data-d="' + focusIso + '"]'); if (x) x.focus({ preventScroll: true }); }
+  }
+  function slotsToGiven(newFx) {
+    const g = state.given, seen = new Set(); g.dates = []; g.bidDates = [];
+    for (const f of newFx) { const iso = RT.iso(f.day); if (seen.has(iso)) { if (!g.bidDates.includes(iso)) g.bidDates.push(iso); } else { seen.add(iso); g.dates.push(iso); } }
   }
   function renderGapCal() {
     const box = $('#gapcal'); if (!box) return;
@@ -3122,7 +3278,8 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     B.rep += shareHtml() + savedHtml();
     const wantPre = ((state.ui && state.ui.tab) === 'an') || !(B.det + B.chart + B.opts);
-    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
+    const onAn = (state.ui && state.ui.tab) === 'an';
+    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + (onAn && p.remaining && m.base ? mcHtml(m) : '') + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
     if (printing) { out.innerHTML = `<pre class="printsum">${esc(summaryText())}</pre>` + h + avail.map((k) => `<h2 class="printh">${esc(L('tab_' + k))}</h2>` + (k === 'an' ? B.sens + B.scen + preflightHtml() : panes[k])).join(''); out.querySelectorAll('details[data-fold="why"]').forEach((d) => { d.open = true; }); drawChart(); drawMap(); return; }
@@ -3130,6 +3287,75 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
+  }
+  // ---- probabilistic analysis (Monte Carlo over the radiobiological parameters)
+  let mcCache = { key: null, r: null };
+  const MC_N = 1000;
+  function mcOptions(m) {
+    const d = m.dec, list = [], add = (o, role) => { if (o && !list.some((x) => x.o === o)) list.push({ o, role }); };
+    add(d.recommended || d.candidates[0], 'rec'); add(m.sel, 'sel'); add(m.given, 'given'); add(m.base, 'base');
+    return list;
+  }
+  const mcSpread = () => (state.ui && state.ui.mcSpread) || 1;
+  const mcKey = (m) => m.checksum + '|' + mcSpread() + '|' + mcOptions(m).map((x) => x.o.key + ':' + x.o.d + ':' + x.o.nNew + ':' + x.o.end).join(',');
+  function mcRun() {
+    const m = model; if (!m || m.error || !m.p || !m.p.remaining) return;
+    const key = mcKey(m); if (mcCache.key === key) return;
+    const list = mcOptions(m);
+    try { mcCache = { key, r: RT.monteCarlo(m.p, list.map((x) => x.o), MC_N, 20261116, mcSpread()), list }; } catch (e) { mcCache = { key, r: null, list }; }
+    const box = $('#mcbox'); if (box) box.innerHTML = mcInner(m);
+  }
+  function mcInner(m) {
+    const L = tr.t, c = mcCache;
+    if (c.key !== mcKey(m)) { setTimeout(mcRun, 40); return `<p class="small">${esc(L('mc_wait'))}</p>`; }
+    if (!c.r) return `<p class="small">—</p>`;
+    const r = c.r, p = m.p, res = r.res, cc = p.c;
+    const tolT = cc.max_tumour_deficit_pct != null ? cc.max_tumour_deficit_pct : 1, tolL = cc.max_late_increase_pct != null ? cc.max_late_increase_pct : 3;
+    const qt = (a, f) => { const s2 = Float64Array.from(a).sort(), x = f * (s2.length - 1), k = Math.floor(x); return s2[k] + (x - k) * (s2[Math.min(k + 1, s2.length - 1)] - s2[k]); };
+    const frac = (fn) => { let k = 0; for (let i = 0; i < r.n; i++) if (fn(i)) k++; return k / r.n; };
+    const pc = (x) => (x > 0.995 ? '> 99' : x < 0.005 ? '< 1' : String(Math.round(100 * x))) + ' %';
+    const name = (x) => tr.optTitle(x.o), role = (x) => L('mc_role_' + x.role);
+    // interval plot: one row per schedule, median dot, 25–75 % bar, 5–95 % whisker
+    const plot = (get, unit, title, goodHigh) => {
+      const rows = res.map((x, i) => { const a = get(x); return { x: c.list[i], q: [qt(a, 0.05), qt(a, 0.25), qt(a, 0.5), qt(a, 0.75), qt(a, 0.95)] }; });
+      let lo = Math.min(0, ...rows.map((w) => w.q[0])), hi = Math.max(0, ...rows.map((w) => w.q[4]));
+      if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
+      const pad = 0.08 * (hi - lo); lo -= pad; hi += pad;
+      const W = 600, LW = 215, RH = 30, H = rows.length * RH + 34, X = (v) => LW + (v - lo) / (hi - lo) * (W - LW - 14);
+      const step = (() => { const raw = (hi - lo) / 5, e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * e; })();
+      let g = '';
+      for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) { const vv = Math.abs(v) < 1e-9 ? 0 : v; g += `<line x1="${X(vv).toFixed(1)}" x2="${X(vv).toFixed(1)}" y1="4" y2="${H - 26}" class="${vv === 0 ? 'mc-zero' : 'mc-grid'}"/><text x="${X(vv).toFixed(1)}" y="${H - 12}" class="mc-tick" text-anchor="middle">${(vv > 0 ? '+' : '') + (+vv.toFixed(2))}</text>`; }
+      rows.forEach((w, i) => {
+        const y = 4 + i * RH + RH / 2, lab = name(w.x), short = lab.length > 34 ? lab.slice(0, 33) + '…' : lab;
+        const tip = `${lab}: ${L('mc_median')} ${tr.sg(w.q[2])}${unit}, 5–95 % ${tr.sg(w.q[0])} … ${tr.sg(w.q[4])}${unit}`;
+        g += `<g class="mc-row${w.x.role === 'sel' || (w.x.o === m.sel) ? ' on' : ''}"><title>${esc(tip)}</title><rect x="0" y="${y - RH / 2}" width="${W}" height="${RH}" fill="transparent"/>
+          <text x="${LW - 10}" y="${y - 2}" text-anchor="end" class="mc-lab">${esc(short)}</text><text x="${LW - 10}" y="${y + 10}" text-anchor="end" class="mc-sub">${esc(role(w.x))}</text>
+          <line x1="${X(w.q[0]).toFixed(1)}" x2="${X(w.q[4]).toFixed(1)}" y1="${y}" y2="${y}" class="mc-wh"/><rect x="${X(w.q[1]).toFixed(1)}" y="${y - 5}" width="${Math.max(2, X(w.q[3]) - X(w.q[1])).toFixed(1)}" height="10" rx="4" class="mc-box"/>
+          <circle cx="${X(w.q[2]).toFixed(1)}" cy="${y}" r="5" class="mc-dot"/></g>`;
+      });
+      return `<figure class="mc-fig"><figcaption>${esc(title)} <span class="small">· ${esc(L(goodHigh ? 'mc_right' : 'mc_left'))}</span></figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${g}</svg></figure>`;
+    };
+    let h = plot((x) => x.tumour, ' Gy', 'Δ ' + (p.rx.multilevel ? p.tumour.name : L('col_t')) + ' (Gy EQD2)', true);
+    if (r.hasOar) h += plot((x) => x.late, ' %', L('mc_late') + ' (%)', false);
+    h += `<div class="legend" style="margin:2px 0 10px"><span><svg width="34" height="12" aria-hidden="true"><line x1="1" x2="33" y1="6" y2="6" class="mc-wh"/><rect x="9" y="1" width="16" height="10" rx="4" class="mc-box"/><circle cx="17" cy="6" r="4" class="mc-dot"/></svg> ${esc(L('mc_legend'))}</span></div>`;
+    h += `<div class="scroll"><table><thead><tr><th>${esc(L('col_option'))}</th><th>Δ ${esc(L('col_t'))} (Gy)</th><th>${esc(L('mc_pT').replace('{x}', tolT))}</th>${r.hasOar ? `<th>${esc(L('mc_late'))} (%)</th><th>${esc(L('mc_pL').replace('{x}', tolL))}</th><th>${esc(L('mc_both'))}</th>` : ''}</tr></thead><tbody>` +
+      res.map((x, i) => `<tr${c.list[i].o === m.sel ? ' class="sel"' : ''}><td class="t">${esc(name(c.list[i]))}<br><span class="small">${esc(role(c.list[i]))}</span></td><td class="n">${tr.sg(x.tq[1])} <span class="small">[${tr.sg(x.tq[0])} … ${tr.sg(x.tq[2])}]</span></td><td class="n">${pc(frac((k) => x.tumourPct[k] >= -tolT))}</td>${r.hasOar ? `<td class="n">${tr.sg(x.lq[1])} <span class="small">[${tr.sg(x.lq[0])} … ${tr.sg(x.lq[2])}]</span></td><td class="n">${pc(frac((k) => x.late[k] <= tolL))}</td><td class="n"><b>${pc(frac((k) => x.tumourPct[k] >= -tolT && x.late[k] <= tolL))}</b></td>` : ''}</tr>`).join('') + '</tbody></table></div>';
+    // pairwise: the selected schedule against the suggestion, or against no compensation
+    const iS = c.list.findIndex((x) => x.o === m.sel), iR = c.list.findIndex((x, k) => k !== iS && (x.role === 'rec' || x.role === 'given')), iB = c.list.findIndex((x) => x.role === 'base');
+    const pair = (a, b) => { const A = res[a], Bq = res[b]; return `<li>${esc(L('mc_pair').replace('{a}', name(c.list[a])).replace('{b}', name(c.list[b])))}: ${esc(L('mc_pair_t'))} <b>${pc(frac((k) => A.tumour[k] > Bq.tumour[k] + 1e-9))}</b>${r.hasOar ? `, ${esc(L('mc_pair_l'))} <b>${pc(frac((k) => A.late[k] < Bq.late[k] - 1e-9))}</b>` : ''}.</li>`; };
+    const same = (a, b) => { for (let k = 0; k < r.n; k++) if (Math.abs(res[a].tumour[k] - res[b].tumour[k]) > 1e-3 || Math.abs(res[a].late[k] - res[b].late[k]) > 1e-3) return false; return true; };
+    const pairs = []; if (iS >= 0 && iR >= 0 && !same(iS, iR)) pairs.push(pair(iS, iR)); if (iS >= 0 && iB >= 0 && iB !== iS) pairs.push(pair(iS, iB));
+    if (pairs.length) h += `<ul class="mc-pairs">${pairs.join('')}</ul>`;
+    const sd = r.sd, sp = r.spread, f = (v) => '×/÷ ' + Math.exp(1.645 * v * sp).toFixed(2);
+    h += `<p class="small" style="margin:8px 0 0">${esc(L('mc_assume'))} α/β ${esc(L('col_t'))} ${f(sd.tumour_alpha_beta)}${r.time ? `, ${esc(L('mc_rep'))} ${f(sd.repopulation)}, T<sub>k</sub> ± ${(1.645 * sd.kickoff_days * sp).toFixed(0)} ${esc(L('days'))}` : ''}, α/β ${esc(L('mc_late_s'))} ${f(sd.late_alpha_beta)} (${esc(L('mc_90'))}). ${esc(L('mc_caveat'))}</p>`;
+    return h;
+  }
+  function mcHtml(m) {
+    if (!m.p.remaining || !m.dec || !mcOptions(m).length) return '';
+    const L = tr.t, sp = mcSpread();
+    return `<div class="card" id="mc"><h2>${esc(L('mc_title'))}${hbtn('mc')}</h2><p class="hint">${esc(L('mc_sub').replace('{n}', MC_N))}</p>
+      <div class="mc-ctl"><span class="small">${esc(L('mc_spread'))}</span><div class="seg lite" role="group" aria-label="${esc(L('mc_spread'))}">${[[0.5, 'mc_s1'], [1, 'mc_s2'], [1.5, 'mc_s3']].map(([v, k]) => `<button type="button" data-act="mc-spread" data-v="${v}" aria-pressed="${sp === v}">${esc(L(k))}</button>`).join('')}</div></div>
+      <div id="mcbox">${mcInner(m)}</div></div>`;
   }
   // ---- before the start: closed days inside the course, and what another start day would change
   function preflight() {
@@ -3424,14 +3650,14 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       </div></div>
       <div class="card" id="triage"></div>
       <div class="card" id="audit"></div>`;
-    docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
+    docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p><div class="rowbtn" style="margin:0 0 12px"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button>${HOSTED ? `<a class="btn sm" href="validation.html">${esc(L('val_link'))}</a>` : ''}</div>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
       refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
     $('#skip').textContent = L('skip'); $('#about').setAttribute('aria-label', L('about_btn')); $('#docs').setAttribute('aria-label', L('docs_btn'));
     $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
-    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
+    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a> · <a href="validation.html">' + esc(L('val_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
       <div class="about-head"><h2>RT<i>Gap</i> <span>v${RT.VERSION}</span></h2><p>${esc(L('about_lead'))}</p></div>
       <div class="feats">${L('feats').map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>
@@ -3444,7 +3670,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
     $('#intro').hidden = seen;
     $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
-      <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
+      <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button><button type="button" class="btn sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
   function fillInstall() {
@@ -3693,6 +3919,24 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     if (a === 'rm-phase') { state.phases.splice(i, 1); refresh(true); return; }
     if (a === 'add-oar') { state.oars.push({ name: 'OAR ' + (state.oars.length + 1), ab: 3, ratio: 1, limit: null, repair: 4.4, bt: 1 }); refresh(true); return; }
     if (a === 'add-bt') { const last = state.brachy.fx[state.brachy.fx.length - 1]; state.brachy.fx.push({ date: last && last.date ? RT.iso(RT.parseDate(last.date) + 7) : (model && model.p ? RT.iso(model.p.plannedEnd + 3) : ''), dose: last ? last.dose : 7 }); refresh(true); return; }
+    if (a === 'bday') {
+      const g = state.given, d = t.dataset.d; g.dates = g.dates || []; g.bidDates = g.bidDates || [];
+      if (!g.dates.includes(d)) g.dates.push(d); else if (!g.bidDates.includes(d)) g.bidDates.push(d); else { g.dates = g.dates.filter((x) => x !== d); g.bidDates = g.bidDates.filter((x) => x !== d); }
+      g.dates.sort(); g.bidDates.sort(); builderRefresh(d); return;
+    }
+    if (a === 'given-cal' || a === 'given-copy') {
+      const g = state.given, m = model, src = a === 'given-cal' && m && m.given ? m.given : m && m.dec && (m.dec.recommended || m.dec.candidates[0] || m.dec.feasible.find((o) => o.family !== 'custom'));
+      if (src) { slotsToGiven(src.newFx); if (a === 'given-copy' || !(g.d > 0)) g.d = Math.round(src.d * 1000) / 1000; } else { g.dates = []; g.bidDates = []; }
+      if (!(g.d > 0) && m && m.p) g.d = m.p.dRef;
+      refresh(true); return;
+    }
+    if (a === 'tour') { tourStart(); return; }
+    if (a === 'tour-next') { tour.i++; tourShow(); return; }
+    if (a === 'tour-prev') { tour.i--; tourShow(); return; }
+    if (a === 'tour-end') { tourEnd(); return; }
+    if (a === 'mc-spread') { state.ui = state.ui || {}; state.ui.mcSpread = +t.dataset.v; persist(); renderResults(); const b = document.querySelector('[data-act="mc-spread"][data-v="' + t.dataset.v + '"]'); if (b) b.focus({ preventScroll: true }); return; }
+    if (a === 'given-clear') { state.given.dates = []; state.given.bidDates = []; builderRefresh(); return; }
+    if (a === 'given-quick') { const g = state.given; g.n = (g.dates || []).length + (g.bidDates || []).length || null; g.bid = (g.bidDates || []).length; g.dates = null; g.bidDates = null; refresh(true); return; }
     if (a === 'given-reset') { state.given = { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }; refresh(true); return; }
     if (a === 'rm-bt') { state.brachy.fx.splice(i, 1); refresh(true); return; }
     if (a === 'rm-oar') { state.oars.splice(i, 1); refresh(true); return; }
@@ -3781,6 +4025,74 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     const b = $('#theme'); if (b) { b.innerHTML = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="' + (v === 'dark' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/>' + (v === 'auto' ? '<path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/>' : '') + '</svg>'; b.title = tr.t('theme_' + v); b.setAttribute('aria-label', tr.t('theme_' + v)); }
   }
   function loadState(s) { s.lang = state.lang; state = s; invalid = {}; tr = I.make(state.lang); refresh(true); }
+  // ------------------------------------------------------------------ guided tour
+  // Walks through the page on a ready example. The case that was open is put back when the tour closes.
+  const TOUR = [
+    { sel: '#sec-1' }, { sel: '#sec-2' }, { sel: '#sec-3' },
+    { sel: '#results .kpis', tab: 'plan' }, { sel: '#decision' },
+    { sel: '#detail', tab: 'plan' }, { sel: '#results .pane .card', tab: 'opts' },
+    { sel: '#mc', tab: 'an' }, { sel: '#sec-6', open: 'sec-6' }, { sel: '#report', tab: 'rep' }, { sel: '#docsbtn' },
+  ];
+  let tour = null;
+  function tourStart() {
+    if (tour) return;
+    $('#about').hidden = true; $('#docs').hidden = true; $('#refpop').hidden = true; hideTip();
+    const hadCase = !!(model && model.p && model.p.missed && model.p.missed.length);
+    tour = { i: 0, snap: hadCase ? JSON.stringify(state) : null, back: document.activeElement };
+    const ex = EXAMPLES.hn_70(); ex.ui = { tab: 'plan' }; loadState(ex);
+    const root = document.createElement('div'); root.id = 'tour';
+    root.innerHTML = '<div class="tour-block"></div><div class="tour-hole"></div><div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-t"></div>';
+    document.body.appendChild(root); document.body.classList.add('touring');
+    tourShow();
+  }
+  function tourShow() {
+    const st = TOUR[tour.i], txt = tr.t('tour')[tour.i], L = tr.t;
+    if (st.tab && (!state.ui || state.ui.tab !== st.tab)) { state.ui = state.ui || {}; state.ui.tab = st.tab; renderResults(); }
+    if (st.open) { const d = document.getElementById(st.open); if (d && !d.open) d.open = true; }
+    const card = $('#tour .tour-card'), last = tour.i === TOUR.length - 1;
+    card.innerHTML = `<div class="tour-n">${tour.i + 1} / ${TOUR.length}</div><h3 id="tour-t">${esc(txt[0])}</h3><p>${esc(txt[1])}</p>
+      <div class="rowbtn"><button type="button" class="btn sm" data-act="tour-end">${esc(L('tour_close'))}</button><span style="flex:1"></span>${tour.i ? `<button type="button" class="btn sm" data-act="tour-prev">${esc(L('tour_prev'))}</button>` : ''}<button type="button" class="btn sm pri" data-act="${last ? 'tour-end' : 'tour-next'}" id="tour-go">${esc(L(last ? 'tour_done' : 'tour_next'))}</button></div>`;
+    const go = () => {
+      const el = document.querySelector(st.sel); tour.el = el;
+      if (el) { const r = el.getBoundingClientRect(), vh = window.innerHeight; el.scrollIntoView({ block: r.height > vh * 0.6 ? 'start' : 'center', behavior: 'auto' }); if (r.height > vh * 0.6) window.scrollBy(0, -70); }
+      tourPlace(); const b = $('#tour-go'); if (b) b.focus({ preventScroll: true });
+    };
+    go(); if (st.sel === '#mc') { setTimeout(() => { if (tour && TOUR[tour.i] === st) go(); }, 700); }
+  }
+  function tourPlace() {
+    if (!tour) return;
+    const hole = $('#tour .tour-hole'), card = $('#tour .tour-card'), el = tour.el, vw = document.documentElement.clientWidth, vh = window.innerHeight, small = vw < 700;
+    let r = el ? el.getBoundingClientRect() : null;
+    if (!r || !r.width) { hole.style.cssText = 'left:50%;top:50%;width:0;height:0'; card.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%)'; return; }
+    const pad = 6, x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad), x2 = Math.min(vw - 4, r.right + pad), y2 = Math.min(vh - 4, r.bottom + pad);
+    hole.style.cssText = `left:${x}px;top:${y}px;width:${Math.max(0, x2 - x)}px;height:${Math.max(0, y2 - y)}px`;
+    card.style.cssText = '';
+    if (small) { const top = (y + y2) / 2 > vh / 2; card.style.cssText = `left:8px;right:8px;${top ? 'top:8px' : 'bottom:8px'}`; return; }
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let cx, cy;
+    if (x2 + 14 + cw <= vw - 8) { cx = x2 + 14; cy = Math.min(Math.max(8, y), vh - ch - 8); }
+    else if (x - 14 - cw >= 8) { cx = x - 14 - cw; cy = Math.min(Math.max(8, y), vh - ch - 8); }
+    else if (y2 + 12 + ch <= vh - 8) { cx = Math.min(Math.max(8, x), vw - cw - 8); cy = y2 + 12; }
+    else if (y - 12 - ch >= 8) { cx = Math.min(Math.max(8, x), vw - cw - 8); cy = y - 12 - ch; }
+    else { cx = vw - cw - 16; cy = vh - ch - 16; }
+    card.style.cssText = `left:${cx}px;top:${cy}px`;
+  }
+  function tourEnd() {
+    if (!tour) return; const t0 = tour; tour = null;
+    const root = $('#tour'); if (root) root.remove(); document.body.classList.remove('touring');
+    if (t0.snap) { try { loadState(JSON.parse(t0.snap)); } catch (e) { /* keep the example */ } }
+    window.scrollTo({ top: 0 }); if (t0.back && t0.back.focus && document.contains(t0.back)) t0.back.focus({ preventScroll: true });
+  }
+  window.addEventListener('scroll', () => { if (tour) tourPlace(); }, { passive: true, capture: true });
+  window.addEventListener('resize', () => { if (tour) tourPlace(); });
+  document.addEventListener('keydown', (ev) => {
+    if (!tour) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); tourEnd(); }
+    else if (ev.key === 'ArrowRight' && tour.i < TOUR.length - 1) { ev.preventDefault(); tour.i++; tourShow(); }
+    else if (ev.key === 'ArrowLeft' && tour.i > 0) { ev.preventDefault(); tour.i--; tourShow(); }
+    else if (ev.key === 'Tab') { const f = [...document.querySelectorAll('#tour .tour-card button')]; if (!f.length) return; const i = f.indexOf(document.activeElement); ev.preventDefault(); f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
+  }, true);
+  if (/[#&]tour\b/.test(location.hash || '')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } setTimeout(tourStart, 350); }
   // hover / focus tooltip for the (?) buttons; a click opens the full note with references
   const tip = document.createElement('div'); tip.id = 'tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip);
   let tipFor = null, tipBy = '';
@@ -3841,6 +4153,10 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
   // keyboard: arrows in the calendar and between tabs; focus stays inside an open dialog
   document.addEventListener('keydown', (ev) => {
     const tg = ev.target, k = ev.key; if (!tg || !tg.matches) return;
+    if (tg.matches('#gbuild button[data-d]') && /^Arrow/.test(k)) {
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gbuild [data-d="' + RT.iso(RT.parseDate(tg.dataset.d) + step) + '"]');
+      if (nx) { ev.preventDefault(); nx.focus(); } return;
+    }
     if (tg.matches('#gapcal button[data-day]') && /^Arrow/.test(k)) {
       const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gapcal [data-day="' + RT.iso(RT.parseDate(tg.dataset.day) + step) + '"]');
       if (nx) { ev.preventDefault(); nx.focus(); } return;

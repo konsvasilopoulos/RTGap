@@ -42,6 +42,8 @@ browser, it works offline).
 - **Private**: one file, no server. Nothing leaves the device.
 
 ## Validation
+Live summary of every check: [validation page](https://konsvasilopoulos.github.io/RTGap/validation.html).
+
 
 - 75 Python tests reproduce published worked examples (Basic Clinical
   Radiobiology ch. 9; RCR 2019 Appendix B).

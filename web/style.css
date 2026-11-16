@@ -354,3 +354,37 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
 #tip b { display: block; margin-bottom: 3px; font-size: 0.82rem; }
 #tip .tip-more { display: block; margin-top: 5px; opacity: .7; font-size: 0.74rem; }
 @media print { #tip, .vbar { display: none !important; } }
+
+/* own schedule picked on a calendar */
+.bcal button.c:hover { border-color: var(--accent); }
+.gb-sum { margin: 6px 0 0; line-height: 1.6; }
+.gb-sum .neg { color: var(--bad); } .gb-sum .pos { color: var(--good, #0a7d4f); }
+.gb-warn { color: var(--warn); margin: 4px 0 0; }
+.legend i.lg-new { background: var(--accent); } .legend i.lg-bid { background: #0d3a99; } .legend i.lg-end { background: var(--panel); box-shadow: 0 0 0 2px var(--ink); }
+
+/* probabilistic analysis */
+.mc-ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+.seg.lite { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg.lite button { border: 0; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.8rem; padding: 5px 11px; cursor: pointer; }
+.seg.lite button + button { border-left: 1px solid var(--line); }
+.seg.lite button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.mc-fig { margin: 0 0 6px; } .mc-fig figcaption { font-size: 0.82rem; font-weight: 600; margin-bottom: 2px; } .mc-fig figcaption .small { font-weight: 400; }
+.mc-fig svg { width: 100%; height: auto; display: block; max-width: 640px; }
+.mc-grid { stroke: var(--line); stroke-width: 1; } .mc-zero { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.mc-tick { font: 10px var(--f-num); fill: var(--muted); } .mc-lab { font: 11px var(--f-body); fill: var(--ink); } .mc-sub { font: 9.5px var(--f-body); fill: var(--muted); }
+.mc-wh { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; opacity: .55; } .mc-box { fill: var(--accent); opacity: .45; } .mc-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.mc-row.on .mc-lab { font-weight: 700; } .mc-row:hover rect:first-of-type { fill: var(--panel-2); }
+.mc-pairs { margin: 10px 0 0; padding-left: 18px; font-size: 0.86rem; } .mc-pairs li { margin: 2px 0; }
+
+/* guided tour */
+#tour .tour-block { position: fixed; inset: 0; z-index: 90; }
+#tour .tour-hole { position: fixed; z-index: 91; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(7, 16, 31, .62), 0 0 0 2px var(--accent); pointer-events: none; transition: left .18s, top .18s, width .18s, height .18s; }
+#tour .tour-card { position: fixed; z-index: 92; width: min(360px, calc(100vw - 16px)); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+#tour .tour-card h3 { margin: 2px 0 6px; font: 600 1.02rem/1.3 var(--f-head, var(--f-body)); }
+#tour .tour-card p { margin: 0 0 12px; font-size: 0.88rem; line-height: 1.5; }
+#tour .tour-n { font: 0.7rem var(--f-num); color: var(--muted); letter-spacing: .08em; }
+#tour .rowbtn { margin: 0; align-items: center; }
+body.touring .dock { display: none !important; }
+@media (max-width: 699px) { #tour .tour-card { width: auto; } }
+@media (prefers-reduced-motion: reduce) { #tour .tour-hole { transition: none; } }
+@media print { #tour { display: none !important; } }

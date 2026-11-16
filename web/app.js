@@ -512,10 +512,56 @@
     </details>
     <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
       ${chk(L('given'), 'given.on', s.given.on)}
-      ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
-        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
+      ${s.given.on ? (s.given.dates ? `<div class="fields" style="margin-top:8px">${fld(L('given_d'), 'given.d', s.given.d)}</div><div id="gbuild">${builderHtml()}</div>`
+        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div><div class="rowbtn"><button type="button" class="btn sm pri" data-act="given-cal">${esc(L('gb_open'))}</button>${hbtn('gbuild')}</div>`) : ''}
     </details>`;
     renderGapCal(); renderBioNote(); validateAll();
+  }
+  // Own schedule picked day by day: a tap cycles none -> one fraction -> two fractions (BID) -> none.
+  function builderHtml() {
+    const g = state.given, L = tr.t; if (!model || !model.p) return '';
+    const p = model.p, one = new Set(g.dates || []), two = new Set(g.bidDates || []);
+    let last0 = p.plannedEnd; for (const d of one) last0 = Math.max(last0, RT.parseDate(d));
+    if (model.dec) for (const o of model.dec.feasible) if (o.family !== 'custom' && o.end > last0) last0 = o.end;
+    last0 += 7;
+    const first = p.resume - RT.weekday(p.resume), last = last0 + (6 - RT.weekday(last0));
+    const delivered = new Set(p.delivered.map((f) => f.day)), bt = new Set(p.fixed.map((f) => f.day)), chemo = new Set(p.c.chemo_dates);
+    let h = '<div class="cal bcal" role="grid"><div class="wl"></div>' + tr.wd2.map((w) => `<div class="hd">${w}</div>`).join('');
+    for (let mon = first; mon <= last; mon += 7) {
+      const q = RT.ymd(mon); h += `<div class="wl">${q.d}/${q.m}</div>`;
+      for (let d = mon; d < mon + 7; d++) {
+        const iso = RT.iso(d), cls = ['c'], dn = RT.ymd(d).d; let txt = String(dn), lab = tr.date(d);
+        if (RT.weekday(d) >= 5) cls.push('wk');
+        if (p.rx.closed.has(d)) { cls.push('closed'); const hn = p.rx.holidayNames.get(d); if (hn) lab += ' · ' + tr.hol(hn); }
+        if (chemo.has(d)) cls.push('chemo');
+        if (d === p.plannedEnd) cls.push('endmark');
+        if (bt.has(d)) { h += `<div class="c bt" title="${esc(lab)}">BT</div>`; continue; }
+        if (d < p.resume) { h += `<div class="c out ${delivered.has(d) ? 'delivered' : ''}" title="${esc(lab)}">${txt}</div>`; continue; }
+        const k = two.has(iso) ? 2 : one.has(iso) ? 1 : 0;
+        if (k === 2) { cls.push('bid'); txt = dn + '<small>×2</small>'; } else if (k === 1) cls.push('new');
+        lab += ' · ' + L('gb_k' + k);
+        h += `<button type="button" class="${cls.join(' ')}" data-act="bday" data-d="${iso}" title="${esc(lab)}" aria-label="${esc(lab)}">${txt}</button>`;
+      }
+    }
+    h += '</div>';
+    const n = one.size + two.size, o = model.given;
+    let sum = `<b>${n}</b> ${esc(L('fx'))} · ${esc(L('gb_left'))} <b>${p.remaining}</b>`;
+    if (o) sum += ` · ${esc(L('col_end'))} <b>${esc(tr.dshort(o.end))}</b> (${tr.sgi(o.ext)} ${esc(L('days'))})` + (o.nBid ? ` · BID ×${o.nBid}` : '') + `<br>Δ ${esc(L('col_t'))} <b class="${o.tumour.delta < -0.05 ? 'neg' : 'pos'}">${tr.sg(o.tumour.delta)} Gy</b>` + (o.oars[0] ? ` · Δ ${esc(o.oars[0].name)} <b class="${o.oars[0].delta > 0.05 ? 'neg' : 'pos'}">${tr.sg(o.oars[0].deltaPct)} %</b>` : '');
+    const warn = '';
+    return `<p class="hint" style="margin:10px 0 0">${esc(L('gb_hint'))}${hbtn('gbuild')}</p>${h}
+      <div class="legend"><span><i class="lg-new"></i>${esc(L('gb_k1'))}</span><span><i class="lg-bid"></i>${esc(L('gb_k2'))}</span><span><i class="lg-end"></i>${esc(L('lg_end'))}</span></div>
+      <p class="small gb-sum" aria-live="polite">${n ? sum : esc(L('gb_empty'))}</p>${warn}
+      <div class="rowbtn"><button type="button" class="btn sm" data-act="given-copy">${esc(L('gb_copy'))}</button><button type="button" class="btn sm" data-act="given-clear">${esc(L('gb_clear'))}</button><button type="button" class="btn sm" data-act="given-quick">${esc(L('gb_quick'))}</button><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`;
+  }
+  function builderRefresh(focusIso) {
+    refresh(false);
+    const b = $('#gbuild'); if (b) b.innerHTML = builderHtml();
+    const fs = document.querySelector('#sec-6 .fold-sum'); if (fs) fs.textContent = givenSum();
+    if (focusIso) { const x = document.querySelector('#gbuild [data-d="' + focusIso + '"]'); if (x) x.focus({ preventScroll: true }); }
+  }
+  function slotsToGiven(newFx) {
+    const g = state.given, seen = new Set(); g.dates = []; g.bidDates = [];
+    for (const f of newFx) { const iso = RT.iso(f.day); if (seen.has(iso)) { if (!g.bidDates.includes(iso)) g.bidDates.push(iso); } else { seen.add(iso); g.dates.push(iso); } }
   }
   function renderGapCal() {
     const box = $('#gapcal'); if (!box) return;
@@ -635,7 +681,8 @@
       <p class="small" style="margin:10px 0 0">${esc(L('checksum'))}: <span class="num" style="word-break:break-all">${m.checksum}</span> · RTGap ${RT.VERSION}</p></div>`;
     B.rep += shareHtml() + savedHtml();
     const wantPre = ((state.ui && state.ui.tab) === 'an') || !(B.det + B.chart + B.opts);
-    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
+    const onAn = (state.ui && state.ui.tab) === 'an';
+    const panes = { plan: B.det + B.chart, opts: B.opts + B.map, an: B.sens + (onAn && p.remaining && m.base ? mcHtml(m) : '') + B.scen + (wantPre ? preflightHtml() : ' '), rep: B.rep };
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
     if (printing) { out.innerHTML = `<pre class="printsum">${esc(summaryText())}</pre>` + h + avail.map((k) => `<h2 class="printh">${esc(L('tab_' + k))}</h2>` + (k === 'an' ? B.sens + B.scen + preflightHtml() : panes[k])).join(''); out.querySelectorAll('details[data-fold="why"]').forEach((d) => { d.open = true; }); drawChart(); drawMap(); return; }
@@ -643,6 +690,75 @@
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
+  }
+  // ---- probabilistic analysis (Monte Carlo over the radiobiological parameters)
+  let mcCache = { key: null, r: null };
+  const MC_N = 1000;
+  function mcOptions(m) {
+    const d = m.dec, list = [], add = (o, role) => { if (o && !list.some((x) => x.o === o)) list.push({ o, role }); };
+    add(d.recommended || d.candidates[0], 'rec'); add(m.sel, 'sel'); add(m.given, 'given'); add(m.base, 'base');
+    return list;
+  }
+  const mcSpread = () => (state.ui && state.ui.mcSpread) || 1;
+  const mcKey = (m) => m.checksum + '|' + mcSpread() + '|' + mcOptions(m).map((x) => x.o.key + ':' + x.o.d + ':' + x.o.nNew + ':' + x.o.end).join(',');
+  function mcRun() {
+    const m = model; if (!m || m.error || !m.p || !m.p.remaining) return;
+    const key = mcKey(m); if (mcCache.key === key) return;
+    const list = mcOptions(m);
+    try { mcCache = { key, r: RT.monteCarlo(m.p, list.map((x) => x.o), MC_N, 20261116, mcSpread()), list }; } catch (e) { mcCache = { key, r: null, list }; }
+    const box = $('#mcbox'); if (box) box.innerHTML = mcInner(m);
+  }
+  function mcInner(m) {
+    const L = tr.t, c = mcCache;
+    if (c.key !== mcKey(m)) { setTimeout(mcRun, 40); return `<p class="small">${esc(L('mc_wait'))}</p>`; }
+    if (!c.r) return `<p class="small">—</p>`;
+    const r = c.r, p = m.p, res = r.res, cc = p.c;
+    const tolT = cc.max_tumour_deficit_pct != null ? cc.max_tumour_deficit_pct : 1, tolL = cc.max_late_increase_pct != null ? cc.max_late_increase_pct : 3;
+    const qt = (a, f) => { const s2 = Float64Array.from(a).sort(), x = f * (s2.length - 1), k = Math.floor(x); return s2[k] + (x - k) * (s2[Math.min(k + 1, s2.length - 1)] - s2[k]); };
+    const frac = (fn) => { let k = 0; for (let i = 0; i < r.n; i++) if (fn(i)) k++; return k / r.n; };
+    const pc = (x) => (x > 0.995 ? '> 99' : x < 0.005 ? '< 1' : String(Math.round(100 * x))) + ' %';
+    const name = (x) => tr.optTitle(x.o), role = (x) => L('mc_role_' + x.role);
+    // interval plot: one row per schedule, median dot, 25–75 % bar, 5–95 % whisker
+    const plot = (get, unit, title, goodHigh) => {
+      const rows = res.map((x, i) => { const a = get(x); return { x: c.list[i], q: [qt(a, 0.05), qt(a, 0.25), qt(a, 0.5), qt(a, 0.75), qt(a, 0.95)] }; });
+      let lo = Math.min(0, ...rows.map((w) => w.q[0])), hi = Math.max(0, ...rows.map((w) => w.q[4]));
+      if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
+      const pad = 0.08 * (hi - lo); lo -= pad; hi += pad;
+      const W = 600, LW = 215, RH = 30, H = rows.length * RH + 34, X = (v) => LW + (v - lo) / (hi - lo) * (W - LW - 14);
+      const step = (() => { const raw = (hi - lo) / 5, e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * e; })();
+      let g = '';
+      for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) { const vv = Math.abs(v) < 1e-9 ? 0 : v; g += `<line x1="${X(vv).toFixed(1)}" x2="${X(vv).toFixed(1)}" y1="4" y2="${H - 26}" class="${vv === 0 ? 'mc-zero' : 'mc-grid'}"/><text x="${X(vv).toFixed(1)}" y="${H - 12}" class="mc-tick" text-anchor="middle">${(vv > 0 ? '+' : '') + (+vv.toFixed(2))}</text>`; }
+      rows.forEach((w, i) => {
+        const y = 4 + i * RH + RH / 2, lab = name(w.x), short = lab.length > 34 ? lab.slice(0, 33) + '…' : lab;
+        const tip = `${lab}: ${L('mc_median')} ${tr.sg(w.q[2])}${unit}, 5–95 % ${tr.sg(w.q[0])} … ${tr.sg(w.q[4])}${unit}`;
+        g += `<g class="mc-row${w.x.role === 'sel' || (w.x.o === m.sel) ? ' on' : ''}"><title>${esc(tip)}</title><rect x="0" y="${y - RH / 2}" width="${W}" height="${RH}" fill="transparent"/>
+          <text x="${LW - 10}" y="${y - 2}" text-anchor="end" class="mc-lab">${esc(short)}</text><text x="${LW - 10}" y="${y + 10}" text-anchor="end" class="mc-sub">${esc(role(w.x))}</text>
+          <line x1="${X(w.q[0]).toFixed(1)}" x2="${X(w.q[4]).toFixed(1)}" y1="${y}" y2="${y}" class="mc-wh"/><rect x="${X(w.q[1]).toFixed(1)}" y="${y - 5}" width="${Math.max(2, X(w.q[3]) - X(w.q[1])).toFixed(1)}" height="10" rx="4" class="mc-box"/>
+          <circle cx="${X(w.q[2]).toFixed(1)}" cy="${y}" r="5" class="mc-dot"/></g>`;
+      });
+      return `<figure class="mc-fig"><figcaption>${esc(title)} <span class="small">· ${esc(L(goodHigh ? 'mc_right' : 'mc_left'))}</span></figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${g}</svg></figure>`;
+    };
+    let h = plot((x) => x.tumour, ' Gy', 'Δ ' + (p.rx.multilevel ? p.tumour.name : L('col_t')) + ' (Gy EQD2)', true);
+    if (r.hasOar) h += plot((x) => x.late, ' %', L('mc_late') + ' (%)', false);
+    h += `<div class="legend" style="margin:2px 0 10px"><span><svg width="34" height="12" aria-hidden="true"><line x1="1" x2="33" y1="6" y2="6" class="mc-wh"/><rect x="9" y="1" width="16" height="10" rx="4" class="mc-box"/><circle cx="17" cy="6" r="4" class="mc-dot"/></svg> ${esc(L('mc_legend'))}</span></div>`;
+    h += `<div class="scroll"><table><thead><tr><th>${esc(L('col_option'))}</th><th>Δ ${esc(L('col_t'))} (Gy)</th><th>${esc(L('mc_pT').replace('{x}', tolT))}</th>${r.hasOar ? `<th>${esc(L('mc_late'))} (%)</th><th>${esc(L('mc_pL').replace('{x}', tolL))}</th><th>${esc(L('mc_both'))}</th>` : ''}</tr></thead><tbody>` +
+      res.map((x, i) => `<tr${c.list[i].o === m.sel ? ' class="sel"' : ''}><td class="t">${esc(name(c.list[i]))}<br><span class="small">${esc(role(c.list[i]))}</span></td><td class="n">${tr.sg(x.tq[1])} <span class="small">[${tr.sg(x.tq[0])} … ${tr.sg(x.tq[2])}]</span></td><td class="n">${pc(frac((k) => x.tumourPct[k] >= -tolT))}</td>${r.hasOar ? `<td class="n">${tr.sg(x.lq[1])} <span class="small">[${tr.sg(x.lq[0])} … ${tr.sg(x.lq[2])}]</span></td><td class="n">${pc(frac((k) => x.late[k] <= tolL))}</td><td class="n"><b>${pc(frac((k) => x.tumourPct[k] >= -tolT && x.late[k] <= tolL))}</b></td>` : ''}</tr>`).join('') + '</tbody></table></div>';
+    // pairwise: the selected schedule against the suggestion, or against no compensation
+    const iS = c.list.findIndex((x) => x.o === m.sel), iR = c.list.findIndex((x, k) => k !== iS && (x.role === 'rec' || x.role === 'given')), iB = c.list.findIndex((x) => x.role === 'base');
+    const pair = (a, b) => { const A = res[a], Bq = res[b]; return `<li>${esc(L('mc_pair').replace('{a}', name(c.list[a])).replace('{b}', name(c.list[b])))}: ${esc(L('mc_pair_t'))} <b>${pc(frac((k) => A.tumour[k] > Bq.tumour[k] + 1e-9))}</b>${r.hasOar ? `, ${esc(L('mc_pair_l'))} <b>${pc(frac((k) => A.late[k] < Bq.late[k] - 1e-9))}</b>` : ''}.</li>`; };
+    const same = (a, b) => { for (let k = 0; k < r.n; k++) if (Math.abs(res[a].tumour[k] - res[b].tumour[k]) > 1e-3 || Math.abs(res[a].late[k] - res[b].late[k]) > 1e-3) return false; return true; };
+    const pairs = []; if (iS >= 0 && iR >= 0 && !same(iS, iR)) pairs.push(pair(iS, iR)); if (iS >= 0 && iB >= 0 && iB !== iS) pairs.push(pair(iS, iB));
+    if (pairs.length) h += `<ul class="mc-pairs">${pairs.join('')}</ul>`;
+    const sd = r.sd, sp = r.spread, f = (v) => '×/÷ ' + Math.exp(1.645 * v * sp).toFixed(2);
+    h += `<p class="small" style="margin:8px 0 0">${esc(L('mc_assume'))} α/β ${esc(L('col_t'))} ${f(sd.tumour_alpha_beta)}${r.time ? `, ${esc(L('mc_rep'))} ${f(sd.repopulation)}, T<sub>k</sub> ± ${(1.645 * sd.kickoff_days * sp).toFixed(0)} ${esc(L('days'))}` : ''}, α/β ${esc(L('mc_late_s'))} ${f(sd.late_alpha_beta)} (${esc(L('mc_90'))}). ${esc(L('mc_caveat'))}</p>`;
+    return h;
+  }
+  function mcHtml(m) {
+    if (!m.p.remaining || !m.dec || !mcOptions(m).length) return '';
+    const L = tr.t, sp = mcSpread();
+    return `<div class="card" id="mc"><h2>${esc(L('mc_title'))}${hbtn('mc')}</h2><p class="hint">${esc(L('mc_sub').replace('{n}', MC_N))}</p>
+      <div class="mc-ctl"><span class="small">${esc(L('mc_spread'))}</span><div class="seg lite" role="group" aria-label="${esc(L('mc_spread'))}">${[[0.5, 'mc_s1'], [1, 'mc_s2'], [1.5, 'mc_s3']].map(([v, k]) => `<button type="button" data-act="mc-spread" data-v="${v}" aria-pressed="${sp === v}">${esc(L(k))}</button>`).join('')}</div></div>
+      <div id="mcbox">${mcInner(m)}</div></div>`;
   }
   // ---- before the start: closed days inside the course, and what another start day would change
   function preflight() {
@@ -937,14 +1053,14 @@
       </div></div>
       <div class="card" id="triage"></div>
       <div class="card" id="audit"></div>`;
-    docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
+    docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p><div class="rowbtn" style="margin:0 0 12px"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button>${HOSTED ? `<a class="btn sm" href="validation.html">${esc(L('val_link'))}</a>` : ''}</div>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
       refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
     $('#docsbtn').textContent = L('docs_btn'); renderDocs(); renderTriage(); renderAudit();
     $('#disc').textContent = L('disclaimer');
     $('#skip').textContent = L('skip'); $('#about').setAttribute('aria-label', L('about_btn')); $('#docs').setAttribute('aria-label', L('docs_btn'));
     $('#aboutbtn').textContent = L('about_btn'); $('#undo').title = L('undo'); $('#undo').setAttribute('aria-label', L('undo')); $('#redo').title = L('redo'); $('#redo').setAttribute('aria-label', L('redo')); undoBtn();
-    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a>' : ''; setTheme(theme());
+    $('#foot-site').innerHTML = HOSTED ? '<a href="welcome.html">' + esc(L('welcome_link')) + '</a> · <a href="validation.html">' + esc(L('val_link')) + '</a>' : ''; setTheme(theme());
     $('#about').innerHTML = `<div class="modal-in" role="document"><button type="button" class="btn sm close" data-act="about-close" aria-label="close">✕</button>
       <div class="about-head"><h2>RT<i>Gap</i> <span>v${RT.VERSION}</span></h2><p>${esc(L('about_lead'))}</p></div>
       <div class="feats">${L('feats').map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join('')}</div>
@@ -957,7 +1073,7 @@
     let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
     $('#intro').hidden = seen;
     $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
-      <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
+      <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button><button type="button" class="btn sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
   function fillInstall() {
@@ -1206,6 +1322,24 @@
     if (a === 'rm-phase') { state.phases.splice(i, 1); refresh(true); return; }
     if (a === 'add-oar') { state.oars.push({ name: 'OAR ' + (state.oars.length + 1), ab: 3, ratio: 1, limit: null, repair: 4.4, bt: 1 }); refresh(true); return; }
     if (a === 'add-bt') { const last = state.brachy.fx[state.brachy.fx.length - 1]; state.brachy.fx.push({ date: last && last.date ? RT.iso(RT.parseDate(last.date) + 7) : (model && model.p ? RT.iso(model.p.plannedEnd + 3) : ''), dose: last ? last.dose : 7 }); refresh(true); return; }
+    if (a === 'bday') {
+      const g = state.given, d = t.dataset.d; g.dates = g.dates || []; g.bidDates = g.bidDates || [];
+      if (!g.dates.includes(d)) g.dates.push(d); else if (!g.bidDates.includes(d)) g.bidDates.push(d); else { g.dates = g.dates.filter((x) => x !== d); g.bidDates = g.bidDates.filter((x) => x !== d); }
+      g.dates.sort(); g.bidDates.sort(); builderRefresh(d); return;
+    }
+    if (a === 'given-cal' || a === 'given-copy') {
+      const g = state.given, m = model, src = a === 'given-cal' && m && m.given ? m.given : m && m.dec && (m.dec.recommended || m.dec.candidates[0] || m.dec.feasible.find((o) => o.family !== 'custom'));
+      if (src) { slotsToGiven(src.newFx); if (a === 'given-copy' || !(g.d > 0)) g.d = Math.round(src.d * 1000) / 1000; } else { g.dates = []; g.bidDates = []; }
+      if (!(g.d > 0) && m && m.p) g.d = m.p.dRef;
+      refresh(true); return;
+    }
+    if (a === 'tour') { tourStart(); return; }
+    if (a === 'tour-next') { tour.i++; tourShow(); return; }
+    if (a === 'tour-prev') { tour.i--; tourShow(); return; }
+    if (a === 'tour-end') { tourEnd(); return; }
+    if (a === 'mc-spread') { state.ui = state.ui || {}; state.ui.mcSpread = +t.dataset.v; persist(); renderResults(); const b = document.querySelector('[data-act="mc-spread"][data-v="' + t.dataset.v + '"]'); if (b) b.focus({ preventScroll: true }); return; }
+    if (a === 'given-clear') { state.given.dates = []; state.given.bidDates = []; builderRefresh(); return; }
+    if (a === 'given-quick') { const g = state.given; g.n = (g.dates || []).length + (g.bidDates || []).length || null; g.bid = (g.bidDates || []).length; g.dates = null; g.bidDates = null; refresh(true); return; }
     if (a === 'given-reset') { state.given = { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }; refresh(true); return; }
     if (a === 'rm-bt') { state.brachy.fx.splice(i, 1); refresh(true); return; }
     if (a === 'rm-oar') { state.oars.splice(i, 1); refresh(true); return; }
@@ -1294,6 +1428,74 @@
     const b = $('#theme'); if (b) { b.innerHTML = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="' + (v === 'dark' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/>' + (v === 'auto' ? '<path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/>' : '') + '</svg>'; b.title = tr.t('theme_' + v); b.setAttribute('aria-label', tr.t('theme_' + v)); }
   }
   function loadState(s) { s.lang = state.lang; state = s; invalid = {}; tr = I.make(state.lang); refresh(true); }
+  // ------------------------------------------------------------------ guided tour
+  // Walks through the page on a ready example. The case that was open is put back when the tour closes.
+  const TOUR = [
+    { sel: '#sec-1' }, { sel: '#sec-2' }, { sel: '#sec-3' },
+    { sel: '#results .kpis', tab: 'plan' }, { sel: '#decision' },
+    { sel: '#detail', tab: 'plan' }, { sel: '#results .pane .card', tab: 'opts' },
+    { sel: '#mc', tab: 'an' }, { sel: '#sec-6', open: 'sec-6' }, { sel: '#report', tab: 'rep' }, { sel: '#docsbtn' },
+  ];
+  let tour = null;
+  function tourStart() {
+    if (tour) return;
+    $('#about').hidden = true; $('#docs').hidden = true; $('#refpop').hidden = true; hideTip();
+    const hadCase = !!(model && model.p && model.p.missed && model.p.missed.length);
+    tour = { i: 0, snap: hadCase ? JSON.stringify(state) : null, back: document.activeElement };
+    const ex = EXAMPLES.hn_70(); ex.ui = { tab: 'plan' }; loadState(ex);
+    const root = document.createElement('div'); root.id = 'tour';
+    root.innerHTML = '<div class="tour-block"></div><div class="tour-hole"></div><div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-t"></div>';
+    document.body.appendChild(root); document.body.classList.add('touring');
+    tourShow();
+  }
+  function tourShow() {
+    const st = TOUR[tour.i], txt = tr.t('tour')[tour.i], L = tr.t;
+    if (st.tab && (!state.ui || state.ui.tab !== st.tab)) { state.ui = state.ui || {}; state.ui.tab = st.tab; renderResults(); }
+    if (st.open) { const d = document.getElementById(st.open); if (d && !d.open) d.open = true; }
+    const card = $('#tour .tour-card'), last = tour.i === TOUR.length - 1;
+    card.innerHTML = `<div class="tour-n">${tour.i + 1} / ${TOUR.length}</div><h3 id="tour-t">${esc(txt[0])}</h3><p>${esc(txt[1])}</p>
+      <div class="rowbtn"><button type="button" class="btn sm" data-act="tour-end">${esc(L('tour_close'))}</button><span style="flex:1"></span>${tour.i ? `<button type="button" class="btn sm" data-act="tour-prev">${esc(L('tour_prev'))}</button>` : ''}<button type="button" class="btn sm pri" data-act="${last ? 'tour-end' : 'tour-next'}" id="tour-go">${esc(L(last ? 'tour_done' : 'tour_next'))}</button></div>`;
+    const go = () => {
+      const el = document.querySelector(st.sel); tour.el = el;
+      if (el) { const r = el.getBoundingClientRect(), vh = window.innerHeight; el.scrollIntoView({ block: r.height > vh * 0.6 ? 'start' : 'center', behavior: 'auto' }); if (r.height > vh * 0.6) window.scrollBy(0, -70); }
+      tourPlace(); const b = $('#tour-go'); if (b) b.focus({ preventScroll: true });
+    };
+    go(); if (st.sel === '#mc') { setTimeout(() => { if (tour && TOUR[tour.i] === st) go(); }, 700); }
+  }
+  function tourPlace() {
+    if (!tour) return;
+    const hole = $('#tour .tour-hole'), card = $('#tour .tour-card'), el = tour.el, vw = document.documentElement.clientWidth, vh = window.innerHeight, small = vw < 700;
+    let r = el ? el.getBoundingClientRect() : null;
+    if (!r || !r.width) { hole.style.cssText = 'left:50%;top:50%;width:0;height:0'; card.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%)'; return; }
+    const pad = 6, x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad), x2 = Math.min(vw - 4, r.right + pad), y2 = Math.min(vh - 4, r.bottom + pad);
+    hole.style.cssText = `left:${x}px;top:${y}px;width:${Math.max(0, x2 - x)}px;height:${Math.max(0, y2 - y)}px`;
+    card.style.cssText = '';
+    if (small) { const top = (y + y2) / 2 > vh / 2; card.style.cssText = `left:8px;right:8px;${top ? 'top:8px' : 'bottom:8px'}`; return; }
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let cx, cy;
+    if (x2 + 14 + cw <= vw - 8) { cx = x2 + 14; cy = Math.min(Math.max(8, y), vh - ch - 8); }
+    else if (x - 14 - cw >= 8) { cx = x - 14 - cw; cy = Math.min(Math.max(8, y), vh - ch - 8); }
+    else if (y2 + 12 + ch <= vh - 8) { cx = Math.min(Math.max(8, x), vw - cw - 8); cy = y2 + 12; }
+    else if (y - 12 - ch >= 8) { cx = Math.min(Math.max(8, x), vw - cw - 8); cy = y - 12 - ch; }
+    else { cx = vw - cw - 16; cy = vh - ch - 16; }
+    card.style.cssText = `left:${cx}px;top:${cy}px`;
+  }
+  function tourEnd() {
+    if (!tour) return; const t0 = tour; tour = null;
+    const root = $('#tour'); if (root) root.remove(); document.body.classList.remove('touring');
+    if (t0.snap) { try { loadState(JSON.parse(t0.snap)); } catch (e) { /* keep the example */ } }
+    window.scrollTo({ top: 0 }); if (t0.back && t0.back.focus && document.contains(t0.back)) t0.back.focus({ preventScroll: true });
+  }
+  window.addEventListener('scroll', () => { if (tour) tourPlace(); }, { passive: true, capture: true });
+  window.addEventListener('resize', () => { if (tour) tourPlace(); });
+  document.addEventListener('keydown', (ev) => {
+    if (!tour) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); tourEnd(); }
+    else if (ev.key === 'ArrowRight' && tour.i < TOUR.length - 1) { ev.preventDefault(); tour.i++; tourShow(); }
+    else if (ev.key === 'ArrowLeft' && tour.i > 0) { ev.preventDefault(); tour.i--; tourShow(); }
+    else if (ev.key === 'Tab') { const f = [...document.querySelectorAll('#tour .tour-card button')]; if (!f.length) return; const i = f.indexOf(document.activeElement); ev.preventDefault(); f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
+  }, true);
+  if (/[#&]tour\b/.test(location.hash || '')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } setTimeout(tourStart, 350); }
   // hover / focus tooltip for the (?) buttons; a click opens the full note with references
   const tip = document.createElement('div'); tip.id = 'tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip);
   let tipFor = null, tipBy = '';
@@ -1354,6 +1556,10 @@
   // keyboard: arrows in the calendar and between tabs; focus stays inside an open dialog
   document.addEventListener('keydown', (ev) => {
     const tg = ev.target, k = ev.key; if (!tg || !tg.matches) return;
+    if (tg.matches('#gbuild button[data-d]') && /^Arrow/.test(k)) {
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gbuild [data-d="' + RT.iso(RT.parseDate(tg.dataset.d) + step) + '"]');
+      if (nx) { ev.preventDefault(); nx.focus(); } return;
+    }
     if (tg.matches('#gapcal button[data-day]') && /^Arrow/.test(k)) {
       const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[k], nx = document.querySelector('#gapcal [data-day="' + RT.iso(RT.parseDate(tg.dataset.day) + step) + '"]');
       if (nx) { ev.preventDefault(); nx.focus(); } return;

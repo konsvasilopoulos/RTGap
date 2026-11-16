@@ -40,7 +40,15 @@ ref.forEach((r, i) => {
 });
 if (RT.iso(RT.orthodoxEaster(2026)) !== '2026-04-12' || RT.iso(RT.orthodoxEaster(2027)) !== '2027-05-02' || RT.iso(RT.orthodoxEaster(2024)) !== '2024-05-05') fail(-1, 'easter');
 if (RT.sha256('abc') !== 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad') fail(-1, 'sha256');
+{ const r0 = ref.find((r) => !r.result.error && r.result.feasible && r.result.feasible.length > 1);
+  if (r0) { const p = RT.plannerFromCase(r0.case, r0.protocol), d = RT.decide(p), o = d.feasible.slice(0, 2);
+    if (p.remaining) { const a = RT.monteCarlo(p, o, 300), b = RT.monteCarlo(p, o, 300);
+      if (a.res[0].tq.join() !== b.res[0].tq.join()) fail(-1, 'monte carlo not deterministic');
+      a.res.forEach((x, i) => { if (!(x.tq[0] - 1e-6 <= x.tq[1] && x.tq[1] <= x.tq[2] + 1e-6)) fail(-1, 'mc quantiles'); if (Math.abs(x.tq[1] - o[i].tumour.delta) > 1.5) fail(-1, 'mc median far from nominal'); }); } } }
 const st = RT.selfTest(); st.forEach((s) => { if (!s.ok) fail(-1, 'selftest ' + s.id + ' got ' + s.got); }); console.log('self-test', st.filter((s) => s.ok).length + '/' + st.length);
 const j = RT.joiner(70, 2, 8, 4); if (Math.abs(j.d - 1.7419) > 1e-3 || j.n !== 36 || j.practical !== 1.72) fail(-1, 'joiner');
 console.log(`cases ${ref.length}, compared ${checked}, options compared ${nopts}, mismatches ${bad}`);
+try { const fs2 = require('fs'), f = __dirname + '/summary.json', old = JSON.parse(fs2.readFileSync(f, 'utf8'));
+  if (!bad && (old.cases !== ref.length || old.options !== nopts)) fs2.writeFileSync(f, JSON.stringify(Object.assign(old, { cases: ref.length, compared: checked, options: nopts, mismatches: bad, date: new Date().toISOString().slice(0, 10) })));
+} catch (e) { /* summary is optional */ }
 process.exit(bad ? 1 : 0);

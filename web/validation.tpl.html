@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTGap · validation</title>
+<meta name="description" content="RTGap validation: self-test against published worked examples, two independent engines, and comparison with other software.">
+<meta name="theme-color" content="#07101f">
+<link rel="icon" href="icon-192.png">
+<style>
+:root { --bg: #07101f; --ink: #e9eefb; --mut: #a9b8d6; --acc: #7fb2ff; --amb: #f3b45a; --ok: #4fd0a8; --bad: #ff8094; --line: rgba(159,176,207,.22); --panel: rgba(255,255,255,.045);
+  --fd: "STIX Two Text", Cambria, "Times New Roman", serif; --fb: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; --fn: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(1100px 520px at 78% -8%, #16305f 0%, transparent 60%), var(--bg); color: var(--ink); font: 16px/1.55 var(--fb); }
+a { color: var(--acc); } .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+.logo { font: 600 1.5rem/1 var(--fd); color: #fff; text-decoration: none; } .logo i { color: var(--acc); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; } .seg button { background: none; border: 0; color: var(--mut); padding: 6px 11px; font: 500 .82rem var(--fb); cursor: pointer; } .seg button[aria-pressed="true"] { background: var(--acc); color: #06142e; }
+h1 { font: 600 clamp(2rem, 5vw, 3rem)/1.06 var(--fd); margin: 18px 0 12px; text-wrap: balance; }
+.lead { color: var(--mut); font-size: 1.06rem; max-width: 68ch; margin: 0 0 22px; }
+section { padding: 30px 0; border-top: 1px solid var(--line); }
+h2 { font: 600 1.55rem/1.15 var(--fd); margin: 0 0 6px; } .sub { color: var(--mut); margin: 0 0 16px; max-width: 76ch; }
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 14px; margin-bottom: 26px; } .nums div { border-left: 3px solid var(--amb); padding: 2px 0 2px 14px; } .nums b { display: block; font: 600 1.9rem/1.1 var(--fn); } .nums span { color: var(--mut); font-size: .86rem; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; } th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--mut); font-weight: 500; font-size: .78rem; } td:first-child, th:first-child { text-align: left; white-space: normal; } tr:last-child td { border-bottom: 0; } td.n { font-family: var(--fn); }
+.ok { color: var(--ok); font-weight: 600; } .no { color: var(--bad); font-weight: 600; } .pend { color: var(--amb); }
+.note { border: 1px solid var(--amb); border-left-width: 4px; border-radius: 10px; padding: 12px 16px; background: rgba(243,180,90,.07); max-width: 84ch; }
+.btn { display: inline-block; text-decoration: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; border: 1px solid var(--line); color: var(--ink); } .btn.pri { background: var(--acc); color: #06142e; border-color: var(--acc); }
+.small { font-size: .84rem; color: var(--mut); } ul { padding-left: 20px; max-width: 84ch; } li { margin: 4px 0; }
+footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><a class="logo" href="index.html">RT<i>Gap</i></a><div class="seg" role="group"><button type="button" data-l="el">ΕΛ</button><button type="button" data-l="en">EN</button></div></nav>
+<h1 data-el="Επικύρωση" data-en="Validation"></h1>
+<p class="lead" data-el="Τι έχει ελεγχθεί, με τι, και τι όχι ακόμη. Οι πίνακες αυτής της σελίδας υπολογίζονται τώρα, στον browser σας, με την ίδια μηχανή που τρέχει στην εφαρμογή." data-en="What has been checked, against what, and what has not been checked yet. The tables on this page are calculated now, in your browser, by the same engine that runs in the app."></p>
+<div class="nums">
+  <div><b id="n-self">–</b><span data-el="τιμές αυτοελέγχου σωστές σε αυτή τη συσκευή" data-en="self-test values correct on this device"></span></div>
+  <div><b>__CASES__</b><span data-el="τυχαία περιστατικά όπου οι δύο μηχανές συμφωνούν" data-en="randomised cases on which the two engines agree"></span></div>
+  <div><b>__PYTEST__</b><span data-el="αυτόματα tests σε Python" data-en="automated Python tests"></span></div>
+  <div><b id="n-rad">–</b><span data-el="σχήματα σε συμφωνία με το RadComp" data-en="schedules in agreement with RadComp"></span></div>
+  <div><b id="n-lql">–</b><span data-el="σχήματα συγκρίθηκαν με το LQL-Equiv" data-en="schedules compared with LQL-Equiv"></span></div>
+</div>
+
+<section>
+  <h2 data-el="1 · Δημοσιευμένα λυμένα παραδείγματα" data-en="1 · Published worked examples"></h2>
+  <p class="sub" data-el="Η μηχανή αναπαράγει τα παραδείγματα του Basic Clinical Radiobiology (κεφ. 9) και του RCR 2019 (Παράρτημα B). Η ανοχή είναι το τελευταίο δημοσιευμένο ψηφίο." data-en="The engine reproduces the examples of Basic Clinical Radiobiology (ch. 9) and of RCR 2019 (Appendix B). The tolerance is the last published digit."></p>
+  <div class="scroll"><table><thead><tr><th data-el="Παράδειγμα" data-en="Example"></th><th data-el="Πηγή" data-en="Source"></th><th data-el="Δημοσιευμένο" data-en="Published"></th><th>RTGap</th><th></th></tr></thead><tbody id="t-self"></tbody></table></div>
+</section>
+
+<section>
+  <h2 data-el="2 · Δύο ανεξάρτητες υλοποιήσεις" data-en="2 · Two independent implementations"></h2>
+  <p class="sub" data-el="Το ίδιο μοντέλο είναι γραμμένο δύο φορές: σε Python (βιβλιοθήκη και γραμμή εντολών) και σε JavaScript (η εφαρμογή). Σε κάθε αλλαγή του κώδικα, τυχαία περιστατικά περνούν και από τις δύο και τα αποτελέσματα συγκρίνονται." data-en="The same model is written twice: in Python (library and command line) and in JavaScript (the app). At every change of the code, randomised cases go through both and the results are compared."></p>
+  <div class="scroll"><table><tbody>
+    <tr><td data-el="Περιστατικά" data-en="Cases"></td><td class="n">__CASES__</td></tr>
+    <tr><td data-el="Σχήματα που συγκρίθηκαν (δόση ανά κλάσμα, EQD2 όγκου και οργάνων, λήξη, απόφαση)" data-en="Schedules compared (dose per fraction, tumour and organ EQD2, end date, decision)"></td><td class="n">__OPTIONS__</td></tr>
+    <tr><td data-el="Διαφορές" data-en="Mismatches"></td><td class="n ok">__MISMATCH__</td></tr>
+    <tr><td data-el="Αυτόματα tests Python (μοντέλο LQ, ημερολόγιο, κανόνες RCR, ιστορικό, LQ-L)" data-en="Automated Python tests (LQ model, calendar, RCR rules, history, LQ-L)"></td><td class="n">__PYTEST__</td></tr>
+  </tbody></table></div>
+  <p class="small" data-el="Τα περιστατικά καλύπτουν όλους τους εντοπισμούς, SIB και διαδοχικές φάσεις, βραχυθεραπεία, λάθη δόσης, πολλαπλές διακοπές, τις δύο εκδόσεις της οδηγίας και το LQ-L. Τελευταία εκτέλεση: __DATE__." data-en="The cases cover every site, SIB and sequential phases, brachytherapy, dose errors, several interruptions, both editions of the guidance and LQ-L. Last run: __DATE__."></p>
+</section>
+
+<section>
+  <h2 data-el="3 · Σύγκριση με το RadComp" data-en="3 · Comparison with RadComp"></h2>
+  <p class="sub" data-el="RadComp (radcomp.streamlit.app, L. F. Paredes Ocampo), απλό LQ χωρίς παράγοντα χρόνου. Οι τιμές του RadComp διαβάστηκαν από τη σελίδα του στις 14/11/2026· οι τιμές του RTGap υπολογίζονται τώρα." data-en="RadComp (radcomp.streamlit.app, L. F. Paredes Ocampo), plain LQ without a time factor. The RadComp values were read from its page on 14 Nov 2026; the RTGap values are calculated now."></p>
+  <div class="scroll"><table><thead><tr><th data-el="Σχήμα" data-en="Schedule"></th><th>α/β (Gy)</th><th>BED RTGap</th><th>BED RadComp</th><th>EQD2 RTGap</th><th>EQD2 RadComp</th><th></th></tr></thead><tbody id="t-rad"></tbody></table></div>
+</section>
+
+<section>
+  <h2 data-el="4 · Σύγκριση με το LQL-Equiv" data-en="4 · Comparison with LQL-Equiv"></h2>
+  <p class="sub" data-el="Τα σχήματα με επαναπληθυσμό και με μεγάλα κλάσματα (LQ-L) χρειάζονται πρόγραμμα που τα υποστηρίζει. Η σύγκριση με το LQL-Equiv δεν έχει γίνει ακόμη· οι τιμές του RTGap δίνονται ώστε να μπορεί να τη κάνει οποιοσδήποτε." data-en="The schedules with repopulation and with large fractions (LQ-L) need a program that supports them. The comparison with LQL-Equiv has not been done yet; the RTGap values are given so that anyone can do it."></p>
+  <p class="small" data-el="Επαναπληθυσμός: α/β = 10 Gy, K = 0.9 Gy BED/ημέρα (D_prolif 0.75 Gy EQD2/ημέρα), T_k = 28 ημέρες, T = τελευταίο − πρώτο κλάσμα." data-en="Repopulation: α/β = 10 Gy, K = 0.9 Gy BED/day (D_prolif 0.75 Gy EQD2/day), T_k = 28 days, T = last minus first fraction."></p>
+  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>T (d)</th><th>BED RTGap</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th></th></tr></thead><tbody id="t-rep"></tbody></table></div>
+  <p class="small" style="margin-top:16px" data-el="LQ-L (Astrahan 2008): δόση μετάβασης d_T = 2 × α/β, χωρίς παράγοντα χρόνου." data-en="LQ-L (Astrahan 2008): transition dose d_T = 2 × α/β, no time factor."></p>
+  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>α/β (Gy)</th><th>d<sub>T</sub> (Gy)</th><th>BED RTGap</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th></th></tr></thead><tbody id="t-lql"></tbody></table></div>
+</section>
+
+<section>
+  <h2 data-el="Τι δεν δείχνουν αυτοί οι έλεγχοι" data-en="What these checks do not show"></h2>
+  <div class="note" data-el="Οι παραπάνω έλεγχοι δείχνουν ότι το πρόγραμμα υπολογίζει σωστά το μοντέλο. Δεν δείχνουν ότι το μοντέλο προβλέπει σωστά την κλινική έκβαση." data-en="The checks above show that the program calculates the model correctly. They do not show that the model predicts the clinical outcome correctly."></div>
+  <ul>
+    <li data-el="Δεν έχει γίνει ακόμη αναδρομική σύγκριση με πραγματικά περιστατικά και τις αποφάσεις που πάρθηκαν." data-en="A retrospective comparison with real cases and the decisions that were taken has not been done yet."></li>
+    <li data-el="Δεν έχει γίνει ακόμη ανεξάρτητος έλεγχος από δεύτερο φυσικό εκτός της ανάπτυξης." data-en="An independent check by a second physicist outside the development has not been done yet."></li>
+    <li data-el="Οι γενικές τιμές α/β και επαναπληθυσμού έχουν μεγάλη αβεβαιότητα· η εφαρμογή τη δείχνει με την ανάλυση ευαισθησίας και την πιθανοτική ανάλυση." data-en="The generic α/β and repopulation values carry a large uncertainty; the app shows it with the sensitivity and the probabilistic analysis."></li>
+    <li data-el="Κάθε τμήμα οφείλει να ελέγξει το εργαλείο με δικά του περιστατικά πριν το χρησιμοποιήσει (λίστα ελέγχου στο docs/INTENDED_USE.md)." data-en="Each department has to check the tool on its own cases before using it (checklist in docs/INTENDED_USE.md)."></li>
+  </ul>
+  <p style="margin-top:18px"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a> <a class="btn" href="https://github.com/konsvasilopoulos/RTGap/tree/main/validation" data-el="Αρχεία επικύρωσης στο GitHub" data-en="Validation files on GitHub"></a></p>
+</section>
+<footer>RTGap __VERSION__ · Konstantinos Vasilopoulos, PhD Candidate · <a href="mailto:kostasvasilopoulosgr@yahoo.com">kostasvasilopoulosgr@yahoo.com</a></footer>
+</div>
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+(function () {
+  try { sessionStorage.setItem('rtgap.entered', '1'); } catch (e) {}
+  var lang = 'en';
+  try { var st = JSON.parse(localStorage.getItem('rtgap.state') || 'null'); lang = (st && st.lang) || localStorage.getItem('rtgap.wlang') || ((navigator.language || '').toLowerCase().indexOf('el') === 0 ? 'el' : 'en'); } catch (e) {}
+  var T = { el: { ok: 'συμφωνεί', no: 'διαφέρει', pend: 'εκκρεμεί' }, en: { ok: 'agrees', no: 'differs', pend: 'pending' } };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  // Values read from the other programs. LQL: fill in as { 10: 56.50, ... } (EQD2, Gy) when the comparison is run.
+  var RAD = [[35, 2, 3, 116.67, 70.00], [20, 2.75, 3, 105.42, 63.25], [15, 2.67, 3.5, 70.60, 44.93], [20, 3, 1.6, 172.50, 76.67], [5, 5, 10, 37.50, 31.25], [5, 5, 4, 56.25, 37.50], [10, 3, 10, 39.00, 32.50], [40, 2, 3, 133.33, 80.00], [35, 2, 10, 84.00, 70.00]];
+  var REP = [[10, 35, 2, 46], [11, 30, 2, 39], [12, 25, 1.8, 32], [13, 33, 2.12, 44], [14, 20, 2.75, 25]];
+  var LQL = [[15, 1, 24, 10], [16, 1, 34, 10], [17, 5, 7, 3], [18, 5, 11, 3], [19, 3, 18, 3], [20, 1, 24, 3]];
+  var OTHER = /*__LQLEQUIV__*/{};
+  function draw() {
+    var t = T[lang], st = RT.selfTest(), okN = st.filter(function (s) { return s.ok; }).length;
+    document.getElementById('n-self').textContent = okN + '/' + st.length;
+    document.getElementById('t-self').innerHTML = st.map(function (s) { return '<tr><td>' + esc(s.id) + '</td><td>' + esc(s.src === 'RCR19' ? 'RCR 2019' : s.src) + '</td><td class="n">' + s.expected + '</td><td class="n">' + (+s.got.toFixed(3)) + '</td><td class="' + (s.ok ? 'ok">✓' : 'no">✕') + '</td></tr>'; }).join('');
+    var radOk = 0;
+    document.getElementById('t-rad').innerHTML = RAD.map(function (r) { var b = RT.bed(r[0], r[1], r[2]), e = RT.eqd2FromBed(b, r[2]), ok = Math.abs(b - r[3]) < 0.006 && Math.abs(e - r[4]) < 0.006; if (ok) radOk++;
+      return '<tr><td>' + r[0] + ' × ' + r[1] + ' Gy</td><td class="n">' + r[2] + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + r[3].toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td><td class="n">' + r[4].toFixed(2) + '</td><td class="' + (ok ? 'ok">✓ ' + t.ok : 'no">✕ ' + t.no) + '</td></tr>'; }).join('');
+    document.getElementById('n-rad').textContent = radOk + '/' + RAD.length;
+    var done = 0, cmp = function (id, e) { var o = OTHER[id]; if (o == null) return '<td class="n pend">–</td><td class="pend">' + t.pend + '</td>'; done++; var ok = Math.abs(o - e) < 0.06; return '<td class="n">' + (+o).toFixed(2) + '</td><td class="' + (ok ? 'ok">✓ ' + t.ok : 'no">✕ ' + t.no) + '</td>'; };
+    document.getElementById('t-rep').innerHTML = REP.map(function (r) { var b = RT.bed(r[1], r[2], 10) - 0.9 * Math.max(0, r[3] - 28), e = RT.eqd2FromBed(b, 10);
+      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td>' + cmp(r[0], e) + '</tr>'; }).join('');
+    document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3]);
+      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + RT.lqlDt(tis) + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td>' + cmp(r[0], e) + '</tr>'; }).join('');
+    document.getElementById('n-lql').textContent = done + '/' + (REP.length + LQL.length);
+  }
+  function set(l) {
+    lang = l; document.documentElement.lang = l; try { localStorage.setItem('rtgap.wlang', l); } catch (e) {}
+    document.querySelectorAll('[data-el]').forEach(function (n) { n.innerHTML = n.getAttribute('data-' + l); });
+    document.querySelectorAll('[data-l]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-l') === l)); });
+    draw();
+  }
+  document.querySelectorAll('[data-l]').forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-l')); }); });
+  set(lang);
+})();
+</script>
+</body>
+</html>

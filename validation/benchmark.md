@@ -33,3 +33,19 @@ T = last minus first fraction day (RCR convention).
 
 The repopulation term is also checked against the published worked examples of the RCR
 (2019, Appendix B) and Basic Clinical Radiobiology (ch. 9) in the test suite and the built-in self-test.
+
+## Pending: large fractions with LQ-L (for LQL-Equiv)
+LQ-L (Astrahan 2008), transition dose d_T = 2 × α/β, no time factor. The rtgap values are shown,
+calculated live, on the validation page of the web app (validation.html).
+
+| # | Schedule | α/β (Gy) | d_T (Gy) |
+|---|---|---|---|
+| 15 | 1 × 24 Gy | 10 | 20 |
+| 16 | 1 × 34 Gy | 10 | 20 |
+| 17 | 5 × 7 Gy | 3 | 6 |
+| 18 | 5 × 11 Gy | 3 | 6 |
+| 19 | 3 × 18 Gy | 3 | 6 |
+| 20 | 1 × 24 Gy | 3 | 6 |
+
+Values read from LQL-Equiv go into `validation/lql_equiv.json` (EQD2 in Gy, keyed by row number);
+the validation page then shows the comparison.

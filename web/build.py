@@ -20,4 +20,11 @@ for f in (here / "pwa").iterdir():
     else:
         shutil.copy(f, out / f.name)
 shutil.copy(here.parent / "docs" / "screenshot.png", out / "screenshot.png")
+# validation page: the engine inlined, numbers from the last cross-validation run, other programs' values from validation/
+summ = json.loads((here / "xval" / "summary.json").read_text("utf-8"))
+other = json.loads((here.parent / "validation" / "lql_equiv.json").read_text("utf-8"))
+val = (here / "validation.tpl.html").read_text("utf-8").replace("/*__ENGINE__*/", (here / "engine.js").read_text("utf-8")).replace("/*__LQLEQUIV__*/{}", json.dumps(other["eqd2"]))
+for k, v in {"__VERSION__": ver, "__CASES__": summ["cases"], "__OPTIONS__": summ["options"], "__MISMATCH__": summ["mismatches"], "__PYTEST__": summ["pytest"], "__DATE__": summ["date"]}.items():
+    val = val.replace(k, str(v))
+(out / "validation.html").write_text(val, "utf-8")
 print("dist/index.html", len(html) // 1024, "KiB")

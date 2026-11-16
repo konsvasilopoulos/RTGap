@@ -347,6 +347,29 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
 }
 @media print { .card.decision, #detail { break-inside: auto; } }
 
+/* field help (?) and input checks */
+.f > span.fl { display: flex; align-items: flex-start; min-width: 0; white-space: normal; overflow: visible; }
+.f > span.fl > label, .f > span.fl > span { min-width: 0; }
+.lvl .f > span.fl, .oar .f > span.fl { white-space: nowrap; }
+.lvl .f > span.fl > label, .oar .f > span.fl > label { overflow: hidden; text-overflow: ellipsis; }
+.f > span.fl .help { flex: none; margin-left: 5px; }
+.chkw { display: flex; align-items: flex-start; gap: 0; min-width: 0; }
+.chkw .chk { flex: 0 1 auto; min-width: 0; }
+.chkw .help { flex: none; margin-top: 5px; }
+.hint .help { margin-left: 6px; }
+.f.v-err input, .f.v-err select { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); background: var(--bad-soft); }
+.f.v-warn input, .f.v-warn select { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.vmsg { font-size: 0.74rem; line-height: 1.3; white-space: normal; }
+.v-err .vmsg { color: var(--bad); }
+.v-warn .vmsg { color: var(--warn); }
+.vbar { border-color: var(--bad); background: var(--bad-soft); font-size: 0.88rem; padding: 10px 14px; }
+.vbar .linkbtn { color: var(--bad); font-weight: 600; }
+#tip { position: fixed; z-index: 80; max-width: min(330px, calc(100vw - 16px)); padding: 9px 11px; border-radius: 9px; background: var(--ink); color: var(--panel); font: 0.8rem/1.45 var(--f-body); box-shadow: 0 10px 30px rgba(0,0,0,.28); pointer-events: none; }
+#tip[hidden] { display: none; }
+#tip b { display: block; margin-bottom: 3px; font-size: 0.82rem; }
+#tip .tip-more { display: block; margin-top: 5px; opacity: .7; font-size: 0.74rem; }
+@media print { #tip, .vbar { display: none !important; } }
+
 </style>
 </head>
 <body>
@@ -398,7 +421,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.8.0';
+  const VERSION = '1.9.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -1434,7 +1457,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       pre_clear: 'No closed treatment days fall inside this course.', pre_comp: 'If the closed days are compensated after the last one:', pre_start: 'First fraction', pre_ncl: 'Closed days', pre_now: 'entered', pre_best: 'shortest', pre_use: 'Use',
       pre_note: 'Prolongation and tumour EQD2 are relative to the same course without any closed day. A fraction can also be brought forward before a holiday (Saturday or second fraction): enter it in "Own schedule" to evaluate it.',
       tri_pdf: 'Outage list (PDF)', tri_csv: 'Outage list (CSV)', tri_pdf_title: 'Machine outage: patients in order of priority',
-      doc_guide: 'User guide', guide_hint: 'Five short walk-throughs. Each opens a ready example that you can change.', guide_open: 'Open this example',
+      doc_guide: 'User guide', guide_hint: 'Five short walk-throughs. Each opens a ready example that you can change. Every field has a (?) button: hover over it or focus it for a short explanation, click it for the full note with its references. Values that cannot be right are not applied and are marked in red; unusual values are applied and marked in amber.', guide_open: 'Open this example',
       guide: [
         { t: 'A machine fault in a head and neck course', ex: 'hn_70', s: ['Section 1: choose the tumour site. It sets the RCR category and the allowed prolongation.', 'Section 2: enter the first fraction, the number of fractions and the dose per fraction.', 'Section 3: tap the missed days on the calendar. The tiles at the top right now show what was lost.', 'Read the suggestion. "How the decision was reached" lists every step with its source.', 'Options tab: compare the alternatives; tap one to see its calendar. Excluded options are listed with the reason.', 'Report tab: download the PDF report and the treatment sheet for the radiographers.'] },
         { t: 'The department cannot treat on weekends or twice a day', ex: 'prostate', s: ['Open section 5 (Department) and untick what is not available.', 'The options that need it move to the excluded list, each with its reason.', 'Save the settings as the department protocol so that every new case starts from them.', 'Changing the dose per fraction is suggested only if you set tolerances; otherwise it is left as a clinical decision.'] },
@@ -1587,7 +1610,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       pre_clear: 'Καμία ημέρα χωρίς θεραπεία δεν πέφτει μέσα στη θεραπεία.', pre_comp: 'Αν οι ημέρες αυτές αντισταθμιστούν μετά την τελευταία:', pre_start: 'Πρώτο κλάσμα', pre_ncl: 'Κλειστές ημέρες', pre_now: 'δοθείσα', pre_best: 'συντομότερη', pre_use: 'Χρήση',
       pre_note: 'Η παράταση και η EQD2 όγκου είναι ως προς την ίδια θεραπεία χωρίς καμία κλειστή ημέρα. Ένα κλάσμα μπορεί και να προηγηθεί της αργίας (Σάββατο ή δεύτερο κλάσμα): δώστε το στο «Δικό σας σχήμα» για να αξιολογηθεί.',
       tri_pdf: 'Λίστα βλάβης (PDF)', tri_csv: 'Λίστα βλάβης (CSV)', tri_pdf_title: 'Βλάβη μηχανήματος: ασθενείς κατά προτεραιότητα',
-      doc_guide: 'Οδηγός χρήσης', guide_hint: 'Πέντε σύντομα παραδείγματα βήμα-βήμα. Το καθένα ανοίγει ένα έτοιμο περιστατικό που μπορείτε να αλλάξετε.', guide_open: 'Άνοιγμα του παραδείγματος',
+      doc_guide: 'Οδηγός χρήσης', guide_hint: 'Πέντε σύντομα παραδείγματα βήμα-βήμα. Το καθένα ανοίγει ένα έτοιμο περιστατικό που μπορείτε να αλλάξετε. Κάθε πεδίο έχει ένα κουμπί (?): περάστε το ποντίκι από πάνω ή εστιάστε σε αυτό για σύντομη εξήγηση, πατήστε το για την πλήρη σημείωση με τις παραπομπές. Τιμές που δεν μπορεί να είναι σωστές δεν εφαρμόζονται και σημειώνονται με κόκκινο· οι ασυνήθιστες τιμές εφαρμόζονται και σημειώνονται με πορτοκαλί.', guide_open: 'Άνοιγμα του παραδείγματος',
       guide: [
         { t: 'Βλάβη μηχανήματος σε θεραπεία κεφαλής-τραχήλου', ex: 'hn_70', s: ['Ενότητα 1: διαλέξτε τον εντοπισμό. Ορίζει την κατηγορία RCR και την επιτρεπτή παράταση.', 'Ενότητα 2: δώστε το πρώτο κλάσμα, τον αριθμό κλασμάτων και τη δόση ανά κλάσμα.', 'Ενότητα 3: πατήστε στο ημερολόγιο τις ημέρες που χάθηκαν. Τα πλακίδια πάνω δεξιά δείχνουν τι χάθηκε.', 'Διαβάστε την πρόταση. Το «Πώς προέκυψε η απόφαση» δείχνει κάθε βήμα με την πηγή του.', 'Καρτέλα Επιλογές: συγκρίνετε τις εναλλακτικές· πατήστε μία για να δείτε το ημερολόγιό της. Όσες αποκλείονται εμφανίζονται με τον λόγο.', 'Καρτέλα Αναφορά: κατεβάστε την αναφορά PDF και το φύλλο για τους τεχνολόγους.'] },
         { t: 'Το τμήμα δεν δουλεύει Σαββατοκύριακα ή δύο φορές την ημέρα', ex: 'prostate', s: ['Ανοίξτε την ενότητα 5 (Τμήμα) και αφαιρέστε ό,τι δεν είναι διαθέσιμο.', 'Οι επιλογές που το χρειάζονται περνούν στις αποκλεισμένες, η καθεμία με τον λόγο της.', 'Αποθηκεύστε τις ρυθμίσεις ως πρωτόκολλο τμήματος, ώστε κάθε νέο περιστατικό να ξεκινά από αυτές.', 'Αλλαγή της δόσης ανά κλάσμα προτείνεται μόνο αν ορίσετε ανοχές· αλλιώς μένει ως κλινική απόφαση.'] },
@@ -1774,6 +1797,139 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     { id: 'ASTRAHAN', short: 'Astrahan 2008', text: 'Astrahan M. Some implications of linear-quadratic-linear radiation dose-response with regard to hypofractionation. Med Phys. 2008;35(9):4161–4172.', url: 'https://doi.org/10.1118/1.2969065',
       use: { en: 'The LQ-L model: LQ up to a transition dose, linear above it. Optional, for large doses per fraction.', el: 'Το μοντέλο LQ-L: LQ μέχρι μια δόση μετάβασης και γραμμικό από εκεί και πάνω. Προαιρετικό, για μεγάλες δόσεις ανά κλάσμα.' } },
   ];
+  // ------------------------------------------------------------------ field help (?) and input checks
+  // Keyed by bind path with indices replaced by * (oars.*.ab). [title, text, refs]
+  const HELP = {
+    en: {
+      site: ['Tumour site', 'Sets the RCR category with its allowed prolongation, and loads the site\'s default α/β, repopulation and organs at risk. The pills under the list show what applies; every value can still be changed in steps 4 and 5.', ['RCR19']],
+      category: ['RCR category', 'Category 1 (radical treatment of fast-growing tumours, e.g. head and neck, cervix, lung): no more than 2 days of prolongation, aim for none. Category 2 (other radical treatments): ideally up to 2 days, compensate beyond 5. Category 3 (palliative): compensation is generally considered only beyond 7 days. "From site" uses the category of the chosen site.', ['RCR19']],
+      start: ['First fraction', 'Date of the first fraction of the whole course. The overall treatment time is counted from this day to the last fraction, so give the real start, not the start of the current phase.'],
+      multi: ['Several dose levels or phases', 'For a sequential boost (phases one after the other) or a simultaneous integrated boost (several levels in one phase). Each level is followed separately; the primary level drives the decision.'],
+      n: ['Fractions', 'Number of fractions prescribed for the whole course. Fractions already given are read from the calendar, not from this field.'],
+      d: ['Dose per fraction', 'Prescribed physical dose per fraction at the reference point, in Gy. All BED and EQD2 values are worked out from it.'],
+      'phases.*.n': ['Fractions in this phase', 'Number of fractions in this phase. Phases are given in the order listed.'],
+      'phases.*.levels.*.d': ['Dose per fraction of this level', 'Physical dose per fraction of this level in this phase. Use the same level name in every phase so that its doses add up; a level missing from a phase gets no dose in it.'],
+      primary: ['Primary level', 'The level whose tumour dose the compensation restores and whose result drives the RCR decision. "Auto" takes the level with the highest planned total dose.'],
+      weekdays: ['Treatment days', 'Days of the week on which this patient is normally treated. The other days count in the overall time but get no fraction.'],
+      holidays: ['Greek public holidays', 'Marks the Greek public holidays, including the moving Easter dates, as closed days. Single closed days can also be marked in the calendar.'],
+      'brachy.on': ['Brachytherapy (HDR)', 'For courses with HDR fractions on fixed dates. They are not moved by the compensation; they count in the overall time and reach each organ through its brachytherapy dose ratio.'],
+      'brachy.fx.*.date': ['Brachytherapy date', 'Date of this HDR fraction. If the interruption moves it, enter the new date.'],
+      'brachy.fx.*.dose': ['Brachytherapy dose', 'Physical dose of this HDR fraction at the prescription point of the primary level, in Gy (for cervix usually 5–9 Gy).'],
+      mark: ['What a tap on a day marks', 'Missed: a planned fraction that was not given. Unavailable: the patient cannot attend. Chemotherapy: a day with concomitant chemotherapy (no BID). Closed: the department does not treat. Extra: a fraction given in addition to the plan. Dose error: a fraction given with the wrong dose.'],
+      resume: ['Treatment resumes', 'First day on which treatment can be given again. Left empty, the day after the last missed fraction. Every option is planned from this day.'],
+      cause: ['Cause of the interruption', 'Recorded in the report and in the audit file. RCR asks departments to audit interruptions and their causes; the cause does not change the calculation.', ['RCR19']],
+      'errors.*.date': ['Date of the dose error', 'The day on which the fraction was given with the wrong dose.'],
+      'errors.*.dose': ['Dose actually given', 'Physical dose actually delivered at the reference point in that fraction, in Gy. The remaining fractions are recalculated with the Joiner method, so that both the total dose and the sum of squared doses per fraction match the plan.', ['JOINER']],
+      'pc.on': ['Plan change during the course', 'Use when the plan was changed (new plan, new dose per fraction or a different number of fractions). From the given date the remaining fractions follow the new values.'],
+      'pc.from': ['New plan from', 'First day of treatment with the new plan.'],
+      'pc.n': ['Fractions of the new plan', 'Number of fractions still to be given with the new plan, counted from that date.'],
+      'pc.d': ['Dose per fraction of the new plan', 'Physical dose per fraction of the new plan at the reference point, in Gy.'],
+      scen: ['Resume date unknown', 'When you do not yet know when treatment can restart (for example a machine fault), the whole decision is repeated for each possible resume day, so you can see when each option runs out.'],
+      'tumour.ab': ['Tumour α/β', 'How sensitive the tumour is to the size of each fraction. About 10 Gy for squamous carcinomas and most fast-growing tumours; about 1.5–4 Gy for prostate and breast.', ['RCR19', 'VB13', 'START']],
+      'tumour.mode': ['Units of the repopulation rate', 'K is given in Gy BED per day (as in RCR), D_prolif in Gy EQD2 per day (as in most textbooks). K = D_prolif · (1 + 2/(α/β)). The note under the fields shows both.', ['DALE', 'BCR']],
+      'tumour.rate': ['Repopulation rate', 'Dose lost per day of prolongation after T_k. The RCR generic value for category 1 is K = 0.9 Gy BED/day (about 0.75 Gy EQD2/day for α/β 10). 0 means no time factor: prolongation then costs the tumour nothing in the model.', ['RCR19', 'DALE']],
+      'tumour.tk': ['Kick-off time T_k', 'Day, counted from the first fraction, after which accelerated repopulation is assumed (28 days in the RCR generic values). Prolongation before T_k costs the tumour nothing in this model.', ['RCR19']],
+      lqlF: ['Transition dose factor', 'd_T = factor × α/β of each tissue; above d_T the LQ-L curve continues in a straight line. The default 2 gives d_T = 20 Gy for α/β 10 and 6 Gy for α/β 3. Change it to see how much a result with large fractions depends on the model.', ['ASTRAHAN']],
+      'oars.*.ab': ['α/β of the organ', 'α/β of the late endpoint of this organ: about 3 Gy is the generic value for late effects; about 2 Gy is often used for spinal cord and lower values for fibrosis.', ['BCR']],
+      'oars.*.ratio': ['Dose ratio', 'The organ\'s dose per fraction as a fraction of the reference dose per fraction (1 = same dose, 0.65 = 65 %). With several phases give one value per phase, e.g. 0.9/0.1. It sets how much a change of fraction size affects the organ.'],
+      'oars.*.bt': ['Brachytherapy dose ratio', 'The organ\'s dose per HDR fraction as a fraction of the brachytherapy prescription dose (e.g. 0.65 for rectum).'],
+      'oars.*.repair': ['Repair half-time T½', 'How fast the organ repairs sublethal damage between two fractions on the same day, in hours. With about 4 h (4.4 h for fibrosis) a 6-hour gap is not enough for full repair, so BID adds late dose. Leave empty for complete repair.', ['BENTZEN99', 'THAMES']],
+      'oars.*.limit': ['EQD2 limit', 'Optional upper limit for the organ\'s total EQD2, in Gy. Options that exceed it are excluded, and the reason is shown.'],
+      'c.allow_saturday': ['Saturday treatment', 'Whether the department can treat on Saturdays. The RCR first choice is to treat at weekends with the same dose per fraction.', ['RCR19']],
+      'c.allow_sunday': ['Sunday treatment', 'Whether the department can treat on Sundays. The RCR first choice is to treat at weekends with the same dose per fraction.', ['RCR19']],
+      'c.allow_bid': ['Two fractions per day (BID)', 'Two fractions on the same day, at least 6 h apart, with the same dose per fraction: the RCR choice after weekend treatment. Not on chemotherapy days (the exact rule depends on the guidance edition).', ['RCR19']],
+      'c.allow_consecutive_bid': ['BID on consecutive days', 'Ticked: schedules with BID on consecutive days are allowed and flagged with a warning. Unticked: they are excluded. The tool spreads BID days apart where it can either way.'],
+      'c.allow_dose_change': ['Change of dose per fraction', 'Allows schedules that raise the dose per fraction to finish on time. RCR keeps this as the last choice, because a larger fraction size adds late effects. Without tolerances below such schedules are listed for a clinical decision, not recommended.', ['RCR19']],
+      'c.allow_extra_fractions': ['Extra fractions', 'Allows adding fractions at the end of the course (with a longer overall time) to restore the tumour dose.'],
+      'c.chemo_daily': ['Daily chemotherapy', 'Tick when the concomitant chemotherapy is given on every treatment day (e.g. capecitabine). With the RCR 5th edition draft, BID on a chemotherapy day is then excluded only when d > 1.5 Gy.', ['RCR5d']],
+      'c.bid_interval_h': ['Minimum BID interval', 'Shortest time between two fractions on the same day, in hours. RCR asks for at least 6 h. It also sets how much incomplete repair is added to the late-tissue doses.', ['RCR19', 'THAMES']],
+      'c.bid_max_dose': ['Max dose per fraction for BID', 'BID is offered only when the dose per fraction does not exceed this value, in Gy.'],
+      'c.max_dose_per_fraction': ['Max dose per fraction', 'Upper limit for d in schedules that change the dose per fraction, in Gy. Empty: no limit.'],
+      'c.max_fractions_per_week': ['Max fractions per week', 'Most fractions allowed in one calendar week (Monday to Sunday), a BID day counting as two. Empty: no limit.'],
+      'c.dose_rounding': ['Dose rounding', 'New doses per fraction are rounded to this step, in Gy (e.g. 0.01). A coarse step (over 0.1 Gy) makes it harder to match the planned dose.'],
+      'c.max_weekly_increase_pct': ['Max rise of the peak 7-day dose', 'Excludes schedules whose largest 7-day EQD2 rises more than this percentage above the plan: a guard against acute reactions. Empty: no limit.'],
+      'c.max_tumour_deficit_pct': ['Accepted tumour shortfall', 'Local tolerance, not an RCR value. Together with the late-tissue tolerance it lets the tool recommend a change of fraction size by itself. Empty: such schedules remain a clinical decision.'],
+      'c.max_late_increase_pct': ['Accepted late-tissue increase', 'Local tolerance, not an RCR value. Together with the tumour tolerance it lets the tool recommend a change of fraction size by itself. Empty: such schedules remain a clinical decision.'],
+      'given.on': ['Your own schedule', 'Enter the schedule the department proposes or has already decided, to compare it with the options. It is evaluated with the same model and rules.'],
+      'given.n': ['Fractions of your schedule', 'Number of fractions still to be given in your schedule from the resume day.'],
+      'given.d': ['Dose per fraction of your schedule', 'Physical dose per fraction of your schedule at the reference point, in Gy.'],
+      'given.bid': ['BID days', 'How many days of your schedule have two fractions.'],
+      'given.sat': ['Saturdays', 'Whether your schedule treats on Saturdays.'],
+      'given.sun': ['Sundays', 'Whether your schedule treats on Sundays.'],
+    },
+    el: {
+      site: ['Εντοπισμός όγκου', 'Ορίζει την κατηγορία RCR με την επιτρεπόμενη παράταση και φορτώνει τις προεπιλεγμένες τιμές α/β, επαναπληθυσμού και οργάνων κινδύνου του εντοπισμού. Οι ετικέτες κάτω από τη λίστα δείχνουν τι ισχύει· κάθε τιμή αλλάζει στα βήματα 4 και 5.', ['RCR19']],
+      category: ['Κατηγορία RCR', 'Κατηγορία 1 (ριζική θεραπεία ταχέως αναπτυσσόμενων όγκων, π.χ. κεφαλή-τράχηλος, τράχηλος μήτρας, πνεύμονας): παράταση όχι πάνω από 2 ημέρες, ιδανικά καμία. Κατηγορία 2 (άλλες ριζικές θεραπείες): ιδανικά έως 2 ημέρες, αντιστάθμιση πέρα από 5. Κατηγορία 3 (παρηγορική): αντιστάθμιση εξετάζεται συνήθως μόνο πέρα από 7 ημέρες. Το «από τον εντοπισμό» χρησιμοποιεί την κατηγορία του εντοπισμού.', ['RCR19']],
+      start: ['Πρώτο κλάσμα', 'Η ημερομηνία του πρώτου κλάσματος όλης της θεραπείας. Ο συνολικός χρόνος μετράται από αυτή την ημέρα έως το τελευταίο κλάσμα, οπότε δώστε την πραγματική έναρξη και όχι την αρχή της τρέχουσας φάσης.'],
+      multi: ['Πολλά επίπεδα δόσης ή φάσεις', 'Για διαδοχικό boost (φάσεις η μία μετά την άλλη) ή ταυτόχρονο ολοκληρωμένο boost (πολλά επίπεδα σε μία φάση). Κάθε επίπεδο παρακολουθείται χωριστά· το κύριο επίπεδο καθορίζει την απόφαση.'],
+      n: ['Κλάσματα', 'Ο αριθμός κλασμάτων που συνταγογραφήθηκε για όλη τη θεραπεία. Τα κλάσματα που έχουν ήδη δοθεί προκύπτουν από το ημερολόγιο, όχι από αυτό το πεδίο.'],
+      d: ['Δόση ανά κλάσμα', 'Η συνταγογραφημένη φυσική δόση ανά κλάσμα στο σημείο αναφοράς, σε Gy. Από αυτήν υπολογίζονται όλες οι τιμές BED και EQD2.'],
+      'phases.*.n': ['Κλάσματα της φάσης', 'Ο αριθμός κλασμάτων αυτής της φάσης. Οι φάσεις δίνονται με τη σειρά που εμφανίζονται.'],
+      'phases.*.levels.*.d': ['Δόση ανά κλάσμα του επιπέδου', 'Η φυσική δόση ανά κλάσμα του επιπέδου σε αυτή τη φάση. Δώστε το ίδιο όνομα επιπέδου σε κάθε φάση ώστε οι δόσεις του να αθροίζονται· ένα επίπεδο που λείπει από μια φάση δεν παίρνει δόση σε αυτήν.'],
+      primary: ['Κύριο επίπεδο', 'Το επίπεδο του οποίου τη δόση όγκου επαναφέρει η αντιστάθμιση και του οποίου το αποτέλεσμα καθορίζει την απόφαση RCR. Το «auto» παίρνει το επίπεδο με τη μεγαλύτερη σχεδιασμένη ολική δόση.'],
+      weekdays: ['Ημέρες θεραπείας', 'Οι ημέρες της εβδομάδας στις οποίες ο ασθενής θεραπεύεται κανονικά. Οι υπόλοιπες μετρούν στον συνολικό χρόνο αλλά δεν παίρνουν κλάσμα.'],
+      holidays: ['Ελληνικές αργίες', 'Σημειώνει τις ελληνικές αργίες, μαζί με τις κινητές του Πάσχα, ως ημέρες χωρίς θεραπεία. Μεμονωμένες κλειστές ημέρες σημειώνονται και στο ημερολόγιο.'],
+      'brachy.on': ['Βραχυθεραπεία (HDR)', 'Για θεραπείες με κλάσματα HDR σε σταθερές ημερομηνίες. Η αντιστάθμιση δεν τα μετακινεί· μετρούν στον συνολικό χρόνο και φτάνουν σε κάθε όργανο μέσω του λόγου δόσης βραχυθεραπείας του.'],
+      'brachy.fx.*.date': ['Ημερομηνία βραχυθεραπείας', 'Η ημερομηνία αυτού του κλάσματος HDR. Αν η διακοπή το μετακινεί, δώστε τη νέα ημερομηνία.'],
+      'brachy.fx.*.dose': ['Δόση βραχυθεραπείας', 'Η φυσική δόση αυτού του κλάσματος HDR στο σημείο συνταγογράφησης του κύριου επιπέδου, σε Gy (για τράχηλο μήτρας συνήθως 5–9 Gy).'],
+      mark: ['Τι σημειώνει ένα πάτημα σε ημέρα', 'Χαμένο: σχεδιασμένο κλάσμα που δεν δόθηκε. Μη διαθέσιμη: ο ασθενής δεν μπορεί να έρθει. Χημειοθεραπεία: ημέρα συγχορηγούμενης χημειοθεραπείας (χωρίς BID). Κλειστή: το τμήμα δεν λειτουργεί. Επιπλέον: κλάσμα που δόθηκε πέρα από το πλάνο. Λάθος δόσης: κλάσμα που δόθηκε με λάθος δόση.'],
+      resume: ['Επανέναρξη θεραπείας', 'Η πρώτη ημέρα στην οποία μπορεί να ξαναδοθεί θεραπεία. Αν μείνει κενό, η επομένη του τελευταίου χαμένου κλάσματος. Όλες οι επιλογές σχεδιάζονται από αυτή την ημέρα.'],
+      cause: ['Αιτία της διακοπής', 'Καταγράφεται στην αναφορά και στο αρχείο audit. Το RCR ζητά από τα τμήματα να καταγράφουν τις διακοπές και τις αιτίες τους· η αιτία δεν αλλάζει τον υπολογισμό.', ['RCR19']],
+      'errors.*.date': ['Ημερομηνία του λάθους δόσης', 'Η ημέρα κατά την οποία το κλάσμα δόθηκε με λάθος δόση.'],
+      'errors.*.dose': ['Δόση που δόθηκε', 'Η φυσική δόση που πραγματικά δόθηκε στο σημείο αναφοράς σε εκείνο το κλάσμα, σε Gy. Τα υπόλοιπα κλάσματα ξαναϋπολογίζονται με τη μέθοδο Joiner, ώστε η ολική δόση και το άθροισμα των τετραγώνων των δόσεων ανά κλάσμα να είναι όσα σχεδιάστηκαν.', ['JOINER']],
+      'pc.on': ['Αλλαγή πλάνου κατά τη θεραπεία', 'Όταν το πλάνο άλλαξε (νέο πλάνο, νέα δόση ανά κλάσμα ή διαφορετικός αριθμός κλασμάτων). Από την ημερομηνία που δίνετε, τα υπόλοιπα κλάσματα ακολουθούν τις νέες τιμές.'],
+      'pc.from': ['Νέο πλάνο από', 'Η πρώτη ημέρα θεραπείας με το νέο πλάνο.'],
+      'pc.n': ['Κλάσματα του νέου πλάνου', 'Ο αριθμός κλασμάτων που απομένουν με το νέο πλάνο, από εκείνη την ημερομηνία.'],
+      'pc.d': ['Δόση ανά κλάσμα του νέου πλάνου', 'Η φυσική δόση ανά κλάσμα του νέου πλάνου στο σημείο αναφοράς, σε Gy.'],
+      scen: ['Άγνωστη ημερομηνία επανέναρξης', 'Όταν δεν ξέρετε ακόμη πότε θα ξαναρχίσει η θεραπεία (π.χ. βλάβη μηχανήματος), η απόφαση επαναλαμβάνεται για κάθε πιθανή ημέρα επανέναρξης, ώστε να φαίνεται πότε εξαντλείται κάθε επιλογή.'],
+      'tumour.ab': ['α/β του όγκου', 'Πόσο ευαίσθητος είναι ο όγκος στο μέγεθος του κλάσματος. Περίπου 10 Gy για τα πλακώδη καρκινώματα και τους περισσότερους ταχέως αναπτυσσόμενους όγκους· περίπου 1.5–4 Gy για προστάτη και μαστό.', ['RCR19', 'VB13', 'START']],
+      'tumour.mode': ['Μονάδες του ρυθμού επαναπληθυσμού', 'Το K δίνεται σε Gy BED ανά ημέρα (όπως στο RCR), το D_prolif σε Gy EQD2 ανά ημέρα (όπως στα περισσότερα συγγράμματα). K = D_prolif · (1 + 2/(α/β)). Η σημείωση κάτω από τα πεδία δείχνει και τα δύο.', ['DALE', 'BCR']],
+      'tumour.rate': ['Ρυθμός επαναπληθυσμού', 'Η δόση που χάνεται ανά ημέρα παράτασης μετά το T_k. Η γενική τιμή του RCR για την κατηγορία 1 είναι K = 0.9 Gy BED/ημέρα (περίπου 0.75 Gy EQD2/ημέρα για α/β 10). Με 0 δεν υπάρχει παράγοντας χρόνου: η παράταση δεν κοστίζει στον όγκο στο μοντέλο.', ['RCR19', 'DALE']],
+      'tumour.tk': ['Χρόνος έναρξης T_k', 'Η ημέρα, μετρώντας από το πρώτο κλάσμα, μετά την οποία θεωρείται ότι ξεκινά ο επιταχυνόμενος επαναπληθυσμός (28 ημέρες στις γενικές τιμές του RCR). Παράταση πριν από το T_k δεν κοστίζει στον όγκο σε αυτό το μοντέλο.', ['RCR19']],
+      lqlF: ['Συντελεστής δόσης μετάβασης', 'd_T = συντελεστής × α/β κάθε ιστού· πάνω από τη d_T η καμπύλη LQ-L συνεχίζει ευθύγραμμα. Η προεπιλογή 2 δίνει d_T = 20 Gy για α/β 10 και 6 Gy για α/β 3. Αλλάξτε τον για να δείτε πόσο εξαρτάται από το μοντέλο ένα αποτέλεσμα με μεγάλα κλάσματα.', ['ASTRAHAN']],
+      'oars.*.ab': ['α/β του οργάνου', 'Το α/β της όψιμης επίδρασης του οργάνου: περίπου 3 Gy είναι η γενική τιμή για όψιμες επιδράσεις· για τον νωτιαίο μυελό χρησιμοποιείται συχνά περίπου 2 Gy και για την ίνωση χαμηλότερες τιμές.', ['BCR']],
+      'oars.*.ratio': ['Λόγος δόσης', 'Η δόση ανά κλάσμα του οργάνου ως κλάσμα της δόσης αναφοράς ανά κλάσμα (1 = ίδια δόση, 0.65 = 65 %). Με πολλές φάσεις δώστε μία τιμή ανά φάση, π.χ. 0.9/0.1. Ορίζει πόσο επηρεάζει το όργανο μια αλλαγή του μεγέθους κλάσματος.'],
+      'oars.*.bt': ['Λόγος δόσης βραχυθεραπείας', 'Η δόση του οργάνου ανά κλάσμα HDR ως κλάσμα της δόσης συνταγογράφησης της βραχυθεραπείας (π.χ. 0.65 για το ορθό).'],
+      'oars.*.repair': ['Χρόνος ημιζωής επιδιόρθωσης T½', 'Πόσο γρήγορα το όργανο επιδιορθώνει την υποθανατηφόρο βλάβη μεταξύ δύο κλασμάτων της ίδιας ημέρας, σε ώρες. Με περίπου 4 ώρες (4.4 για την ίνωση) ένα διάστημα 6 ωρών δεν αρκεί για πλήρη επιδιόρθωση, οπότε το BID προσθέτει όψιμη δόση. Αφήστε κενό για πλήρη επιδιόρθωση.', ['BENTZEN99', 'THAMES']],
+      'oars.*.limit': ['Όριο EQD2', 'Προαιρετικό ανώτατο όριο για τη συνολική EQD2 του οργάνου, σε Gy. Οι επιλογές που το ξεπερνούν αποκλείονται και φαίνεται ο λόγος.'],
+      'c.allow_saturday': ['Θεραπεία Σάββατο', 'Αν το τμήμα μπορεί να θεραπεύσει τα Σάββατα. Η πρώτη επιλογή του RCR είναι θεραπεία το Σαββατοκύριακο με την ίδια δόση ανά κλάσμα.', ['RCR19']],
+      'c.allow_sunday': ['Θεραπεία Κυριακή', 'Αν το τμήμα μπορεί να θεραπεύσει τις Κυριακές. Η πρώτη επιλογή του RCR είναι θεραπεία το Σαββατοκύριακο με την ίδια δόση ανά κλάσμα.', ['RCR19']],
+      'c.allow_bid': ['Δύο κλάσματα την ημέρα (BID)', 'Δύο κλάσματα την ίδια ημέρα, με απόσταση τουλάχιστον 6 ωρών και την ίδια δόση ανά κλάσμα: η επιλογή του RCR μετά τη θεραπεία το Σαββατοκύριακο. Όχι σε ημέρες χημειοθεραπείας (ο ακριβής κανόνας εξαρτάται από την έκδοση της οδηγίας).', ['RCR19']],
+      'c.allow_consecutive_bid': ['BID σε συνεχόμενες ημέρες', 'Επιλεγμένο: τα σχήματα με BID σε συνεχόμενες ημέρες επιτρέπονται με προειδοποίηση. Χωρίς επιλογή: αποκλείονται. Σε κάθε περίπτωση το εργαλείο αραιώνει τις ημέρες BID όπου μπορεί.'],
+      'c.allow_dose_change': ['Αλλαγή δόσης ανά κλάσμα', 'Επιτρέπει σχήματα που αυξάνουν τη δόση ανά κλάσμα για να τελειώσει η θεραπεία έγκαιρα. Το RCR το κρατά ως τελευταία επιλογή, γιατί το μεγαλύτερο κλάσμα αυξάνει τις όψιμες επιδράσεις. Χωρίς τις ανοχές παρακάτω, τέτοια σχήματα παρουσιάζονται για κλινική απόφαση και δεν προτείνονται.', ['RCR19']],
+      'c.allow_extra_fractions': ['Επιπλέον κλάσματα', 'Επιτρέπει την προσθήκη κλασμάτων στο τέλος της θεραπείας (με μεγαλύτερο συνολικό χρόνο) για να επανέλθει η δόση του όγκου.'],
+      'c.chemo_daily': ['Καθημερινή χημειοθεραπεία', 'Επιλέξτε το όταν η συγχορηγούμενη χημειοθεραπεία δίνεται κάθε ημέρα θεραπείας (π.χ. καπεσιταβίνη). Με το σχέδιο της 5ης έκδοσης του RCR, το BID σε ημέρα χημειοθεραπείας αποκλείεται τότε μόνο όταν d > 1.5 Gy.', ['RCR5d']],
+      'c.bid_interval_h': ['Ελάχιστο διάστημα BID', 'Ο ελάχιστος χρόνος μεταξύ δύο κλασμάτων της ίδιας ημέρας, σε ώρες. Το RCR ζητά τουλάχιστον 6 ώρες. Ορίζει και πόση ατελής επιδιόρθωση προστίθεται στις δόσεις των όψιμων ιστών.', ['RCR19', 'THAMES']],
+      'c.bid_max_dose': ['Μέγιστη d για BID', 'Το BID προτείνεται μόνο όταν η δόση ανά κλάσμα δεν ξεπερνά αυτή την τιμή, σε Gy.'],
+      'c.max_dose_per_fraction': ['Μέγιστη δόση ανά κλάσμα', 'Ανώτατο όριο της d στα σχήματα που αλλάζουν τη δόση ανά κλάσμα, σε Gy. Κενό: χωρίς όριο.'],
+      'c.max_fractions_per_week': ['Μέγιστα κλάσματα ανά εβδομάδα', 'Τα περισσότερα κλάσματα που επιτρέπονται σε μία ημερολογιακή εβδομάδα (Δευτέρα έως Κυριακή)· μια ημέρα BID μετρά για δύο. Κενό: χωρίς όριο.'],
+      'c.dose_rounding': ['Στρογγυλοποίηση δόσης', 'Οι νέες δόσεις ανά κλάσμα στρογγυλοποιούνται σε αυτό το βήμα, σε Gy (π.χ. 0.01). Ένα αδρό βήμα (πάνω από 0.1 Gy) δυσκολεύει την ακριβή επαναφορά της δόσης.'],
+      'c.max_weekly_increase_pct': ['Μέγιστη αύξηση της δόσης αιχμής 7 ημερών', 'Αποκλείει σχήματα των οποίων η μεγαλύτερη EQD2 7 ημερών ξεπερνά το πλάνο περισσότερο από αυτό το ποσοστό: προστασία από τις οξείες αντιδράσεις. Κενό: χωρίς όριο.'],
+      'c.max_tumour_deficit_pct': ['Αποδεκτό έλλειμμα όγκου', 'Τοπική ανοχή, όχι τιμή του RCR. Μαζί με την ανοχή των όψιμων ιστών επιτρέπει στο εργαλείο να προτείνει μόνο του αλλαγή μεγέθους κλάσματος. Κενό: τέτοια σχήματα μένουν κλινική απόφαση.'],
+      'c.max_late_increase_pct': ['Αποδεκτή αύξηση στους όψιμους ιστούς', 'Τοπική ανοχή, όχι τιμή του RCR. Μαζί με την ανοχή του όγκου επιτρέπει στο εργαλείο να προτείνει μόνο του αλλαγή μεγέθους κλάσματος. Κενό: τέτοια σχήματα μένουν κλινική απόφαση.'],
+      'given.on': ['Το δικό σας σχήμα', 'Δώστε το σχήμα που προτείνει ή έχει ήδη αποφασίσει το τμήμα, για να συγκριθεί με τις επιλογές. Αξιολογείται με το ίδιο μοντέλο και τους ίδιους κανόνες.'],
+      'given.n': ['Κλάσματα του σχήματός σας', 'Ο αριθμός κλασμάτων που απομένουν στο σχήμα σας από την ημέρα επανέναρξης.'],
+      'given.d': ['Δόση ανά κλάσμα του σχήματός σας', 'Η φυσική δόση ανά κλάσμα του σχήματός σας στο σημείο αναφοράς, σε Gy.'],
+      'given.bid': ['Ημέρες BID', 'Πόσες ημέρες του σχήματός σας έχουν δύο κλάσματα.'],
+      'given.sat': ['Σάββατα', 'Αν το σχήμα σας περιλαμβάνει θεραπεία τα Σάββατα.'],
+      'given.sun': ['Κυριακές', 'Αν το σχήμα σας περιλαμβάνει θεραπεία τις Κυριακές.'],
+    },
+  };
+  const VMSG = {
+    en: { req: 'Required.', nan: 'Not a number.', int: 'Enter a whole number.', min: 'Must be at least {a}{u}.', gt: 'Must be greater than {a}{u}.', max: 'Must be at most {a}{u}.',
+      typ: 'Unusual value (usually {a}–{b}{u}). Check for a typo.', hi: 'Unusually high (usually up to {b}{u}). Check for a typo.', lo: 'Unusually low (usually at least {a}{u}). Check for a typo.',
+      year: 'Check the year.', before_start: 'Before the first fraction ({a}).', bid6: 'Below the RCR minimum of 6 h between two fractions on the same day.',
+      ratio: 'Give numbers ≥ 0, one per phase separated by "/" (e.g. 0.9/0.1).', err_big: 'More than 2.5 × the planned {a} Gy. Check the value.', bid_n: 'More BID days than fractions.',
+      kept: 'Not applied: the calculation keeps the previous value ({a}).', bar1: 'One field was not applied because its value is not valid:', barN: '{n} fields were not applied because their values are not valid:',
+      help: 'Help', tip_more: 'Click for the references.', u: { gy: ' Gy', h: ' h', d: ' days', pct: ' %', '': '' } },
+    el: { req: 'Υποχρεωτικό πεδίο.', nan: 'Δεν είναι αριθμός.', int: 'Δώστε ακέραιο αριθμό.', min: 'Πρέπει να είναι τουλάχιστον {a}{u}.', gt: 'Πρέπει να είναι μεγαλύτερο από {a}{u}.', max: 'Πρέπει να είναι το πολύ {a}{u}.',
+      typ: 'Ασυνήθιστη τιμή (συνήθως {a}–{b}{u}). Ελέγξτε για τυπογραφικό λάθος.', hi: 'Ασυνήθιστα υψηλή τιμή (συνήθως έως {b}{u}). Ελέγξτε για τυπογραφικό λάθος.', lo: 'Ασυνήθιστα χαμηλή τιμή (συνήθως τουλάχιστον {a}{u}). Ελέγξτε για τυπογραφικό λάθος.',
+      year: 'Ελέγξτε το έτος.', before_start: 'Πριν από το πρώτο κλάσμα ({a}).', bid6: 'Κάτω από το ελάχιστο των 6 ωρών του RCR μεταξύ δύο κλασμάτων της ίδιας ημέρας.',
+      ratio: 'Δώστε αριθμούς ≥ 0, έναν ανά φάση χωρισμένους με «/» (π.χ. 0.9/0.1).', err_big: 'Πάνω από 2.5 × τη σχεδιασμένη δόση των {a} Gy. Ελέγξτε την τιμή.', bid_n: 'Περισσότερες ημέρες BID από τα κλάσματα.',
+      kept: 'Δεν εφαρμόστηκε: ο υπολογισμός κρατά την προηγούμενη τιμή ({a}).', bar1: 'Ένα πεδίο δεν εφαρμόστηκε γιατί η τιμή του δεν είναι έγκυρη:', barN: '{n} πεδία δεν εφαρμόστηκαν γιατί οι τιμές τους δεν είναι έγκυρες:',
+      help: 'Βοήθεια', tip_more: 'Κλικ για τις παραπομπές.', u: { gy: ' Gy', h: ' ώρες', d: ' ημέρες', pct: ' %', '': '' } },
+  };
+
   const REF_NUM = {}; REFS.forEach((r, i) => { REF_NUM[r.id] = i + 1; });
 
   function make(lang) {
@@ -1964,7 +2120,9 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       };
       const v = m[w.code]; return typeof v === 'function' ? v() : (v || w.code);
     }
-    return { lang, el, t, f1, f2, sg, sgi, date, dshort, wd2: WD2[lang], wdn: WDN[lang], mon: MON[lang], siteName, siteNotes, optTitle, optShort, optMethod, reason, trace, head, issue, hol: (k) => L.hol[k] || k };
+    const help = (k) => HELP[lang][k] || HELP.en[k] || null;
+    const vm = (k, q) => { const M = VMSG[lang], src = M[k] != null ? M[k] : VMSG.en[k]; q = q || {}; return String(src).replace('{a}', q.a != null ? q.a : '').replace('{b}', q.b != null ? q.b : '').replace('{n}', q.n != null ? q.n : '').replace('{u}', M.u[q.u || ''] || ''); };
+    return { lang, el, t, help, vm, f1, f2, sg, sgi, date, dshort, wd2: WD2[lang], wdn: WDN[lang], mon: MON[lang], siteName, siteNotes, optTitle, optShort, optMethod, reason, trace, head, issue, hol: (k) => L.hol[k] || k };
   }
   root.I18N = { make, REFS, REF_NUM };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2447,7 +2605,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
   function timeTravel(from, to) {
     if (!from.length) return;
     to.push(lastSnap); const snap = from.pop(), lang = state.lang;
-    state = JSON.parse(snap); state.lang = lang; lastSnap = JSON.stringify(state); lastPush = 0;
+    state = JSON.parse(snap); state.lang = lang; invalid = {}; lastSnap = JSON.stringify(state); lastPush = 0;
     tr = I.make(state.lang); refresh(true); undoBtn();
   }
   let HOSTED = false; try { HOSTED = /^https?:$/.test(location.protocol) && window.top === window; } catch (e) { HOSTED = false; }
@@ -2565,8 +2723,114 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
   // ------------------------------------------------------------------ small render helpers
   const refs = (ids) => (ids || []).map((id) => I.REF_NUM[id] ? `<button type="button" class="ref" data-ref="${id}" aria-label="${esc(tr.t('refs'))} ${I.REF_NUM[id]}">[${I.REF_NUM[id]}]</button>` : '').join('');
   const dcell = (x, goodPos) => { const z = Math.abs(x) < 0.05; return `<td class="n ${z ? 'zero' : ((x > 0) === goodPos ? 'pos' : 'neg')}">${tr.sg(x)}</td>`; };
-  const fld = (label, bind, val, attrs) => `<label class="f"><span>${esc(label)}</span><input data-bind="${bind}" id="i-${bind.replace(/\W+/g, '-')}" value="${esc(val == null ? '' : val)}" ${attrs || 'type="number" step="any" inputmode="decimal"'}></label>`;
-  const chk = (label, bind, val, extra) => `<label class="chk"><input type="checkbox" data-bind="${bind}" id="i-${bind.replace(/\W+/g, '-')}" ${val ? 'checked' : ''}><span>${esc(label)}${extra || ''}</span></label>`;
+  // Field help (?) and input checks. Help texts and messages live in i18n.js (HELP, VMSG), keyed by
+  // the bind path with indices replaced by * (oars.0.ab -> oars.*.ab).
+  const hkey = (b) => b.replace(/\.\d+(?=\.|$)/g, '.*');
+  const fid = (b) => 'i-' + b.replace(/\W+/g, '-');
+  const helpEntry = (k) => tr.help(k) || (tr.t('gloss') || {})[k] || null;
+  const hbtn = (k) => { const h = helpEntry(k); return h ? `<button type="button" class="help" data-gl="${k}" aria-label="${esc(tr.vm('help') + ': ' + h[0])}">?</button>` : ''; };
+  const flab = (label, id, k) => `<span class="fl"><label for="${id}">${esc(label)}</label>${hbtn(k)}</span>`;
+  let invalid = {}; // bind -> raw text of a value that was refused (not applied to the state)
+  const fld = (label, bind, val, attrs) => { const id = fid(bind), raw = bind in invalid ? invalid[bind].raw : val; return `<div class="f">${flab(label, id, hkey(bind))}<input data-bind="${bind}" id="${id}" value="${esc(raw == null ? '' : raw)}" ${attrs || 'type="number" step="any" inputmode="decimal"'}></div>`; };
+  const sel = (label, bind, opts, extra, style) => { const id = fid(bind); return `<div class="f"${style ? ` style="${style}"` : ''}>${flab(label, id, hkey(bind))}<select data-bind="${bind}" id="${id}" ${extra || ''}>${opts}</select></div>`; };
+  const chk = (label, bind, val, extra) => `<div class="chkw"><label class="chk"><input type="checkbox" data-bind="${bind}" id="${fid(bind)}" ${val ? 'checked' : ''}><span>${esc(label)}${extra || ''}</span></label>${hbtn(hkey(bind))}</div>`;
+  const getPath = (path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), state);
+  const VE = (k, q) => ({ lvl: 'err', msg: tr.vm(k, q) }), VW = (k, q) => ({ lvl: 'warn', msg: tr.vm(k, q) });
+  // req: required · int · gt/min/max: hard limits (value refused) · lo/hi: typical range (warning only)
+  const VR = {
+    n: { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    d: { req: 1, gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'phases.*.n': { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    'phases.*.levels.*.d': { req: 1, min: 0, max: 30, hi: 25, u: 'gy' },
+    'brachy.fx.*.dose': { req: 1, gt: 0, max: 30, lo: 2, hi: 15, u: 'gy' },
+    'errors.*.dose': { req: 1, min: 0, max: 50, u: 'gy', fn: (v) => { const dr = model && model.p && model.p.dRef; return dr && v > 2.5 * dr ? VW('err_big', { a: dr.toFixed(2) }) : null; } },
+    'pc.n': { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    'pc.d': { req: 1, gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'tumour.ab': { req: 1, gt: 0, max: 50, lo: 0.5, hi: 30, u: 'gy' },
+    'tumour.rate': { min: 0, max: 10, fn: (v) => { const hi = state.tumour.mode === 'dp' ? 1.2 : 1.5; return v > hi ? VW('hi', { b: hi + (state.lang === 'el' ? ' Gy/ημέρα' : ' Gy/day') }) : null; } },
+    'tumour.tk': { min: 0, max: 120, hi: 42, u: 'd' },
+    lqlF: { req: 1, gt: 0, max: 20, lo: 1, hi: 4 },
+    'oars.*.ab': { req: 1, gt: 0, max: 50, lo: 0.5, hi: 15, u: 'gy' },
+    'oars.*.ratio': { ratio: 1 },
+    'oars.*.bt': { req: 1, min: 0, max: 5, hi: 1.5 },
+    'oars.*.repair': { gt: 0, max: 48, lo: 0.25, hi: 8, u: 'h' },
+    'oars.*.limit': { gt: 0, max: 300, hi: 150, u: 'gy' },
+    'c.bid_interval_h': { req: 1, min: 1, max: 24, lo6: 1, u: 'h' },
+    'c.bid_max_dose': { req: 1, gt: 0, max: 10, lo: 1, hi: 3, u: 'gy' },
+    'c.max_dose_per_fraction': { gt: 0, max: 30, lo: 1, u: 'gy' },
+    'c.max_fractions_per_week': { int: 1, min: 1, max: 21, lo: 5, hi: 12 },
+    'c.dose_rounding': { req: 1, min: 0, max: 1, hi: 0.1, u: 'gy' },
+    'c.max_weekly_increase_pct': { min: 0, max: 500, hi: 50, u: 'pct' },
+    'c.max_tumour_deficit_pct': { min: 0, max: 100, hi: 10, u: 'pct' },
+    'c.max_late_increase_pct': { min: 0, max: 100, hi: 10, u: 'pct' },
+    'given.n': { int: 1, min: 1, max: 100 },
+    'given.d': { gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'given.bid': { int: 1, min: 0, max: 100, fn: (v) => (state.given.n != null && v > state.given.n ? VW('bid_n') : null) },
+    start: { req: 1, date: 1 }, resume: { date: 1, after: 1 }, 'pc.from': { date: 1, after: 1 },
+    'errors.*.date': { req: 1, date: 1, after: 1 }, 'brachy.fx.*.date': { req: 1, date: 1 },
+  };
+  const NUM_RE = /^[-+]?(\d+([.,]\d*)?|[.,]\d+)(e[-+]?\d+)?$/i;
+  function vcheck(b, raw) {
+    const r = VR[hkey(b)]; if (!r) return null;
+    raw = raw == null ? '' : String(raw).trim();
+    if (raw === '') return r.req ? VE('req') : null;
+    if (r.date) {
+      const m = /^(\d{4,})-\d\d-\d\d$/.exec(raw); if (!m || +m[1] < 2000 || +m[1] > 2100) return VE('year');
+      if (r.after && /^\d{4}-\d\d-\d\d$/.test(state.start || '') && b !== 'start' && raw < state.start) return VE('before_start', { a: tr.date(RT.parseDate(state.start)) });
+      return null;
+    }
+    if (r.ratio) {
+      const parts = raw.split('/').map((x) => x.trim());
+      if (parts.some((x) => !NUM_RE.test(x) || num(x) < 0)) return VE('ratio');
+      const xs = parts.map(num);
+      if (xs.some((x) => x > 5)) return VE('max', { a: 5 });
+      return xs.some((x) => x > 1.2) ? VW('hi', { b: 1.2 }) : null;
+    }
+    if (!NUM_RE.test(raw)) return VE('nan');
+    const v = num(raw), u = r.u || '';
+    if (r.int && Math.abs(v - Math.round(v)) > 1e-9) return VE('int');
+    if (r.gt != null && !(v > r.gt)) return VE('gt', { a: r.gt, u });
+    if (r.min != null && v < r.min) return VE('min', { a: r.min, u });
+    if (r.max != null && v > r.max) return VE('max', { a: r.max, u });
+    if (r.fn) { const x = r.fn(v); if (x) return x; }
+    if (r.lo6 && v < 6) return VW('bid6');
+    if (r.lo != null && r.hi != null && (v < r.lo || v > r.hi)) return VW('typ', { a: r.lo, b: r.hi, u });
+    if (r.hi != null && v > r.hi) return VW('hi', { b: r.hi, u });
+    if (r.lo != null && v < r.lo) return VW('lo', { a: r.lo, u });
+    return null;
+  }
+  function showV(inp, res) {
+    const box = inp.closest('.f'); if (!box) return;
+    let m = box.querySelector('.vmsg');
+    box.classList.toggle('v-err', !!res && res.lvl === 'err'); box.classList.toggle('v-warn', !!res && res.lvl === 'warn');
+    if (!res) { if (m) m.remove(); inp.removeAttribute('aria-invalid'); inp.removeAttribute('aria-describedby'); return; }
+    if (!m) { m = document.createElement('span'); m.className = 'vmsg'; m.id = 'vm-' + inp.id; box.appendChild(m); }
+    m.textContent = (res.lvl === 'err' ? '✕ ' : '⚠ ') + res.msg + (res.kept ? ' ' + res.kept : '');
+    inp.setAttribute('aria-describedby', m.id);
+    if (res.lvl === 'err') inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid');
+  }
+  const keptMsg = (b) => { const v = getPath(b); return tr.vm('kept', { a: v == null || v === '' ? '—' : v }); };
+  function checkField(inp) {
+    const b = inp.dataset.bind;
+    let res;
+    if (b in invalid) {
+      res = invalid[b].bad ? VE('nan') : vcheck(b, invalid[b].raw);
+      if (res && res.lvl === 'err') res.kept = keptMsg(b); else { delete invalid[b]; res = vcheck(b, inp.value); }
+    } else res = vcheck(b, inp.value);
+    showV(inp, res);
+  }
+  function validateAll() {
+    const seen = {};
+    document.querySelectorAll('#inputs [data-bind]').forEach((inp) => { const b = inp.dataset.bind; if (inp.type === 'checkbox' || !VR[hkey(b)]) return; seen[b] = 1; checkField(inp); });
+    for (const b of Object.keys(invalid)) if (!seen[b]) delete invalid[b];
+    renderVBar();
+  }
+  function vbarInner() {
+    const ks = Object.keys(invalid); if (!ks.length) return '';
+    const name = (b) => { const l = document.querySelector('label[for="' + fid(b) + '"]'); return l ? l.textContent : b; };
+    return `<div class="card vbar" role="alert"><b>${esc(ks.length === 1 ? tr.vm('bar1') : tr.vm('barN', { n: ks.length }))}</b> ${ks.map((b) => `<button type="button" class="linkbtn" data-act="vfocus" data-b="${esc(b)}">${esc(name(b))}</button>`).join(' · ')}</div>`;
+  }
+  function renderVBar() { const el = $('#vbar'), h = vbarInner(); if (el && el.innerHTML !== h) el.innerHTML = h; } // unchanged → keep the nodes, so a click on them still lands
 
   function calendarHtml(p, opt, interactive) {
     const s = state, first0 = Math.min(p.rx.start, p.missed.length ? p.missed[0] : p.rx.start);
@@ -2618,7 +2882,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
 
   // ------------------------------------------------------------------ inputs
   const fold = (k) => (state.ui && state.ui[k]) ? 'open' : '';
-  const gl = (k) => `<button type="button" class="help" data-gl="${k}" aria-label="?">?</button>`;
+  const gl = (k) => { const h = helpEntry(k); return `<button type="button" class="help" data-gl="${k}" aria-label="${esc(tr.vm('help') + (h ? ': ' + h[0] : ''))}">?</button>`; };
   function bioSum() {
     const s = state, L = tr.t, t = s.tumour;
     const rate = t.rate ? (t.mode === 'dp' ? 'D_prolif ' : 'K ') + t.rate + (t.tk != null && t.tk !== '' ? ' · T_k ' + t.tk : '') : L('sum_notime');
@@ -2672,31 +2936,31 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
         ${ph.levels.map((lv, j) => `<div class="lvl">${fld(L('level'), `phases.${i}.levels.${j}.name`, lv.name, 'type="text"')}${fld(L('dpf'), `phases.${i}.levels.${j}.d`, lv.d)}<button type="button" class="btn x" data-act="rm-level" data-i="${i}" data-j="${j}" aria-label="${esc(L('remove'))}" ${ph.levels.length < 2 ? 'disabled' : ''}>✕</button></div>`).join('')}
         <div class="rowbtn" style="margin-top:0"><button type="button" class="btn sm" data-act="add-level" data-i="${i}">+ ${esc(L('add_level'))}</button>${s.phases.length > 1 ? `<button type="button" class="btn sm" data-act="rm-phase" data-i="${i}">${esc(L('remove'))}</button>` : ''}</div></div>`).join('') +
         `<div class="rowbtn" style="margin-top:0"><button type="button" class="btn sm" data-act="add-phase">+ ${esc(L('add_phase'))}</button></div>
-        <label class="f" style="margin-top:10px"><span>${esc(L('primary'))}</span><select data-bind="primary" id="i-primary"><option value="">auto</option>${names.map((n) => `<option ${n === s.primary ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+        ${sel(L('primary'), 'primary', `<option value="">auto</option>${names.map((n) => `<option ${n === s.primary ? 'selected' : ''}>${esc(n)}</option>`).join('')}`, '', 'margin-top:10px')}`;
     }
     const c = s.c;
     el.innerHTML = `
     <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}"><b>${i + 1}</b>${esc(x)}</button>`).join('')}</nav>
     <div class="card" id="sec-1"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
-      <label class="f"><span>${esc(L('s_site'))}</span><select data-bind="site" id="i-site" data-struct="1">${og('RCR ' + L('cat') + ' 1', groups[1])}${og('RCR ' + L('cat') + ' 2', groups[2])}${og('RCR ' + L('cat') + ' 3', groups[3])}${og('—', groups.x)}</select></label>
+      ${sel(L('s_site'), 'site', og('RCR ' + L('cat') + ' 1', groups[1]) + og('RCR ' + L('cat') + ' 2', groups[2]) + og('RCR ' + L('cat') + ' 3', groups[3]) + og('—', groups.x), 'data-struct="1"')}
       <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}${srcRefs}</div>
       ${notes.length ? `<ul class="notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-      <label class="f" style="margin-top:10px"><span>${esc(L('cat'))}</span><select data-bind="category" id="i-category" data-struct="1">${[['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join('')}</select></label>
+      ${sel(L('cat'), 'category', [['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join(''), 'data-struct="1"', 'margin-top:10px')}
     </div>
     <div class="card" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
       <div class="fields" style="margin-bottom:10px">${fld(L('start'), 'start', s.start, 'type="date"')}</div>
       ${chk(L('levels_mode'), 'multi', s.multi)}
       <div style="margin-top:8px">${rxHtml}</div>
-      <div class="f" style="margin-top:10px"><span>${esc(L('treat_days'))}</span><div class="wdays">${tr.wd2.map((w, i) => `<button type="button" data-act="wd" data-i="${i}" aria-pressed="${s.weekdays.includes(i)}">${w}</button>`).join('')}</div></div>
+      <div class="f" style="margin-top:10px"><span class="fl"><span id="lbl-wd">${esc(L('treat_days'))}</span>${hbtn('weekdays')}</span><div class="wdays" role="group" aria-labelledby="lbl-wd">${tr.wd2.map((w, i) => `<button type="button" data-act="wd" data-i="${i}" aria-pressed="${s.weekdays.includes(i)}">${w}</button>`).join('')}</div></div>
       <div style="margin-top:8px">${chk(L('gr_holidays'), 'holidays', s.holidays)}</div>
       <div style="margin-top:4px">${chk(L('brachy'), 'brachy.on', s.brachy.on)}</div>
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
     </div>
-    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}</p>
+    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}${hbtn('mark')}</p>
       <div class="seg" role="group">${['missed', 'unavail', 'chemo', 'closed', 'extra', 'err'].map((m) => `<button type="button" data-act="mark" data-m="${m}" aria-pressed="${s.mark === m}">${esc(L('m_' + m))}</button>`).join('')}</div>
       <div id="gapcal"></div>
       <div class="fields">${fld(L('resume'), 'resume', s.resume, 'type="date"')}
-        <label class="f"><span>${esc(L('cause'))}</span><select data-bind="cause" id="i-cause">${['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join('')}</select></label></div>
+        ${sel(L('cause'), 'cause', ['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join(''))}</div>
       <p class="small" style="margin:4px 0 8px">${esc(L('resume_auto'))}</p>
       <details class="sub" data-fold="hist" ${fold('hist') || ((s.errors.length || s.extra.length || s.pc.on) ? 'open' : '')}><summary>${esc(L('hist_title'))}${gl('hist')}</summary>
         <p class="hint" style="margin-top:6px">${esc(L('hist_hint'))}</p>
@@ -2711,10 +2975,10 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     </div>
     <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
-        <label class="f"><span>${esc(L('rate'))}</span><select data-bind="tumour.mode" id="i-tumour-mode"><option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option></select></label>
+        ${sel(L('rate'), 'tumour.mode', `<option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option>`)}
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
       <p class="small gl-row"><span>${esc(L('gl_what'))}</span><span>${gl('ab')} α/β</span><span>${gl('k')} K / D<sub>prolif</sub></span><span>${gl('tk')} T<sub>k</sub></span><span>${gl('repair')} T½</span><span>${gl('eqd2')} EQD2</span></p>
-      <div class="fields" style="margin-top:10px"><label class="f"><span>${esc(L('model_label'))}${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></label>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
+      <div class="fields" style="margin-top:10px"><div class="f"><span class="fl"><label for="i-model">${esc(L('model_label'))}</label>${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></div>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
       ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
       ${site.time_factor_option ? `<div class="rowbtn" style="margin:-4px 0 12px"><button type="button" class="btn sm" data-act="tf">${esc(L('tf_apply'))}: ${site.time_factor_option.dprolif_eqd2_per_day} Gy/${state.lang === 'el' ? 'ημέρα' : 'day'}</button>${refs([site.time_factor_option.source])}</div><p class="small" style="margin:-6px 0 12px">${esc(L('tf_note'))}</p>` : ''}
@@ -2726,7 +2990,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
     </details>
     <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
-      <label class="f"><span>${esc(L('guid_label'))}${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></label>
+      <div class="f"><span class="fl"><label for="i-guidance">${esc(L('guid_label'))}</label>${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></div>
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
@@ -2738,7 +3002,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
       ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
         : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
     </details>`;
-    renderGapCal(); renderBioNote();
+    renderGapCal(); renderBioNote(); validateAll();
   }
   function renderGapCal() {
     const box = $('#gapcal'); if (!box) return;
@@ -2813,12 +3077,12 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
   function renderResults() {
     const out = $('#results'), L = tr.t, m = model;
     if (m.error) {
-      out.innerHTML = `<div class="card decision error"><div class="status">${esc(L('st_error'))}</div><div class="headline">${esc(L('errors'))}</div><ul class="err">${m.error.map((e) => `<li>${esc(tr.issue(e))}</li>`).join('')}</ul></div>`;
+      out.innerHTML = `<div id="vbar">${vbarInner()}</div><div class="card decision error"><div class="status">${esc(L('st_error'))}</div><div class="headline">${esc(L('errors'))}</div><ul class="err">${m.error.map((e) => `<li>${esc(tr.issue(e))}</li>`).join('')}</ul></div>`;
       updateDock(); return;
     }
     const p = m.p, dec = m.dec, rec = dec.recommended;
     const B = { chart: '', opts: '', map: '', det: '', sens: '', scen: '', rep: '' };
-    let h = kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
+    let h = `<div id="vbar">${vbarInner()}</div>` + kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
       ${rec && rec.family !== 'baseline' ? `<p class="subline">${esc(tr.optShort(rec))}</p><p class="small" style="margin:0 0 8px">${esc(L('dec_note'))}</p>` : ''}
       ${m.sens && rec && rec.family !== 'baseline' ? `<p class="small" style="margin:0 0 8px"><span class="pill ${m.sens.sameFraction >= 0.9 ? 'c3' : 'c2'}">${esc(L(m.sens.sameFraction >= 0.9 ? 'robust_yes' : 'robust_no'))}</span> ${esc(L('unc'))} (${m.sens.n}): Δ ${esc(p.tumour.name === p.rx.primary || !p.rx.multilevel ? L('col_t').toLowerCase() : p.tumour.name)} ${tr.sg(m.sens.tumourPctRange[0])} … ${tr.sg(m.sens.tumourPctRange[1])} %${p.oars.length ? `, Δ ${esc(p.oars[0].name)} ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][0])} … ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][1])} %` : ''}; ${esc(L('unc_same'))} ${Math.round(100 * m.sens.sameFraction)} %.</p>` : ''}
       ${m.rec0 != null ? `<p class="small" style="margin:0 0 8px">${esc(L('rec_line'))} ${refs(['PUTORA'])}: <b>${Math.round(100 * m.rec0)} %</b> ${esc(L('rec_fixed'))}${m.rec5 != null && m.rec5 > m.rec0 + 0.005 ? `, <b>${Math.round(100 * m.rec5)} %</b> ${esc(L('rec_5'))}` : ''}.${m.base && lcText(m.base) ? ` ${esc(L('ch_uncomp'))}: ${esc(L('lc').toLowerCase())} ${esc(lcText(m.base))}.` : ''}</p>` : ''}
@@ -3372,7 +3636,11 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     const b = t.dataset.bind; if (!b) return;
     let v;
     if (t.type === 'checkbox') v = t.checked; else if (TEXT_BINDS.test(b)) v = t.value; else v = num(t.value);
-    if (b === 'c.bid_interval_h' || b === 'c.bid_max_dose' || b === 'c.dose_rounding' || b === 'tumour.ab') { if (v == null) return; }
+    if (t.type !== 'checkbox' && VR[hkey(b)]) {
+      const bad = !!(t.validity && t.validity.badInput), res = bad ? VE('nan') : vcheck(b, t.value);
+      if (res && res.lvl === 'err') { invalid[b] = { raw: t.value, bad }; res.kept = keptMsg(b); showV(t, res); renderVBar(); return; }
+      const had = b in invalid; delete invalid[b]; showV(t, res); if (had) renderVBar();
+    }
     if ((b === 'n' || /\.n$/.test(b)) && v != null) v = Math.round(v);
     setPath(b, v);
     if (b === 'pc.on' && v && model && model.p && !state.pc.from) { state.pc.from = state.resume || (model.p.missed.length ? RT.iso(model.p.resume) : ''); state.pc.n = model.p.remaining; state.pc.d = +model.p.dCur.toFixed(3); }
@@ -3390,7 +3658,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     if (ev.target.classList && ev.target.classList.contains('modal')) { ev.target.hidden = true; return; }
     const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
-    if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
+    if (t.dataset.gl) { ev.preventDefault(); hideTip(); const gg = helpEntry(t.dataset.gl); if (!gg) return; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>${gg[2] && gg[2].length ? `<p class="small" style="margin:6px 0 0">${esc(tr.t('refs'))}: ${refs(gg[2])}</p>` : ''}`; pop.hidden = false; return; }
     if (t.dataset.lang) { state.lang = t.dataset.lang; tr = I.make(state.lang); refresh(true); return; }
     if (t.dataset.day) { focusDay = t.dataset.day;
       const d = t.dataset.day, m = state.mark, p0 = model && model.p, dd = RT.parseDate(d);
@@ -3416,6 +3684,7 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; compute(); persist(); renderResults(); { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
+    if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { const d = inp.closest('details'); if (d && !d.open) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
     if (a === 'mark') { state.mark = t.dataset.m; document.querySelectorAll('[data-act="mark"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === state.mark)); persist(); return; }
     if (a === 'wd') { toggle(state.weekdays, i); state.weekdays.sort(); if (!state.weekdays.length) state.weekdays = [0, 1, 2, 3, 4]; refresh(true); return; }
     if (a === 'add-level') { state.phases[i].levels.push({ name: 'PTV' + (state.phases[i].levels.length + 1), d: 1.8 }); refresh(true); return; }
@@ -3511,7 +3780,32 @@ a:focus-visible, summary:focus-visible, select:focus-visible, [role="tab"]:focus
     if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
     const b = $('#theme'); if (b) { b.innerHTML = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="' + (v === 'dark' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/>' + (v === 'auto' ? '<path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/>' : '') + '</svg>'; b.title = tr.t('theme_' + v); b.setAttribute('aria-label', tr.t('theme_' + v)); }
   }
-  function loadState(s) { s.lang = state.lang; state = s; tr = I.make(state.lang); refresh(true); }
+  function loadState(s) { s.lang = state.lang; state = s; invalid = {}; tr = I.make(state.lang); refresh(true); }
+  // hover / focus tooltip for the (?) buttons; a click opens the full note with references
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip);
+  let tipFor = null, tipBy = '';
+  function showTip(btn, by) {
+    tipBy = by;
+    const h = helpEntry(btn.dataset.gl); if (!h) return;
+    tip.innerHTML = `<b>${esc(h[0])}</b>${esc(h[1])}${h[2] && h[2].length ? `<span class="tip-more">${esc(tr.vm('tip_more'))}</span>` : ''}`; tip.hidden = false;
+    if (tipFor && tipFor !== btn) tipFor.removeAttribute('aria-describedby');
+    tipFor = btn; btn.setAttribute('aria-describedby', 'tip'); placeTip();
+  }
+  function placeTip() {
+    if (!tipFor) return;
+    const r = tipFor.getBoundingClientRect(), w = tip.offsetWidth, ht = tip.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    if (r.bottom < 0 || r.top > vh || !r.width) { hideTip(); return; }
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8);
+    let y = r.bottom + 8; if (y + ht > vh - 8) y = Math.max(8, r.top - ht - 8);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { if (tipFor) tipFor.removeAttribute('aria-describedby'); tipFor = null; tip.hidden = true; }
+  const isHelp = (el) => el && el.closest && el.closest('.help[data-gl]');
+  document.addEventListener('mouseover', (ev) => { const b = isHelp(ev.target); if (b) { if (b !== tipFor) showTip(b, 'hover'); } else if (tipFor && tipBy === 'hover') hideTip(); });
+  document.addEventListener('focusin', (ev) => { const b = isHelp(ev.target); if (b) { if (b.matches(':focus-visible')) showTip(b, 'focus'); } else if (tipFor) hideTip(); });
+  window.addEventListener('scroll', () => { if (tipFor) placeTip(); }, { passive: true, capture: true });
+  window.addEventListener('resize', () => { if (tipFor) placeTip(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && tipFor) hideTip(); });
   document.addEventListener('input', onInput);
   document.addEventListener('change', (ev) => {
     const t = ev.target;

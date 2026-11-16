@@ -1,5 +1,5 @@
 """rtgap — LQ-based decision support for unscheduled radiotherapy gaps and dose errors."""
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 
 from .error import joiner_correction  # noqa: E402
 from .decide import Decision, decide  # noqa: E402

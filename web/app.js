@@ -118,7 +118,7 @@
   function timeTravel(from, to) {
     if (!from.length) return;
     to.push(lastSnap); const snap = from.pop(), lang = state.lang;
-    state = JSON.parse(snap); state.lang = lang; lastSnap = JSON.stringify(state); lastPush = 0;
+    state = JSON.parse(snap); state.lang = lang; invalid = {}; lastSnap = JSON.stringify(state); lastPush = 0;
     tr = I.make(state.lang); refresh(true); undoBtn();
   }
   let HOSTED = false; try { HOSTED = /^https?:$/.test(location.protocol) && window.top === window; } catch (e) { HOSTED = false; }
@@ -236,8 +236,114 @@
   // ------------------------------------------------------------------ small render helpers
   const refs = (ids) => (ids || []).map((id) => I.REF_NUM[id] ? `<button type="button" class="ref" data-ref="${id}" aria-label="${esc(tr.t('refs'))} ${I.REF_NUM[id]}">[${I.REF_NUM[id]}]</button>` : '').join('');
   const dcell = (x, goodPos) => { const z = Math.abs(x) < 0.05; return `<td class="n ${z ? 'zero' : ((x > 0) === goodPos ? 'pos' : 'neg')}">${tr.sg(x)}</td>`; };
-  const fld = (label, bind, val, attrs) => `<label class="f"><span>${esc(label)}</span><input data-bind="${bind}" id="i-${bind.replace(/\W+/g, '-')}" value="${esc(val == null ? '' : val)}" ${attrs || 'type="number" step="any" inputmode="decimal"'}></label>`;
-  const chk = (label, bind, val, extra) => `<label class="chk"><input type="checkbox" data-bind="${bind}" id="i-${bind.replace(/\W+/g, '-')}" ${val ? 'checked' : ''}><span>${esc(label)}${extra || ''}</span></label>`;
+  // Field help (?) and input checks. Help texts and messages live in i18n.js (HELP, VMSG), keyed by
+  // the bind path with indices replaced by * (oars.0.ab -> oars.*.ab).
+  const hkey = (b) => b.replace(/\.\d+(?=\.|$)/g, '.*');
+  const fid = (b) => 'i-' + b.replace(/\W+/g, '-');
+  const helpEntry = (k) => tr.help(k) || (tr.t('gloss') || {})[k] || null;
+  const hbtn = (k) => { const h = helpEntry(k); return h ? `<button type="button" class="help" data-gl="${k}" aria-label="${esc(tr.vm('help') + ': ' + h[0])}">?</button>` : ''; };
+  const flab = (label, id, k) => `<span class="fl"><label for="${id}">${esc(label)}</label>${hbtn(k)}</span>`;
+  let invalid = {}; // bind -> raw text of a value that was refused (not applied to the state)
+  const fld = (label, bind, val, attrs) => { const id = fid(bind), raw = bind in invalid ? invalid[bind].raw : val; return `<div class="f">${flab(label, id, hkey(bind))}<input data-bind="${bind}" id="${id}" value="${esc(raw == null ? '' : raw)}" ${attrs || 'type="number" step="any" inputmode="decimal"'}></div>`; };
+  const sel = (label, bind, opts, extra, style) => { const id = fid(bind); return `<div class="f"${style ? ` style="${style}"` : ''}>${flab(label, id, hkey(bind))}<select data-bind="${bind}" id="${id}" ${extra || ''}>${opts}</select></div>`; };
+  const chk = (label, bind, val, extra) => `<div class="chkw"><label class="chk"><input type="checkbox" data-bind="${bind}" id="${fid(bind)}" ${val ? 'checked' : ''}><span>${esc(label)}${extra || ''}</span></label>${hbtn(hkey(bind))}</div>`;
+  const getPath = (path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), state);
+  const VE = (k, q) => ({ lvl: 'err', msg: tr.vm(k, q) }), VW = (k, q) => ({ lvl: 'warn', msg: tr.vm(k, q) });
+  // req: required · int · gt/min/max: hard limits (value refused) · lo/hi: typical range (warning only)
+  const VR = {
+    n: { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    d: { req: 1, gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'phases.*.n': { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    'phases.*.levels.*.d': { req: 1, min: 0, max: 30, hi: 25, u: 'gy' },
+    'brachy.fx.*.dose': { req: 1, gt: 0, max: 30, lo: 2, hi: 15, u: 'gy' },
+    'errors.*.dose': { req: 1, min: 0, max: 50, u: 'gy', fn: (v) => { const dr = model && model.p && model.p.dRef; return dr && v > 2.5 * dr ? VW('err_big', { a: dr.toFixed(2) }) : null; } },
+    'pc.n': { req: 1, int: 1, min: 1, max: 100, hi: 45 },
+    'pc.d': { req: 1, gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'tumour.ab': { req: 1, gt: 0, max: 50, lo: 0.5, hi: 30, u: 'gy' },
+    'tumour.rate': { min: 0, max: 10, fn: (v) => { const hi = state.tumour.mode === 'dp' ? 1.2 : 1.5; return v > hi ? VW('hi', { b: hi + (state.lang === 'el' ? ' Gy/ημέρα' : ' Gy/day') }) : null; } },
+    'tumour.tk': { min: 0, max: 120, hi: 42, u: 'd' },
+    lqlF: { req: 1, gt: 0, max: 20, lo: 1, hi: 4 },
+    'oars.*.ab': { req: 1, gt: 0, max: 50, lo: 0.5, hi: 15, u: 'gy' },
+    'oars.*.ratio': { ratio: 1 },
+    'oars.*.bt': { req: 1, min: 0, max: 5, hi: 1.5 },
+    'oars.*.repair': { gt: 0, max: 48, lo: 0.25, hi: 8, u: 'h' },
+    'oars.*.limit': { gt: 0, max: 300, hi: 150, u: 'gy' },
+    'c.bid_interval_h': { req: 1, min: 1, max: 24, lo6: 1, u: 'h' },
+    'c.bid_max_dose': { req: 1, gt: 0, max: 10, lo: 1, hi: 3, u: 'gy' },
+    'c.max_dose_per_fraction': { gt: 0, max: 30, lo: 1, u: 'gy' },
+    'c.max_fractions_per_week': { int: 1, min: 1, max: 21, lo: 5, hi: 12 },
+    'c.dose_rounding': { req: 1, min: 0, max: 1, hi: 0.1, u: 'gy' },
+    'c.max_weekly_increase_pct': { min: 0, max: 500, hi: 50, u: 'pct' },
+    'c.max_tumour_deficit_pct': { min: 0, max: 100, hi: 10, u: 'pct' },
+    'c.max_late_increase_pct': { min: 0, max: 100, hi: 10, u: 'pct' },
+    'given.n': { int: 1, min: 1, max: 100 },
+    'given.d': { gt: 0, max: 30, lo: 1, hi: 25, u: 'gy' },
+    'given.bid': { int: 1, min: 0, max: 100, fn: (v) => (state.given.n != null && v > state.given.n ? VW('bid_n') : null) },
+    start: { req: 1, date: 1 }, resume: { date: 1, after: 1 }, 'pc.from': { date: 1, after: 1 },
+    'errors.*.date': { req: 1, date: 1, after: 1 }, 'brachy.fx.*.date': { req: 1, date: 1 },
+  };
+  const NUM_RE = /^[-+]?(\d+([.,]\d*)?|[.,]\d+)(e[-+]?\d+)?$/i;
+  function vcheck(b, raw) {
+    const r = VR[hkey(b)]; if (!r) return null;
+    raw = raw == null ? '' : String(raw).trim();
+    if (raw === '') return r.req ? VE('req') : null;
+    if (r.date) {
+      const m = /^(\d{4,})-\d\d-\d\d$/.exec(raw); if (!m || +m[1] < 2000 || +m[1] > 2100) return VE('year');
+      if (r.after && /^\d{4}-\d\d-\d\d$/.test(state.start || '') && b !== 'start' && raw < state.start) return VE('before_start', { a: tr.date(RT.parseDate(state.start)) });
+      return null;
+    }
+    if (r.ratio) {
+      const parts = raw.split('/').map((x) => x.trim());
+      if (parts.some((x) => !NUM_RE.test(x) || num(x) < 0)) return VE('ratio');
+      const xs = parts.map(num);
+      if (xs.some((x) => x > 5)) return VE('max', { a: 5 });
+      return xs.some((x) => x > 1.2) ? VW('hi', { b: 1.2 }) : null;
+    }
+    if (!NUM_RE.test(raw)) return VE('nan');
+    const v = num(raw), u = r.u || '';
+    if (r.int && Math.abs(v - Math.round(v)) > 1e-9) return VE('int');
+    if (r.gt != null && !(v > r.gt)) return VE('gt', { a: r.gt, u });
+    if (r.min != null && v < r.min) return VE('min', { a: r.min, u });
+    if (r.max != null && v > r.max) return VE('max', { a: r.max, u });
+    if (r.fn) { const x = r.fn(v); if (x) return x; }
+    if (r.lo6 && v < 6) return VW('bid6');
+    if (r.lo != null && r.hi != null && (v < r.lo || v > r.hi)) return VW('typ', { a: r.lo, b: r.hi, u });
+    if (r.hi != null && v > r.hi) return VW('hi', { b: r.hi, u });
+    if (r.lo != null && v < r.lo) return VW('lo', { a: r.lo, u });
+    return null;
+  }
+  function showV(inp, res) {
+    const box = inp.closest('.f'); if (!box) return;
+    let m = box.querySelector('.vmsg');
+    box.classList.toggle('v-err', !!res && res.lvl === 'err'); box.classList.toggle('v-warn', !!res && res.lvl === 'warn');
+    if (!res) { if (m) m.remove(); inp.removeAttribute('aria-invalid'); inp.removeAttribute('aria-describedby'); return; }
+    if (!m) { m = document.createElement('span'); m.className = 'vmsg'; m.id = 'vm-' + inp.id; box.appendChild(m); }
+    m.textContent = (res.lvl === 'err' ? '✕ ' : '⚠ ') + res.msg + (res.kept ? ' ' + res.kept : '');
+    inp.setAttribute('aria-describedby', m.id);
+    if (res.lvl === 'err') inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid');
+  }
+  const keptMsg = (b) => { const v = getPath(b); return tr.vm('kept', { a: v == null || v === '' ? '—' : v }); };
+  function checkField(inp) {
+    const b = inp.dataset.bind;
+    let res;
+    if (b in invalid) {
+      res = invalid[b].bad ? VE('nan') : vcheck(b, invalid[b].raw);
+      if (res && res.lvl === 'err') res.kept = keptMsg(b); else { delete invalid[b]; res = vcheck(b, inp.value); }
+    } else res = vcheck(b, inp.value);
+    showV(inp, res);
+  }
+  function validateAll() {
+    const seen = {};
+    document.querySelectorAll('#inputs [data-bind]').forEach((inp) => { const b = inp.dataset.bind; if (inp.type === 'checkbox' || !VR[hkey(b)]) return; seen[b] = 1; checkField(inp); });
+    for (const b of Object.keys(invalid)) if (!seen[b]) delete invalid[b];
+    renderVBar();
+  }
+  function vbarInner() {
+    const ks = Object.keys(invalid); if (!ks.length) return '';
+    const name = (b) => { const l = document.querySelector('label[for="' + fid(b) + '"]'); return l ? l.textContent : b; };
+    return `<div class="card vbar" role="alert"><b>${esc(ks.length === 1 ? tr.vm('bar1') : tr.vm('barN', { n: ks.length }))}</b> ${ks.map((b) => `<button type="button" class="linkbtn" data-act="vfocus" data-b="${esc(b)}">${esc(name(b))}</button>`).join(' · ')}</div>`;
+  }
+  function renderVBar() { const el = $('#vbar'), h = vbarInner(); if (el && el.innerHTML !== h) el.innerHTML = h; } // unchanged → keep the nodes, so a click on them still lands
 
   function calendarHtml(p, opt, interactive) {
     const s = state, first0 = Math.min(p.rx.start, p.missed.length ? p.missed[0] : p.rx.start);
@@ -289,7 +395,7 @@
 
   // ------------------------------------------------------------------ inputs
   const fold = (k) => (state.ui && state.ui[k]) ? 'open' : '';
-  const gl = (k) => `<button type="button" class="help" data-gl="${k}" aria-label="?">?</button>`;
+  const gl = (k) => { const h = helpEntry(k); return `<button type="button" class="help" data-gl="${k}" aria-label="${esc(tr.vm('help') + (h ? ': ' + h[0] : ''))}">?</button>`; };
   function bioSum() {
     const s = state, L = tr.t, t = s.tumour;
     const rate = t.rate ? (t.mode === 'dp' ? 'D_prolif ' : 'K ') + t.rate + (t.tk != null && t.tk !== '' ? ' · T_k ' + t.tk : '') : L('sum_notime');
@@ -343,31 +449,31 @@
         ${ph.levels.map((lv, j) => `<div class="lvl">${fld(L('level'), `phases.${i}.levels.${j}.name`, lv.name, 'type="text"')}${fld(L('dpf'), `phases.${i}.levels.${j}.d`, lv.d)}<button type="button" class="btn x" data-act="rm-level" data-i="${i}" data-j="${j}" aria-label="${esc(L('remove'))}" ${ph.levels.length < 2 ? 'disabled' : ''}>✕</button></div>`).join('')}
         <div class="rowbtn" style="margin-top:0"><button type="button" class="btn sm" data-act="add-level" data-i="${i}">+ ${esc(L('add_level'))}</button>${s.phases.length > 1 ? `<button type="button" class="btn sm" data-act="rm-phase" data-i="${i}">${esc(L('remove'))}</button>` : ''}</div></div>`).join('') +
         `<div class="rowbtn" style="margin-top:0"><button type="button" class="btn sm" data-act="add-phase">+ ${esc(L('add_phase'))}</button></div>
-        <label class="f" style="margin-top:10px"><span>${esc(L('primary'))}</span><select data-bind="primary" id="i-primary"><option value="">auto</option>${names.map((n) => `<option ${n === s.primary ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+        ${sel(L('primary'), 'primary', `<option value="">auto</option>${names.map((n) => `<option ${n === s.primary ? 'selected' : ''}>${esc(n)}</option>`).join('')}`, '', 'margin-top:10px')}`;
     }
     const c = s.c;
     el.innerHTML = `
     <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}"><b>${i + 1}</b>${esc(x)}</button>`).join('')}</nav>
     <div class="card" id="sec-1"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
-      <label class="f"><span>${esc(L('s_site'))}</span><select data-bind="site" id="i-site" data-struct="1">${og('RCR ' + L('cat') + ' 1', groups[1])}${og('RCR ' + L('cat') + ' 2', groups[2])}${og('RCR ' + L('cat') + ' 3', groups[3])}${og('—', groups.x)}</select></label>
+      ${sel(L('s_site'), 'site', og('RCR ' + L('cat') + ' 1', groups[1]) + og('RCR ' + L('cat') + ' 2', groups[2]) + og('RCR ' + L('cat') + ' 3', groups[3]) + og('—', groups.x), 'data-struct="1"')}
       <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}${srcRefs}</div>
       ${notes.length ? `<ul class="notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-      <label class="f" style="margin-top:10px"><span>${esc(L('cat'))}</span><select data-bind="category" id="i-category" data-struct="1">${[['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join('')}</select></label>
+      ${sel(L('cat'), 'category', [['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join(''), 'data-struct="1"', 'margin-top:10px')}
     </div>
     <div class="card" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
       <div class="fields" style="margin-bottom:10px">${fld(L('start'), 'start', s.start, 'type="date"')}</div>
       ${chk(L('levels_mode'), 'multi', s.multi)}
       <div style="margin-top:8px">${rxHtml}</div>
-      <div class="f" style="margin-top:10px"><span>${esc(L('treat_days'))}</span><div class="wdays">${tr.wd2.map((w, i) => `<button type="button" data-act="wd" data-i="${i}" aria-pressed="${s.weekdays.includes(i)}">${w}</button>`).join('')}</div></div>
+      <div class="f" style="margin-top:10px"><span class="fl"><span id="lbl-wd">${esc(L('treat_days'))}</span>${hbtn('weekdays')}</span><div class="wdays" role="group" aria-labelledby="lbl-wd">${tr.wd2.map((w, i) => `<button type="button" data-act="wd" data-i="${i}" aria-pressed="${s.weekdays.includes(i)}">${w}</button>`).join('')}</div></div>
       <div style="margin-top:8px">${chk(L('gr_holidays'), 'holidays', s.holidays)}</div>
       <div style="margin-top:4px">${chk(L('brachy'), 'brachy.on', s.brachy.on)}</div>
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
     </div>
-    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}</p>
+    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}${hbtn('mark')}</p>
       <div class="seg" role="group">${['missed', 'unavail', 'chemo', 'closed', 'extra', 'err'].map((m) => `<button type="button" data-act="mark" data-m="${m}" aria-pressed="${s.mark === m}">${esc(L('m_' + m))}</button>`).join('')}</div>
       <div id="gapcal"></div>
       <div class="fields">${fld(L('resume'), 'resume', s.resume, 'type="date"')}
-        <label class="f"><span>${esc(L('cause'))}</span><select data-bind="cause" id="i-cause">${['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join('')}</select></label></div>
+        ${sel(L('cause'), 'cause', ['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join(''))}</div>
       <p class="small" style="margin:4px 0 8px">${esc(L('resume_auto'))}</p>
       <details class="sub" data-fold="hist" ${fold('hist') || ((s.errors.length || s.extra.length || s.pc.on) ? 'open' : '')}><summary>${esc(L('hist_title'))}${gl('hist')}</summary>
         <p class="hint" style="margin-top:6px">${esc(L('hist_hint'))}</p>
@@ -382,10 +488,10 @@
     </div>
     <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
-        <label class="f"><span>${esc(L('rate'))}</span><select data-bind="tumour.mode" id="i-tumour-mode"><option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option></select></label>
+        ${sel(L('rate'), 'tumour.mode', `<option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option>`)}
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
       <p class="small gl-row"><span>${esc(L('gl_what'))}</span><span>${gl('ab')} α/β</span><span>${gl('k')} K / D<sub>prolif</sub></span><span>${gl('tk')} T<sub>k</sub></span><span>${gl('repair')} T½</span><span>${gl('eqd2')} EQD2</span></p>
-      <div class="fields" style="margin-top:10px"><label class="f"><span>${esc(L('model_label'))}${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></label>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
+      <div class="fields" style="margin-top:10px"><div class="f"><span class="fl"><label for="i-model">${esc(L('model_label'))}</label>${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></div>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
       ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
       ${site.time_factor_option ? `<div class="rowbtn" style="margin:-4px 0 12px"><button type="button" class="btn sm" data-act="tf">${esc(L('tf_apply'))}: ${site.time_factor_option.dprolif_eqd2_per_day} Gy/${state.lang === 'el' ? 'ημέρα' : 'day'}</button>${refs([site.time_factor_option.source])}</div><p class="small" style="margin:-6px 0 12px">${esc(L('tf_note'))}</p>` : ''}
@@ -397,7 +503,7 @@
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
     </details>
     <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
-      <label class="f"><span>${esc(L('guid_label'))}${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></label>
+      <div class="f"><span class="fl"><label for="i-guidance">${esc(L('guid_label'))}</label>${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></div>
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
@@ -409,7 +515,7 @@
       ${s.given.on ? (s.given.dates ? `<p class="small">${s.given.dates.length + (s.given.bidDates || []).length} × ${s.given.d} Gy · ${esc(s.given.dates.map((d) => tr.dshort(RT.parseDate(d))).join(', '))}</p><div class="rowbtn"><button type="button" class="btn sm" data-act="given-reset">${esc(L('remove'))}</button></div>`
         : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div>`) : ''}
     </details>`;
-    renderGapCal(); renderBioNote();
+    renderGapCal(); renderBioNote(); validateAll();
   }
   function renderGapCal() {
     const box = $('#gapcal'); if (!box) return;
@@ -484,12 +590,12 @@
   function renderResults() {
     const out = $('#results'), L = tr.t, m = model;
     if (m.error) {
-      out.innerHTML = `<div class="card decision error"><div class="status">${esc(L('st_error'))}</div><div class="headline">${esc(L('errors'))}</div><ul class="err">${m.error.map((e) => `<li>${esc(tr.issue(e))}</li>`).join('')}</ul></div>`;
+      out.innerHTML = `<div id="vbar">${vbarInner()}</div><div class="card decision error"><div class="status">${esc(L('st_error'))}</div><div class="headline">${esc(L('errors'))}</div><ul class="err">${m.error.map((e) => `<li>${esc(tr.issue(e))}</li>`).join('')}</ul></div>`;
       updateDock(); return;
     }
     const p = m.p, dec = m.dec, rec = dec.recommended;
     const B = { chart: '', opts: '', map: '', det: '', sens: '', scen: '', rep: '' };
-    let h = kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
+    let h = `<div id="vbar">${vbarInner()}</div>` + kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
       ${rec && rec.family !== 'baseline' ? `<p class="subline">${esc(tr.optShort(rec))}</p><p class="small" style="margin:0 0 8px">${esc(L('dec_note'))}</p>` : ''}
       ${m.sens && rec && rec.family !== 'baseline' ? `<p class="small" style="margin:0 0 8px"><span class="pill ${m.sens.sameFraction >= 0.9 ? 'c3' : 'c2'}">${esc(L(m.sens.sameFraction >= 0.9 ? 'robust_yes' : 'robust_no'))}</span> ${esc(L('unc'))} (${m.sens.n}): Δ ${esc(p.tumour.name === p.rx.primary || !p.rx.multilevel ? L('col_t').toLowerCase() : p.tumour.name)} ${tr.sg(m.sens.tumourPctRange[0])} … ${tr.sg(m.sens.tumourPctRange[1])} %${p.oars.length ? `, Δ ${esc(p.oars[0].name)} ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][0])} … ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][1])} %` : ''}; ${esc(L('unc_same'))} ${Math.round(100 * m.sens.sameFraction)} %.</p>` : ''}
       ${m.rec0 != null ? `<p class="small" style="margin:0 0 8px">${esc(L('rec_line'))} ${refs(['PUTORA'])}: <b>${Math.round(100 * m.rec0)} %</b> ${esc(L('rec_fixed'))}${m.rec5 != null && m.rec5 > m.rec0 + 0.005 ? `, <b>${Math.round(100 * m.rec5)} %</b> ${esc(L('rec_5'))}` : ''}.${m.base && lcText(m.base) ? ` ${esc(L('ch_uncomp'))}: ${esc(L('lc').toLowerCase())} ${esc(lcText(m.base))}.` : ''}</p>` : ''}
@@ -1043,7 +1149,11 @@
     const b = t.dataset.bind; if (!b) return;
     let v;
     if (t.type === 'checkbox') v = t.checked; else if (TEXT_BINDS.test(b)) v = t.value; else v = num(t.value);
-    if (b === 'c.bid_interval_h' || b === 'c.bid_max_dose' || b === 'c.dose_rounding' || b === 'tumour.ab') { if (v == null) return; }
+    if (t.type !== 'checkbox' && VR[hkey(b)]) {
+      const bad = !!(t.validity && t.validity.badInput), res = bad ? VE('nan') : vcheck(b, t.value);
+      if (res && res.lvl === 'err') { invalid[b] = { raw: t.value, bad }; res.kept = keptMsg(b); showV(t, res); renderVBar(); return; }
+      const had = b in invalid; delete invalid[b]; showV(t, res); if (had) renderVBar();
+    }
     if ((b === 'n' || /\.n$/.test(b)) && v != null) v = Math.round(v);
     setPath(b, v);
     if (b === 'pc.on' && v && model && model.p && !state.pc.from) { state.pc.from = state.resume || (model.p.missed.length ? RT.iso(model.p.resume) : ''); state.pc.n = model.p.remaining; state.pc.d = +model.p.dCur.toFixed(3); }
@@ -1061,7 +1171,7 @@
     if (ev.target.classList && ev.target.classList.contains('modal')) { ev.target.hidden = true; return; }
     const t = ev.target.closest('[data-ref],[data-gl],[data-act],[data-day],[data-opt],[data-lang]'); if (!t) { if (!ev.target.closest('#refpop')) $('#refpop').hidden = true; return; }
     if (t.dataset.ref) { ev.preventDefault(); showRef(t.dataset.ref); return; }
-    if (t.dataset.gl) { ev.preventDefault(); const gg = tr.t('gloss')[t.dataset.gl]; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>`; pop.hidden = false; return; }
+    if (t.dataset.gl) { ev.preventDefault(); hideTip(); const gg = helpEntry(t.dataset.gl); if (!gg) return; const pop = $('#refpop'); pop.innerHTML = `<button type="button" class="btn sm close" data-act="close-ref" aria-label="close">✕</button><div class="n">${esc(gg[0])}</div><p style="margin:6px 0 0">${esc(gg[1])}</p>${gg[2] && gg[2].length ? `<p class="small" style="margin:6px 0 0">${esc(tr.t('refs'))}: ${refs(gg[2])}</p>` : ''}`; pop.hidden = false; return; }
     if (t.dataset.lang) { state.lang = t.dataset.lang; tr = I.make(state.lang); refresh(true); return; }
     if (t.dataset.day) { focusDay = t.dataset.day;
       const d = t.dataset.day, m = state.mark, p0 = model && model.p, dd = RT.parseDate(d);
@@ -1087,6 +1197,7 @@
     if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; compute(); persist(); renderResults(); { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
+    if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { const d = inp.closest('details'); if (d && !d.open) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
     if (a === 'mark') { state.mark = t.dataset.m; document.querySelectorAll('[data-act="mark"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === state.mark)); persist(); return; }
     if (a === 'wd') { toggle(state.weekdays, i); state.weekdays.sort(); if (!state.weekdays.length) state.weekdays = [0, 1, 2, 3, 4]; refresh(true); return; }
     if (a === 'add-level') { state.phases[i].levels.push({ name: 'PTV' + (state.phases[i].levels.length + 1), d: 1.8 }); refresh(true); return; }
@@ -1182,7 +1293,32 @@
     if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
     const b = $('#theme'); if (b) { b.innerHTML = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="' + (v === 'dark' ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/>' + (v === 'auto' ? '<path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/>' : '') + '</svg>'; b.title = tr.t('theme_' + v); b.setAttribute('aria-label', tr.t('theme_' + v)); }
   }
-  function loadState(s) { s.lang = state.lang; state = s; tr = I.make(state.lang); refresh(true); }
+  function loadState(s) { s.lang = state.lang; state = s; invalid = {}; tr = I.make(state.lang); refresh(true); }
+  // hover / focus tooltip for the (?) buttons; a click opens the full note with references
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip);
+  let tipFor = null, tipBy = '';
+  function showTip(btn, by) {
+    tipBy = by;
+    const h = helpEntry(btn.dataset.gl); if (!h) return;
+    tip.innerHTML = `<b>${esc(h[0])}</b>${esc(h[1])}${h[2] && h[2].length ? `<span class="tip-more">${esc(tr.vm('tip_more'))}</span>` : ''}`; tip.hidden = false;
+    if (tipFor && tipFor !== btn) tipFor.removeAttribute('aria-describedby');
+    tipFor = btn; btn.setAttribute('aria-describedby', 'tip'); placeTip();
+  }
+  function placeTip() {
+    if (!tipFor) return;
+    const r = tipFor.getBoundingClientRect(), w = tip.offsetWidth, ht = tip.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    if (r.bottom < 0 || r.top > vh || !r.width) { hideTip(); return; }
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8);
+    let y = r.bottom + 8; if (y + ht > vh - 8) y = Math.max(8, r.top - ht - 8);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { if (tipFor) tipFor.removeAttribute('aria-describedby'); tipFor = null; tip.hidden = true; }
+  const isHelp = (el) => el && el.closest && el.closest('.help[data-gl]');
+  document.addEventListener('mouseover', (ev) => { const b = isHelp(ev.target); if (b) { if (b !== tipFor) showTip(b, 'hover'); } else if (tipFor && tipBy === 'hover') hideTip(); });
+  document.addEventListener('focusin', (ev) => { const b = isHelp(ev.target); if (b) { if (b.matches(':focus-visible')) showTip(b, 'focus'); } else if (tipFor) hideTip(); });
+  window.addEventListener('scroll', () => { if (tipFor) placeTip(); }, { passive: true, capture: true });
+  window.addEventListener('resize', () => { if (tipFor) placeTip(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && tipFor) hideTip(); });
   document.addEventListener('input', onInput);
   document.addEventListener('change', (ev) => {
     const t = ev.target;

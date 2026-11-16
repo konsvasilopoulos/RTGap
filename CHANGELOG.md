@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0 — 2026-11-16
+* Input checks on every number and date field. Values that cannot be right (negative or zero doses,
+  fractional fraction counts, a resume date before the first fraction, a mistyped year) are refused,
+  marked in red and listed above the results, which keep using the previous value. Unusual values
+  (for example d above 25 Gy, a BID interval under the RCR 6 h, a tumour α/β outside 0.5–30 Gy) are
+  applied and marked in amber.
+* A (?) button next to every parameter: hover or keyboard focus shows a short explanation, a click
+  opens the full note with what the quantity defines, which RCR rule applies and its references.
+
 ## 1.8.0 — 2026-11-14
 * The presentation page opens at the start of every visit to the hosted site (once per browser
   session; not in the installed app and not for links that carry a case).

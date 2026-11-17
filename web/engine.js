@@ -4,7 +4,7 @@
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.10.0';
+  const VERSION = '1.11.0';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -702,12 +702,12 @@
      is re-evaluated, as it stands, for each draw. The widths are this tool's assumptions, not guidance values. */
   const MC_SD = { tumour_alpha_beta: 0.30, repopulation: 0.30, kickoff_days: 5, late_alpha_beta: 0.25 };
   function rng32(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  function monteCarlo(p, opts, n, seed, spread) {
+  function monteCarlo(p, opts, n, seed, spread, own) {
     if (!p.remaining || !opts.length) return null;
     n = n || 1000; spread = spread == null ? 1 : spread;
     const u = rng32(seed == null ? 20261116 : seed);
     const gauss = () => { let x = 0; while (x === 0) x = u(); return Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * u()); };
-    const time = hasTime(p.tumour), sd = MC_SD;
+    const time = hasTime(p.tumour), sd = Object.assign({}, MC_SD, own || {}); // own: widths taken from a published CI
     const res = opts.map((o) => ({ o, tumour: new Float64Array(n), tumourPct: new Float64Array(n), late: new Float64Array(n) }));
     for (let i = 0; i < n; i++) {
       const fab = Math.exp(spread * sd.tumour_alpha_beta * gauss()), frep = time ? Math.exp(spread * sd.repopulation * gauss()) : 1,

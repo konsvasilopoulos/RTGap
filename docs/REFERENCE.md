@@ -172,7 +172,7 @@ and it can override or add sites (see `examples/protocol_example.yaml`).
   weekend and BID options are still suggested on the RCR prolongation rule.
 * **Optional time factors for category 2.** Breast (about 0.6 Gy/day, START
   analysis 2016) and prostate (0.31 Gy/day, Vogelius & Bentzen 2013) are
-  offered as `time_factor_option` in the site library and are off by default.
+  offered as `published_time_factors` in the site library and are off by default.
   Without a time factor the trace states that the loss from prolongation is
   not quantified.
 * The decision is labelled "suggested for discussion".

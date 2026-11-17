@@ -1,5 +1,5 @@
 // RTGap service worker: the app shell is cached so that the installed app opens without a connection.
-const CACHE = 'rtgap-1.10.0';
+const CACHE = 'rtgap-1.11.0';
 const FILES = ['./', 'index.html', 'welcome.html', 'validation.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'screenshot.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

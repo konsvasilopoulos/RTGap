@@ -494,7 +494,7 @@
       <div class="fields" style="margin-top:10px"><div class="f"><span class="fl"><label for="i-model">${esc(L('model_label'))}</label>${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></div>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
       ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
-      ${site.time_factor_option ? `<div class="rowbtn" style="margin:-4px 0 12px"><button type="button" class="btn sm" data-act="tf">${esc(L('tf_apply'))}: ${site.time_factor_option.dprolif_eqd2_per_day} Gy/${state.lang === 'el' ? 'ημέρα' : 'day'}</button>${refs([site.time_factor_option.source])}</div><p class="small" style="margin:-6px 0 12px">${esc(L('tf_note'))}</p>` : ''}
+      ${ptfHtml(site)}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
       ${s.oars.map((o, i) => `<div class="phase"><div class="lvl" style="grid-template-columns:minmax(0,1fr) auto">${fld(L('name'), `oars.${i}.name`, o.name, 'type="text"')}<button type="button" class="btn x" data-act="rm-oar" data-i="${i}" aria-label="${esc(L('remove'))}" ${s.oars.length < 2 ? 'disabled' : ''}>✕</button></div>
         <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></div>`).join('')}
@@ -691,21 +691,46 @@
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
   }
+  // ---- published estimates of the time factor for the chosen site (never applied by default)
+  const dpNow = () => { const t = state.tumour; if (t.rate == null || !(t.ab > 0)) return null; return t.mode === 'dp' ? t.rate : t.rate / (1 + 2 / t.ab); };
+  function ptfApplied(site) {
+    const dp = dpNow(), tk = state.tumour.tk == null ? 0 : state.tumour.tk;
+    return (site.published_time_factors || []).find((o) => o.kickoff_days === tk && (o.dprolif_eqd2_per_day == null || (dp != null && Math.abs(o.dprolif_eqd2_per_day - dp) < 5e-4))) || null;
+  }
+  function ptfHtml(site) {
+    const L = tr.t, list = site.published_time_factors || [], day = state.lang === 'el' ? 'ημέρα' : 'day', on = ptfApplied(site);
+    if (!list.length) return site.category === 1 ? `<p class="small" style="margin:-4px 0 12px">${esc(L('ptf_none'))}</p>` : '';
+    const rng = (a) => { const two = a.some((x) => Math.abs(x * 10 - Math.round(x * 10)) > 1e-9); return a.map((x) => (two ? x.toFixed(2) : String(x))).join('–'); };
+    const row = (o, i) => {
+      const v = o.dprolif_eqd2_per_day != null ? `<b>${o.dprolif_eqd2_per_day} Gy/${day}</b>${o.ci ? ` (95 % CI ${rng(o.ci)})` : ''}, ` : '';
+      const k = `T<sub>k</sub> <b>${o.kickoff_days}</b> ${esc(L('days'))}${o.kickoff_ci ? ` (95 % CI ${rng(o.kickoff_ci)})` : o.kickoff_range ? ` (${rng(o.kickoff_range)})` : ''}`;
+      return `<li${o === on ? ' class="on"' : ''}><span>${v}${k}${refs([o.source])}<br><span class="small">${esc(L('ptf_scope')[o.scope] || '')}</span></span><button type="button" class="btn sm" data-act="tf" data-i="${i}"${o === on ? ' disabled' : ''}>${esc(L(o === on ? 'ptf_on' : o.dprolif_eqd2_per_day != null ? 'ptf_apply' : 'ptf_apply_tk'))}</button></li>`;
+    };
+    return `<div class="ptf"><div class="ptf-h">${esc(L('ptf_title'))}${hbtn('ptf')}</div><ul>${list.map(row).join('')}</ul><p class="small">${esc(L('ptf_caveat'))}</p></div>`;
+  }
   // ---- probabilistic analysis (Monte Carlo over the radiobiological parameters)
   let mcCache = { key: null, r: null };
-  const MC_N = 1000;
+  const MC_N = 2000;
+  // widths of the repopulation rate and of T_k come from the published confidence interval when the applied value has one
+  function mcOwn() {
+    const o = ptfApplied(RT.SITES[state.site] || {}), own = {}, src = {};
+    if (o && o.ci && o.ci[0] > 0) { own.repopulation = Math.log(o.ci[1] / o.ci[0]) / 3.92; src.rep = o.source; }
+    if (o && o.kickoff_ci) { own.kickoff_days = (o.kickoff_ci[1] - o.kickoff_ci[0]) / 3.92; src.tk = o.source; }
+    return { own, src };
+  }
   function mcOptions(m) {
     const d = m.dec, list = [], add = (o, role) => { if (o && !list.some((x) => x.o === o)) list.push({ o, role }); };
     add(d.recommended || d.candidates[0], 'rec'); add(m.sel, 'sel'); add(m.given, 'given'); add(m.base, 'base');
     return list;
   }
   const mcSpread = () => (state.ui && state.ui.mcSpread) || 1;
-  const mcKey = (m) => m.checksum + '|' + mcSpread() + '|' + mcOptions(m).map((x) => x.o.key + ':' + x.o.d + ':' + x.o.nNew + ':' + x.o.end).join(',');
+  const mcKey = (m) => m.checksum + '|' + mcSpread() + '|' + JSON.stringify(mcOwn().own) + '|' + mcOptions(m).map((x) => x.o.key + ':' + x.o.d + ':' + x.o.nNew + ':' + x.o.end).join(',');
   function mcRun() {
     const m = model; if (!m || m.error || !m.p || !m.p.remaining) return;
     const key = mcKey(m); if (mcCache.key === key) return;
     const list = mcOptions(m);
-    try { mcCache = { key, r: RT.monteCarlo(m.p, list.map((x) => x.o), MC_N, 20261116, mcSpread()), list }; } catch (e) { mcCache = { key, r: null, list }; }
+    const lit = mcOwn();
+    try { mcCache = { key, r: RT.monteCarlo(m.p, list.map((x) => x.o), MC_N, 20261116, mcSpread(), lit.own), list, src: lit.src }; } catch (e) { mcCache = { key, r: null, list }; }
     const box = $('#mcbox'); if (box) box.innerHTML = mcInner(m);
   }
   function mcInner(m) {
@@ -749,8 +774,11 @@
     const same = (a, b) => { for (let k = 0; k < r.n; k++) if (Math.abs(res[a].tumour[k] - res[b].tumour[k]) > 1e-3 || Math.abs(res[a].late[k] - res[b].late[k]) > 1e-3) return false; return true; };
     const pairs = []; if (iS >= 0 && iR >= 0 && !same(iS, iR)) pairs.push(pair(iS, iR)); if (iS >= 0 && iB >= 0 && iB !== iS) pairs.push(pair(iS, iB));
     if (pairs.length) h += `<ul class="mc-pairs">${pairs.join('')}</ul>`;
-    const sd = r.sd, sp = r.spread, f = (v) => '×/÷ ' + Math.exp(1.645 * v * sp).toFixed(2);
-    h += `<p class="small" style="margin:8px 0 0">${esc(L('mc_assume'))} α/β ${esc(L('col_t'))} ${f(sd.tumour_alpha_beta)}${r.time ? `, ${esc(L('mc_rep'))} ${f(sd.repopulation)}, T<sub>k</sub> ± ${(1.645 * sd.kickoff_days * sp).toFixed(0)} ${esc(L('days'))}` : ''}, α/β ${esc(L('mc_late_s'))} ${f(sd.late_alpha_beta)} (${esc(L('mc_90'))}). ${esc(L('mc_caveat'))}</p>`;
+    const sd = r.sd, sp = r.spread, f = (v) => '×/÷ ' + Math.exp(1.645 * v * sp).toFixed(2), src = c.src || {};
+    const tag = (id) => (id ? ` <span class="mc-lit">${esc(L('mc_pub'))}${refs([id])}</span>` : ` <span class="mc-asm">${esc(L('mc_asm'))}</span>`);
+    const pm = Math.round(100 * 1.96 * 0.5 / Math.sqrt(r.n));
+    h += `<p class="small" style="margin:8px 0 0">${esc(L('mc_assume'))}</p><ul class="mc-widths small"><li>α/β ${esc(L('col_t'))} ${f(sd.tumour_alpha_beta)}${tag(null)}</li>${r.time ? `<li>${esc(L('mc_rep'))} ${f(sd.repopulation)}${tag(src.rep)}</li><li>T<sub>k</sub> ± ${(1.645 * sd.kickoff_days * sp).toFixed(0)} ${esc(L('days'))}${tag(src.tk)}</li>` : ''}<li>α/β ${esc(L('mc_late_s'))} ${f(sd.late_alpha_beta)}${tag(null)}</li></ul>
+      <p class="small" style="margin:6px 0 0">${esc(L('mc_90n'))} ${esc(L('mc_why'))}${refs(['VANL18'])} ${esc(L('mc_prec').replace('{n}', r.n).replace('{x}', pm))} ${esc(L('mc_caveat'))}</p>`;
     return h;
   }
   function mcHtml(m) {
@@ -1343,7 +1371,7 @@
     if (a === 'given-reset') { state.given = { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }; refresh(true); return; }
     if (a === 'rm-bt') { state.brachy.fx.splice(i, 1); refresh(true); return; }
     if (a === 'rm-oar') { state.oars.splice(i, 1); refresh(true); return; }
-    if (a === 'tf') { const o = RT.SITES[state.site].time_factor_option; state.tumour.mode = 'dp'; state.tumour.rate = o.dprolif_eqd2_per_day; state.tumour.tk = o.kickoff_days; refresh(true); return; }
+    if (a === 'tf') { const o = (RT.SITES[state.site].published_time_factors || [])[+t.dataset.i]; if (!o) return; if (o.dprolif_eqd2_per_day != null) { state.tumour.mode = 'dp'; state.tumour.rate = o.dprolif_eqd2_per_day; } state.tumour.tk = o.kickoff_days; refresh(true); return; }
     if (a === 'proto-save') {
       const nm = ($('#proto-name') && $('#proto-name').value.trim()) || (proto && proto.name) || tr.t('proto_unnamed');
       const cons = {}; for (const k of constraintsDiff(state.c, RT.CONSTRAINT_DEFAULTS)) cons[k] = state.c[k];

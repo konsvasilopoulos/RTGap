@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.11.0 — 2026-11-17
+* Published estimates of the time factor per site, each with its numbered reference: head and neck
+  (Withers 1988; Roberts 1994), non-small-cell lung (Koukourakis 1996), bladder (Maciejewski &
+  Majewski 1991), cervix onset time (Huang 2012), breast (Haviland 2016), prostate (Vogelius &
+  Bentzen 2013). They are offered in step 4 and never applied by default; the default of
+  category 1 stays the RCR generic value. Only values read in the source or its abstract are listed.
+* Probabilistic analysis: the width of the repopulation rate and of T_k is taken from the published
+  95 % confidence interval when the applied value has one; every width is marked "published" or
+  "assumed". 2000 draws, with the statistical precision of the shares stated.
+* Eight references added to the list (also van Leeuwen 2018, González Ferreira 2015, Hunter &
+  Hendrikse 2020).
+
 ## 1.10.0 — 2026-11-16
 * Own schedule on a calendar: tap a day for one fraction, again for two (BID), once more to clear.
   The schedule is evaluated at once beside the calculated options; it can start from the suggestion.

@@ -397,3 +397,5 @@ body.touring .dock { display: none !important; }
 .ptf li > span { min-width: 0; } .ptf li .btn { flex: none; } .ptf li.on b { color: var(--accent); }
 .ptf > p { margin: 4px 0 0; }
 .mc-widths { margin: 4px 0 0; padding-left: 18px; } .mc-lit { color: var(--accent); } .mc-asm { color: var(--muted); }
+
+#below[hidden], #below > [hidden] { display: none; }

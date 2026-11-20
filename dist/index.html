@@ -413,6 +413,8 @@ body.touring .dock { display: none !important; }
 .ptf > p { margin: 4px 0 0; }
 .mc-widths { margin: 4px 0 0; padding-left: 18px; } .mc-lit { color: var(--accent); } .mc-asm { color: var(--muted); }
 
+#below[hidden], #below > [hidden] { display: none; }
+
 </style>
 </head>
 <body>
@@ -431,6 +433,7 @@ body.touring .dock { display: none !important; }
       <div class="topctl">
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
+        <select id="tool-picker"></select>
         <button type="button" class="ghost icon" id="undo" data-act="undo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M8 5 4 9l4 4M4 9h8a4 4 0 0 1 0 8h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost icon" id="redo" data-act="redo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m12 5 4 4-4 4m4-4H8a4 4 0 0 0 0 8h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost" id="reset"></button>
@@ -444,9 +447,9 @@ body.touring .dock { display: none !important; }
 <a class="skip" href="#results" id="skip"></a>
 <div id="sr-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <main>
+  <div class="wide" id="below" hidden></div>
   <div id="intro" hidden></div>
   <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-label="Results" tabindex="-1"></section></div>
-  <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
   <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-site"></p><p id="foot-lic"></p></div>
@@ -1508,7 +1511,8 @@ body.touring .dock { display: none !important; }
       s_rx: 'Prescription', start: 'First fraction', fractions: 'Fractions', dpf: 'Dose per fraction (Gy)', total: 'Total',
       levels_mode: 'Several dose levels or phases (SIB, sequential boost)', phase: 'Phase', phase_name: 'Name', add_phase: 'Add phase', add_level: 'Add level', level: 'Level', remove: 'Remove',
       primary: 'Primary level (drives the decision)', treat_days: 'Treatment days', gr_holidays: 'Greek public holidays are non-treatment days',
-      s_gap: 'Interruption', gap_hint: 'Tap the days on the calendar. The mode decides what a tap marks. Mark every interruption of this course, earlier ones too: the prolongation counts over the whole course.',
+      s_gap: 'Interruption', gap_hint: 'Select each missed treatment date. Select it again to undo. Record the cause below.',
+      calendar_action: 'Calendar action', other_events: 'Other calendar entries', tool_menu: 'Tools…', outage_tool: 'Machine outage', audit_tool: 'Department audit',
       m_extra: 'Extra fraction given', m_err: 'Dose error', lg_extra: 'fraction given outside the plan', lg_err: 'dose error',
       hist_title: 'Treatment so far: dose errors and an earlier change of plan',
       hist_hint: 'Use this when the course did not go exactly as planned. "Extra fraction given" on the calendar marks a fraction given on a non-treatment day or as a second fraction that day (an earlier catch-up). "Dose error" marks a delivered fraction whose dose was wrong; enter the dose actually given to the reference level (all levels scale with it).',
@@ -1596,7 +1600,7 @@ body.touring .dock { display: none !important; }
       proto_saved: 'Department protocol saved on this device.', proto_removed: 'Protocol removed: new cases start from the tool defaults.', proto_loaded: 'Protocol loaded.', proto_ignored: 'ignored', proto_fail: 'This file is not a protocol file (JSON).',
       proto_site_save: 'Save as department values for this site', proto_site_rm: 'Remove department values', proto_site_saved: 'Department values saved for this site.',
       proto_site_note: 'The department protocol has its own values for this site: they are used whenever this site is chosen.', site_defaults_dept: 'Department values',
-      m_missed: 'Missed', m_unavail: 'Linac unavailable', m_chemo: 'Chemotherapy', m_closed: 'Extra closure',
+      m_missed: 'Missed fraction', m_unavail: 'Linac unavailable for catch-up', m_chemo: 'Chemotherapy', m_closed: 'Extra closure',
       resume: 'Treatment resumes', resume_auto: 'day after the last missed fraction', scen: 'Repair date unknown: compare possible resume days', scen_days: 'Days to scan',
       lg_delivered: 'delivered', lg_missed: 'missed', lg_planned: 'planned', lg_new: 'new fraction', lg_bid: 'two fractions', lg_holiday: 'holiday / closed', lg_unavail: 'unavailable', lg_chemo: 'chemo', lg_end: 'planned last day',
       s_bio: 'Radiobiological parameters', tumour: 'Tumour', ab: 'α/β (Gy)', rate: 'Repopulation', rate_k: 'K (Gy BED/day)', rate_dp: 'D_prolif (Gy EQD2/day)', tk: 'Kick-off T_k (days)',
@@ -1689,7 +1693,8 @@ body.touring .dock { display: none !important; }
       s_rx: 'Συνταγογράφηση', start: 'Πρώτο κλάσμα', fractions: 'Κλάσματα', dpf: 'Δόση ανά κλάσμα (Gy)', total: 'Σύνολο',
       levels_mode: 'Πολλά επίπεδα δόσης ή φάσεις (SIB, διαδοχικό boost)', phase: 'Φάση', phase_name: 'Όνομα', add_phase: 'Προσθήκη φάσης', add_level: 'Προσθήκη επιπέδου', level: 'Επίπεδο', remove: 'Αφαίρεση',
       primary: 'Κύριο επίπεδο (καθορίζει την απόφαση)', treat_days: 'Ημέρες θεραπείας', gr_holidays: 'Οι ελληνικές αργίες είναι ημέρες χωρίς θεραπεία',
-      s_gap: 'Διακοπή', gap_hint: 'Πατήστε τις ημέρες στο ημερολόγιο. Η επιλογή παρακάτω ορίζει τι σημειώνει το πάτημα. Σημειώστε κάθε διακοπή της θεραπείας, και τις προηγούμενες: η παράταση μετρά σε όλη τη θεραπεία.',
+      s_gap: 'Διακοπή', gap_hint: 'Πατήστε κάθε ημερομηνία που χάθηκε συνεδρία. Πατήστε ξανά για αναίρεση. Δηλώστε την αιτία παρακάτω.',
+      calendar_action: 'Καταχώριση στο ημερολόγιο', other_events: 'Άλλες καταχωρίσεις', tool_menu: 'Εργαλεία…', outage_tool: 'Βλάβη μηχανήματος', audit_tool: 'Έλεγχος τμήματος',
       m_extra: 'Έξτρα κλάσμα που δόθηκε', m_err: 'Λάθος δόση', lg_extra: 'κλάσμα εκτός πλάνου', lg_err: 'λάθος δόση',
       hist_title: 'Πορεία ως τώρα: λάθη δόσης και προηγούμενη αλλαγή πλάνου',
       hist_hint: 'Για όταν η θεραπεία δεν έγινε ακριβώς όπως σχεδιάστηκε. Το «Έξτρα κλάσμα που δόθηκε» στο ημερολόγιο σημειώνει κλάσμα που δόθηκε σε μη θεραπευτική ημέρα ή ως δεύτερο κλάσμα της ημέρας (προηγούμενη αναπλήρωση). Η «Λάθος δόση» σημειώνει κλάσμα που δόθηκε με λάθος δόση· δώστε τη δόση που πράγματι δόθηκε στο επίπεδο αναφοράς (όλα τα επίπεδα κλιμακώνονται μαζί).',
@@ -1777,7 +1782,7 @@ body.touring .dock { display: none !important; }
       proto_saved: 'Το πρωτόκολλο τμήματος αποθηκεύτηκε σε αυτή τη συσκευή.', proto_removed: 'Το πρωτόκολλο αφαιρέθηκε: τα νέα περιστατικά ξεκινούν από τις προεπιλογές του εργαλείου.', proto_loaded: 'Το πρωτόκολλο φορτώθηκε.', proto_ignored: 'αγνοήθηκαν', proto_fail: 'Το αρχείο δεν είναι αρχείο πρωτοκόλλου (JSON).',
       proto_site_save: 'Αποθήκευση ως τιμές τμήματος για τον εντοπισμό', proto_site_rm: 'Αφαίρεση τιμών τμήματος', proto_site_saved: 'Οι τιμές τμήματος αποθηκεύτηκαν για αυτόν τον εντοπισμό.',
       proto_site_note: 'Το πρωτόκολλο του τμήματος έχει δικές του τιμές για αυτόν τον εντοπισμό: χρησιμοποιούνται όποτε επιλέγεται.', site_defaults_dept: 'Τιμές τμήματος',
-      m_missed: 'Χαμένη', m_unavail: 'Μηχάνημα εκτός', m_chemo: 'Χημειοθεραπεία', m_closed: 'Επιπλέον αργία',
+      m_missed: 'Χαμένη συνεδρία', m_unavail: 'LINAC μη διαθέσιμος για αναπλήρωση', m_chemo: 'Χημειοθεραπεία', m_closed: 'Επιπλέον αργία',
       resume: 'Επανέναρξη θεραπείας', resume_auto: 'η επομένη του τελευταίου χαμένου κλάσματος', scen: 'Άγνωστη ημερομηνία επισκευής: σύγκριση πιθανών ημερών επανέναρξης', scen_days: 'Ημέρες προς έλεγχο',
       lg_delivered: 'χορηγήθηκε', lg_missed: 'χάθηκε', lg_planned: 'προγραμματισμένη', lg_new: 'νέο κλάσμα', lg_bid: 'δύο κλάσματα', lg_holiday: 'αργία / κλειστά', lg_unavail: 'εκτός λειτουργίας', lg_chemo: 'χημειοθ.', lg_end: 'προγρ. τελευταία ημέρα',
       s_bio: 'Ραδιοβιολογικές παράμετροι', tumour: 'Όγκος', ab: 'α/β (Gy)', rate: 'Επαναπληθυσμός', rate_k: 'K (Gy BED/ημέρα)', rate_dp: 'D_prolif (Gy EQD2/ημέρα)', tk: 'Έναρξη T_k (ημέρες)',
@@ -3102,7 +3107,10 @@ body.touring .dock { display: none !important; }
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
     </div>
     <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}${hbtn('mark')}</p>
-      <div class="seg" role="group">${['missed', 'unavail', 'chemo', 'closed', 'extra', 'err'].map((m) => `<button type="button" data-act="mark" data-m="${m}" aria-pressed="${s.mark === m}">${esc(L('m_' + m))}</button>`).join('')}</div>
+      <label class="f"><span>${esc(L('calendar_action'))}</span><select id="calendar-action">
+        <option value="missed" ${s.mark === 'missed' ? 'selected' : ''}>${esc(L('m_missed'))}</option>
+        <optgroup label="${esc(L('other_events'))}">${['unavail', 'closed', 'extra', 'err', 'chemo'].map((m) => `<option value="${m}" ${s.mark === m ? 'selected' : ''}>${esc(L('m_' + m))}</option>`).join('')}</optgroup>
+      </select></label>
       <div id="gapcal"></div>
       <div class="fields">${fld(L('resume'), 'resume', s.resume, 'type="date"')}
         ${sel(L('cause'), 'cause', ['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join(''))}</div>
@@ -3706,13 +3714,19 @@ body.touring .dock { display: none !important; }
     $('#ex').innerHTML = `<option value="">${esc(L('ex_pick'))}</option>` + Object.keys(EXAMPLES).map((k) => `<option value="${k}">${esc(EX_NAMES[state.lang][k])}</option>`).join('');
     $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset');
     const tf = (k, lab) => `<label class="f"><span>${esc(lab)}</span><input type="number" step="any" inputmode="decimal" data-tool="${k}" id="t-${k}" value="${toolState[k]}"></label>`;
+    const picker = $('#tool-picker'), selectedTool = picker.value;
+    picker.setAttribute('aria-label', L('tool_menu'));
+    picker.innerHTML = ['', 'calculators', 'triage', 'audit'].map((value, i) =>
+      `<option value="${value}">${esc(L(['tool_menu', 'tools', 'outage_tool', 'audit_tool'][i]))}</option>`).join('');
+    picker.value = selectedTool;
     $('#below').innerHTML = `
-      <div class="card"><h2>${esc(L('tools'))}</h2><div class="tools">
+      <div class="card" id="calculators"><h2>${esc(L('tools'))}</h2><div class="tools">
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('joiner_t'))} ${refs(['JOINER', 'BCR'])}</h3><p class="hint">${esc(L('joiner_h'))}</p><div class="fields">${tf('P', L('j_P'))}${tf('p', L('j_p'))}${tf('E', L('j_E'))}${tf('e', L('j_e'))}</div><div class="out" id="j-out"></div></div>
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('eq_t'))} ${refs(['FOWLER', 'BCR'])}</h3><p class="hint">EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub> · (T − T<sub>k</sub>)</p><div class="fields">${tf('n', L('eq_n'))}${tf('d', L('eq_d'))}${tf('ab', L('eq_ab'))}${tf('T', L('eq_T'))}${tf('dp', L('eq_dp'))}${tf('tk', L('eq_tk'))}</div><div class="out" id="e-out"></div></div>
       </div></div>
       <div class="card" id="triage"></div>
       <div class="card" id="audit"></div>`;
+    showTool(selectedTool);
     docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p><div class="rowbtn" style="margin:0 0 12px"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button>${HOSTED ? `<a class="btn sm" href="validation.html">${esc(L('val_link'))}</a>` : ''}</div>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
       refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
@@ -3919,8 +3933,15 @@ body.touring .dock { display: none !important; }
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
   const TEXT_BINDS = /(^guidance$|^model$|^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
+  function showTool(id) {
+    const panel = $('#below');
+    panel.hidden = !id;
+    for (const tool of panel.children) tool.hidden = tool.id !== id;
+  }
   function onInput(ev) {
     const t = ev.target;
+    if (t.id === 'calendar-action') { state.mark = t.value; persist(); return; }
+    if (t.id === 'tool-picker') { showTool(t.value); return; }
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
     const b = t.dataset.bind; if (!b) return;
     let v;
@@ -3974,7 +3995,6 @@ body.touring .dock { display: none !important; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
     if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { const d = inp.closest('details'); if (d && !d.open) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
-    if (a === 'mark') { state.mark = t.dataset.m; document.querySelectorAll('[data-act="mark"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === state.mark)); persist(); return; }
     if (a === 'wd') { toggle(state.weekdays, i); state.weekdays.sort(); if (!state.weekdays.length) state.weekdays = [0, 1, 2, 3, 4]; refresh(true); return; }
     if (a === 'add-level') { state.phases[i].levels.push({ name: 'PTV' + (state.phases[i].levels.length + 1), d: 1.8 }); refresh(true); return; }
     if (a === 'rm-level') { state.phases[i].levels.splice(j, 1); refresh(true); return; }

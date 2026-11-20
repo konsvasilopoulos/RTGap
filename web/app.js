@@ -470,7 +470,10 @@
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
     </div>
     <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}${hbtn('mark')}</p>
-      <div class="seg" role="group">${['missed', 'unavail', 'chemo', 'closed', 'extra', 'err'].map((m) => `<button type="button" data-act="mark" data-m="${m}" aria-pressed="${s.mark === m}">${esc(L('m_' + m))}</button>`).join('')}</div>
+      <label class="f"><span>${esc(L('calendar_action'))}</span><select id="calendar-action">
+        <option value="missed" ${s.mark === 'missed' ? 'selected' : ''}>${esc(L('m_missed'))}</option>
+        <optgroup label="${esc(L('other_events'))}">${['unavail', 'closed', 'extra', 'err', 'chemo'].map((m) => `<option value="${m}" ${s.mark === m ? 'selected' : ''}>${esc(L('m_' + m))}</option>`).join('')}</optgroup>
+      </select></label>
       <div id="gapcal"></div>
       <div class="fields">${fld(L('resume'), 'resume', s.resume, 'type="date"')}
         ${sel(L('cause'), 'cause', ['', 'machine', 'holiday', 'toxicity', 'patient', 'other'].map((v) => `<option value="${v}" ${s.cause === v ? 'selected' : ''}>${esc(L('cause_' + v))}</option>`).join(''))}</div>
@@ -1074,13 +1077,19 @@
     $('#ex').innerHTML = `<option value="">${esc(L('ex_pick'))}</option>` + Object.keys(EXAMPLES).map((k) => `<option value="${k}">${esc(EX_NAMES[state.lang][k])}</option>`).join('');
     $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset');
     const tf = (k, lab) => `<label class="f"><span>${esc(lab)}</span><input type="number" step="any" inputmode="decimal" data-tool="${k}" id="t-${k}" value="${toolState[k]}"></label>`;
+    const picker = $('#tool-picker'), selectedTool = picker.value;
+    picker.setAttribute('aria-label', L('tool_menu'));
+    picker.innerHTML = ['', 'calculators', 'triage', 'audit'].map((value, i) =>
+      `<option value="${value}">${esc(L(['tool_menu', 'tools', 'outage_tool', 'audit_tool'][i]))}</option>`).join('');
+    picker.value = selectedTool;
     $('#below').innerHTML = `
-      <div class="card"><h2>${esc(L('tools'))}</h2><div class="tools">
+      <div class="card" id="calculators"><h2>${esc(L('tools'))}</h2><div class="tools">
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('joiner_t'))} ${refs(['JOINER', 'BCR'])}</h3><p class="hint">${esc(L('joiner_h'))}</p><div class="fields">${tf('P', L('j_P'))}${tf('p', L('j_p'))}${tf('E', L('j_E'))}${tf('e', L('j_e'))}</div><div class="out" id="j-out"></div></div>
         <div><h3 style="font:600 1rem var(--f-display)">${esc(L('eq_t'))} ${refs(['FOWLER', 'BCR'])}</h3><p class="hint">EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub> · (T − T<sub>k</sub>)</p><div class="fields">${tf('n', L('eq_n'))}${tf('d', L('eq_d'))}${tf('ab', L('eq_ab'))}${tf('T', L('eq_T'))}${tf('dp', L('eq_dp'))}${tf('tk', L('eq_tk'))}</div><div class="out" id="e-out"></div></div>
       </div></div>
       <div class="card" id="triage"></div>
       <div class="card" id="audit"></div>`;
+    showTool(selectedTool);
     docsParts = { guide: `<p class="hint">${esc(L('guide_hint'))}</p><div class="rowbtn" style="margin:0 0 12px"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button>${HOSTED ? `<a class="btn sm" href="validation.html">${esc(L('val_link'))}</a>` : ''}</div>` + L('guide').map((gq, i) => `<details class="sub" ${i === 0 ? 'open' : ''}><summary>${i + 1}. ${esc(gq.t)}</summary><ol class="gsteps">${gq.s.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>${gq.ex ? `<div class="rowbtn" style="margin:4px 0 6px"><button type="button" class="btn sm pri" data-act="guide-open" data-ex="${gq.ex}">${esc(L('guide_open'))}</button></div>` : ''}</details>`).join(''), method: `<p style="max-width:92ch;margin:0 0 8px">${esc(L('method_text'))} ${refs(['BCR', 'FOWLER', 'RCR19', 'THAMES'])}</p><p class="small" style="max-width:92ch;margin:0 0 10px">${esc(L('xval'))}</p><p class="small">${esc(L('doc_more'))} <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/REFERENCE.md" target="_blank" rel="noopener">docs/REFERENCE.md</a> · <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/docs/INTENDED_USE.md" target="_blank" rel="noopener">docs/INTENDED_USE.md</a></p>`,
       refs: `<p class="hint">${esc(L('refs_hint'))}</p><ol class="reflist">${I.REFS.map((r) => `<li id="ref-${r.id}">${esc(r.text)}${r.url ? ` <a href="${r.url}" target="_blank" rel="noopener">link</a>` : ''}<span class="use">${esc(r.use[state.lang])}</span></li>`).join('')}</ol>`,
       test: `<p>${esc(L('selftest'))}: <b>${SELF.filter((x) => x.ok).length}/${SELF.length}</b> ${esc(L('st_pass'))}</p><div class="scroll"><table><thead><tr><th>Test</th><th>${esc(L('st_exp'))}</th><th>${esc(L('st_got'))}</th><th></th></tr></thead><tbody>${SELF.map((x) => `<tr><td>${esc(x.id)} ${refs([x.src])}</td><td class="n">${x.expected}</td><td class="n">${isFinite(x.got) ? x.got.toFixed(3) : '–'}</td><td class="n ${x.ok ? 'pos' : 'neg'}">${x.ok ? '✓' : '✕'}</td></tr>`).join('')}</tbody></table></div>` };
@@ -1287,8 +1296,15 @@
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
   const TEXT_BINDS = /(^guidance$|^model$|^title$|^caseRef$|^calcBy$|^checkedBy$|name$|^start$|^resume$|^site$|^category$|^primary$|^pdfLang$|^cause$|mode$|ratio$|date$|^pc\.from$)/;
+  function showTool(id) {
+    const panel = $('#below');
+    panel.hidden = !id;
+    for (const tool of panel.children) tool.hidden = tool.id !== id;
+  }
   function onInput(ev) {
     const t = ev.target;
+    if (t.id === 'calendar-action') { state.mark = t.value; persist(); return; }
+    if (t.id === 'tool-picker') { showTool(t.value); return; }
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
     const b = t.dataset.bind; if (!b) return;
     let v;
@@ -1342,7 +1358,6 @@
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
     if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { const d = inp.closest('details'); if (d && !d.open) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
-    if (a === 'mark') { state.mark = t.dataset.m; document.querySelectorAll('[data-act="mark"]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === state.mark)); persist(); return; }
     if (a === 'wd') { toggle(state.weekdays, i); state.weekdays.sort(); if (!state.weekdays.length) state.weekdays = [0, 1, 2, 3, 4]; refresh(true); return; }
     if (a === 'add-level') { state.phases[i].levels.push({ name: 'PTV' + (state.phases[i].levels.length + 1), d: 1.8 }); refresh(true); return; }
     if (a === 'rm-level') { state.phases[i].levels.splice(j, 1); refresh(true); return; }

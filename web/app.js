@@ -453,7 +453,7 @@
     }
     const c = s.c;
     el.innerHTML = `
-    <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}"><b>${i + 1}</b>${esc(x)}</button>`).join('')}</nav>
+    <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}">${i < 3 ? `<b>${i + 1}</b>` : ''}${esc(x)}</button>`).join('')}</nav>
     <div class="card" id="sec-1"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
       ${sel(L('s_site'), 'site', og('RCR ' + L('cat') + ' 1', groups[1]) + og('RCR ' + L('cat') + ' 2', groups[2]) + og('RCR ' + L('cat') + ' 3', groups[3]) + og('—', groups.x), 'data-struct="1"')}
       <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}${srcRefs}</div>

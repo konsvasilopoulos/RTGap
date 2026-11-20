@@ -489,7 +489,7 @@
       </details>
       ${chk(L('scen'), 'scen', s.scen)}
     </div>
-    <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2><span class="step">4</span>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
+    <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
         ${sel(L('rate'), 'tumour.mode', `<option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option>`)}
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
@@ -505,7 +505,7 @@
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
     </details>
-    <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2><span class="step">5</span>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
+    <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
       <div class="f"><span class="fl"><label for="i-guidance">${esc(L('guid_label'))}</label>${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></div>
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
@@ -513,7 +513,7 @@
       <div class="fields" style="margin-top:12px">${fld(L('c_tolT'), 'c.max_tumour_deficit_pct', c.max_tumour_deficit_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}${fld(L('c_tolL'), 'c.max_late_increase_pct', c.max_late_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}</div>
       <p class="small" style="margin:6px 0 0">${esc(L('tol_hint'))}</p>
     </details>
-    <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2><span class="step">6</span>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
+    <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
       ${chk(L('given'), 'given.on', s.given.on)}
       ${s.given.on ? (s.given.dates ? `<div class="fields" style="margin-top:8px">${fld(L('given_d'), 'given.d', s.given.d)}</div><div id="gbuild">${builderHtml()}</div>`
         : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div><div class="rowbtn"><button type="button" class="btn sm pri" data-act="given-cal">${esc(L('gb_open'))}</button>${hbtn('gbuild')}</div>`) : ''}
@@ -571,13 +571,10 @@
     if (!model || !model.p) { box.innerHTML = ''; return; }
     const p = model.p, L = tr.t;
     const keys = ['delivered', 'missed', 'planned', 'holiday', 'unavail', 'chemo', 'end'].concat(p.fixed.length ? ['bt'] : [], p.extraDates.length ? ['extra'] : [], p.doseErrors.length ? ['err'] : []);
-    let info = '';
-    if (p.interruptions.length) {
-      info = `<p class="small intr"><b>${esc(L('intr_n'))}: ${p.interruptions.length}</b> · ` + p.interruptions.map((x, i) => (p.interruptions.length > 1 ? (i + 1) + ') ' : '') + tr.dshort(x[0]) + (x[1] !== x[0] ? '–' + tr.dshort(x[1]) : '') + ' (' + x[2] + ' ' + L('fx') + ')').join(' · ');
-      if (model.base) info += ` · ${esc(L('intr_total'))} <b>${tr.sgi(model.base.ext)} ${esc(L('days'))}</b>`;
-      info += '</p>';
-    }
-    box.innerHTML = calendarHtml(p, null, true) + legend(keys) + info;
+    const dates = p.missed.map(tr.dshort);
+    const count = p.interruptions.reduce((total, interruption) => total + interruption[2], 0);
+    const summary = dates.length ? `<p class="small intr"><b>${count} ${esc(L(count === 1 ? 'miss_one' : 'miss_many'))}</b> · ${esc(dates.join(', '))}</p>` : '';
+    box.innerHTML = calendarHtml(p, null, true) + summary + legend(keys);
   }
   function renderBioNote() {
     const n = $('#bio-note'); if (!n || !model || !model.p) return;
@@ -608,7 +605,7 @@
     return `<div class="card" id="detail"><h2>${esc(L('detail'))}: ${esc(tr.optTitle(o))}</h2><p class="hint">${esc(m.text)}${refs(m.refs)}</p>
       <div class="split"><div>${calendarHtml(p, o, false)}${legend(['delivered', 'missed', 'new', 'bid', 'holiday', 'end'].concat(p.fixed.length ? ['bt'] : []))}</div>
       <div class="grow"><dl class="kv"><dt>${esc(L('remaining'))}</dt><dd>${rem}</dd><dt>${esc(L('ends'))}</dt><dd>${esc(tr.date(o.end))} · ${esc(L('ot'))} ${o.T} ${esc(L('days'))} (${tr.sgi(o.ext)} ${esc(L('vs_plan'))})</dd>${lcHtml(o)}</dl>
-      <div class="scroll" style="margin-top:10px"><table><thead><tr><th>${esc(L('tissues'))}</th><th>${esc(L('planned_c'))}</th><th>${esc(L('eqd2'))}</th><th>Δ Gy</th><th>Δ %</th></tr></thead><tbody>${row(o.tumour, true)}${o.levels.map((r) => row(r, true)).join('')}${o.oars.map((r) => row(r, false)).join('')}<tr><td>${esc(L('acute_row'))}</td><td class="n">${tr.f1(o.weeklyPlanned)}</td><td class="n">${tr.f1(o.weeklyPeak)}</td>${dcell(o.weeklyPeak - o.weeklyPlanned, false)}<td class="n">${tr.sg(o.weeklyInc)} %</td></tr></tbody></table></div><p class="small" style="margin:6px 0 0">${esc(L('acute_hint'))}</p></div></div>
+      <details data-fold="tissueTable" ${printing ? 'open' : fold('tissueTable')}><summary>${esc(L('tissues'))} · EQD2</summary><div class="scroll" style="margin-top:10px"><table><thead><tr><th>${esc(L('tissues'))}</th><th>${esc(L('planned_c'))}</th><th>${esc(L('eqd2'))}</th><th>Δ Gy</th><th>Δ %</th></tr></thead><tbody>${row(o.tumour, true)}${o.levels.map((r) => row(r, true)).join('')}${o.oars.map((r) => row(r, false)).join('')}<tr><td>${esc(L('acute_row'))}</td><td class="n">${tr.f1(o.weeklyPlanned)}</td><td class="n">${tr.f1(o.weeklyPeak)}</td>${dcell(o.weeklyPeak - o.weeklyPlanned, false)}<td class="n">${tr.sg(o.weeklyInc)} %</td></tr></tbody></table></div></details><p class="small" style="margin:6px 0 0">${esc(L('acute_hint'))}</p></div></div>
       ${o.warnings.length ? `<ul class="warn">${o.warnings.map((w) => `<li>${esc(tr.reason(w))}${refs(w.refs)}</li>`).join('')}</ul>` : ''}
       <details style="margin-top:10px"><summary class="small">${esc(L('hand'))}</summary><p class="small">${esc(L('hand_hint'))}</p>${[p.tumour].concat(p.oars.slice(0, 1)).map((t) => `<div class="out" style="margin-top:6px">${esc(handText(p, o, t))}</div>`).join('')}</details>
       <details style="margin-top:10px"><summary class="small">${esc(L('dates'))}</summary><p class="small">${byDay.map(([d, fx]) => esc(tr.dshort(d)) + (fx.length > 1 ? ' ×2' : '')).join(', ')}</p></details></div>`;
@@ -644,13 +641,14 @@
     }
     const p = m.p, dec = m.dec, rec = dec.recommended;
     const B = { chart: '', opts: '', map: '', det: '', sens: '', scen: '', rep: '' };
-    let h = `<div id="vbar">${vbarInner()}</div>` + kpiHtml(m) + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
+    let h = `<div id="vbar">${vbarInner()}</div>` + (m.base ? `<div class="card"><h2>${esc(L('what_changed'))}</h2><div class="fields"><div>${esc(L('end_plan'))}<br><b>${esc(tr.date(p.plannedEnd))}</b></div><div>${esc(L('end_base'))}<br><b>${esc(tr.date(m.base.end))}</b> (Δ ${tr.sgi(m.base.end - p.plannedEnd)} d)</div></div></div>` : '') + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
       ${rec && rec.family !== 'baseline' ? `<p class="subline">${esc(tr.optShort(rec))}</p><p class="small" style="margin:0 0 8px">${esc(L('dec_note'))}</p>` : ''}
       ${m.sens && rec && rec.family !== 'baseline' ? `<p class="small" style="margin:0 0 8px"><span class="pill ${m.sens.sameFraction >= 0.9 ? 'c3' : 'c2'}">${esc(L(m.sens.sameFraction >= 0.9 ? 'robust_yes' : 'robust_no'))}</span> ${esc(L('unc'))} (${m.sens.n}): Δ ${esc(p.tumour.name === p.rx.primary || !p.rx.multilevel ? L('col_t').toLowerCase() : p.tumour.name)} ${tr.sg(m.sens.tumourPctRange[0])} … ${tr.sg(m.sens.tumourPctRange[1])} %${p.oars.length ? `, Δ ${esc(p.oars[0].name)} ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][0])} … ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][1])} %` : ''}; ${esc(L('unc_same'))} ${Math.round(100 * m.sens.sameFraction)} %.</p>` : ''}
       ${m.rec0 != null ? `<p class="small" style="margin:0 0 8px">${esc(L('rec_line'))} ${refs(['PUTORA'])}: <b>${Math.round(100 * m.rec0)} %</b> ${esc(L('rec_fixed'))}${m.rec5 != null && m.rec5 > m.rec0 + 0.005 ? `, <b>${Math.round(100 * m.rec5)} %</b> ${esc(L('rec_5'))}` : ''}.${m.base && lcText(m.base) ? ` ${esc(L('ch_uncomp'))}: ${esc(L('lc').toLowerCase())} ${esc(lcText(m.base))}.` : ''}</p>` : ''}
       ${dec.candidates.length ? `<p class="small">${esc(L('weigh'))}: ${dec.candidates.map((o) => `<a href="#detail" data-opt="${o.key}">${esc(tr.optTitle(o))}</a>`).join(' · ')}</p>` : ''}
       <details data-fold="why" ${fold('why')}><summary class="small">${esc(L('why'))} (${dec.trace.length})</summary><ol class="trace">${dec.trace.map((s) => `<li>${esc(tr.trace(s))}${refs(s.refs)}</li>`).join('')}</ol></details></div>`;
     if (p.inputWarnings.length) h += `<div class="card"><h2>${esc(L('input_checks'))}</h2><ul class="warn" style="margin-top:0">${p.inputWarnings.map((w) => `<li>${esc(tr.issue(w))}</li>`).join('')}</ul></div>`;
+    h += kpiHtml(m);
     if (p.remaining && m.base) {
       B.chart += `<div class="card"><h2>${esc(L('chart_title'))} ${refs(['BCR', 'FOWLER'])}</h2><p class="hint">${esc(L('chart_sub'))}</p><div class="chartbox"><canvas id="chart" role="img" aria-label="${esc(L('chart_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;

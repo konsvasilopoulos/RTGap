@@ -32,6 +32,7 @@
       <div class="topctl">
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
         <select id="ex"></select>
+        <select id="tool-picker"></select>
         <button type="button" class="ghost icon" id="undo" data-act="undo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M8 5 4 9l4 4M4 9h8a4 4 0 0 1 0 8h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost icon" id="redo" data-act="redo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m12 5 4 4-4 4m4-4H8a4 4 0 0 0 0 8h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost" id="reset"></button>
@@ -45,9 +46,9 @@
 <a class="skip" href="#results" id="skip"></a>
 <div id="sr-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <main>
+  <div class="wide" id="below" hidden></div>
   <div id="intro" hidden></div>
   <div class="grid"><section class="col" id="inputs" aria-label="Case"></section><section class="col" id="results" aria-label="Results" tabindex="-1"></section></div>
-  <div class="wide" id="below"></div>
 </main>
 <footer class="foot"><div class="foot-in">
   <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-site"></p><p id="foot-lic"></p></div>

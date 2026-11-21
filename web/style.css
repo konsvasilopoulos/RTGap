@@ -413,3 +413,12 @@ body.touring .dock { display: none !important; }
 .mc-widths { margin: 4px 0 0; padding-left: 18px; } .mc-lit { color: var(--accent); } .mc-asm { color: var(--muted); }
 
 #below[hidden], #below > [hidden] { display: none; }
+
+.oar-entry > summary { font-weight: 600; }
+.oar-entry .fields { margin-top: 8px; }
+#oar-choice-inputs[hidden] { display: none; }
+.schedule-table { table-layout: auto; width: 100%; }
+.schedule-table th, .schedule-table td { text-align: left; white-space: normal; vertical-align: top; }
+.schedule-table .linkbtn { text-align: left; }
+.schedule-flags { color: var(--warn); }
+.schedule-table ul { padding-inline-start: 1.1rem; }

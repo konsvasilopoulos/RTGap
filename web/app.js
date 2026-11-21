@@ -404,7 +404,9 @@
   function bioSum() {
     const s = state, L = tr.t, t = s.tumour;
     const rate = t.rate ? (t.mode === 'dp' ? 'D_prolif ' : 'K ') + t.rate + (t.tk != null && t.tk !== '' ? ' · T_k ' + t.tk : '') : L('sum_notime');
-    return (s.model === 'lql' ? 'LQ-L · ' : '') + L('tumour') + ' α/β ' + t.ab + ' · ' + rate + ' · ' + s.oars.length + ' ' + L('sum_oars');
+    const defaults = siteDefaults(s.site).tumour;
+    const edited = ['ab', 'mode', 'rate', 'tk'].some(k => t[k] !== defaults[k]) || s.oars.some(o => o.edited);
+    return (edited ? L('edited') + ' · ' : '') + (s.model === 'lql' ? 'LQ-L · ' : '') + L('tumour') + ' α/β ' + t.ab + ' · ' + rate + ' · ' + s.oars.length + ' ' + L('sum_oars');
   }
   function deptSum() {
     const c = state.c, L = tr.t, y = (b) => (b ? '✓' : '✗');
@@ -431,6 +433,45 @@
     const dose = s.multi ? L('levels_mode') : format.format(s.n * s.d) + ' Gy';
     return dose + ' · ' + format.format(n) + ' ' + L(n === 1 ? 'fraction_one' : 'fractions').toLocaleLowerCase(s.lang) + (s.brachy.on ? ' + BT' : '');
   }
+  // Names are stable in case exports. A source is a reference for this endpoint's α/β only.
+  const oarReferences = [
+    { name: 'Late (α/β 3)', el: 'Όψιμη αντίδραση · γενικός ιστός', en: 'Generic late tissue reaction', ab: 3, ref: 'RCR19' },
+    { name: 'Spinal cord', el: 'Νωτιαίος μυελός · όψιμη μυελοπάθεια', en: 'Spinal cord · late myelopathy', ab: 2, ref: 'RCR19', sites: ['hn_scc', 'tongue_scc_brachy', 'nsclc', 'sclc_chemort', 'oesophagus_scc', 'oesophagus_adeno', 'medulloblastoma', 'ependymoma_intracranial'] },
+    { name: 'Bowel (late, α/β 4)', el: 'Έντερο · όψιμη βλάβη (BCR, παράδειγμα 5)', en: 'Bowel · late injury (BCR, example 5)', ab: 4, ref: 'BCR', sites: ['rectum'] },
+    { name: 'Rectum (late, α/β 3)', el: 'Ορθό · γενική όψιμη αντίδραση', en: 'Rectum · generic late effect', ab: 3, ref: 'RCR19', sites: ['prostate'] },
+    { name: 'Breast · palpable induration', el: 'Μαστός · ψηλαφητή σκλήρυνση', en: 'Breast · palpable induration', ab: 3.1, ci: '1.8–4.4', ref: 'YARNOLD05', sites: ['breast'] },
+    { name: 'Rectum · late bleeding G1+', el: 'Ορθό · όψιμη αιμορραγία G1+', en: 'Rectum · late bleeding G1+', ab: 1.6, ci: '0.9–2.5', ref: 'CHHIPGI', sites: ['prostate'] },
+    { name: 'Bladder · late haematuria G1+', el: 'Κύστη · όψιμη αιματουρία G1+', en: 'Bladder · late haematuria G1+', ab: 0.9, ci: '0.1–2.2', ref: 'CHHIPGU', sites: ['prostate'] },
+    ...[
+      ['Parotid', 'Παρωτίδα', ['hn_scc', 'tongue_scc_brachy']],
+      ['Bladder', 'Ουροδόχος κύστη', ['anus_scc', 'anus_scc_brachy', 'rectum', 'vulva_vagina_scc', 'vulva_vagina_scc_brachy', 'cervix_scc']],
+      ['Small bowel', 'Λεπτό έντερο', ['anus_scc', 'anus_scc_brachy', 'bladder', 'bladder_rcr2019', 'rectum', 'vulva_vagina_scc', 'vulva_vagina_scc_brachy', 'cervix_scc']],
+      ['Rectum', 'Ορθό', ['bladder', 'bladder_rcr2019', 'cervix_scc']],
+    ].map(([en, el, sites]) => ({ name: en + ' · generic late effect', en: en + ' · generic late effect', el: el + ' · γενική όψιμη αντίδραση', ab: 3, ref: 'RCR19', sites })),
+    ...[['Bladder', 'Κύστη'], ['Rectum', 'Ορθό'], ['Sigmoid', 'Σιγμοειδές'], ['Bowel', 'Έντερο']].map(([en, el]) => ({
+      name: en + ' · D2cm³', en: en + ' · D2cm³', el: el + ' · D2cm³', ab: 3, ref: 'EMBRACEII', repair: 1.5, sites: ['cervix_scc_brachy']
+    })),
+  ];
+  const siteReferences = () => oarReferences.filter(r => !r.sites || r.sites.includes(state.site));
+  function referenceLine(r) {
+    if (!r) return esc(tr.t('case_value'));
+    const source = I.REFS.find(x => x.id === r.ref);
+    return esc(tr.t('reference_ab') + ' ' + r.ab + ' Gy' + (r.ci ? ' (95% CI ' + r.ci + ' Gy)' : '') + ' · ' + source.short) + refs([r.ref]) + (r.repair ? ' · T½ ' + r.repair + ' h' : '');
+  }
+  function oarSummary(o, i) {
+    const r = oarReferences.find(x => x.name === o.name);
+    return esc([r ? r[state.lang] : o.name, 'α/β ' + o.ab + ' Gy', i === 0 ? tr.t('ref_tissue') : '', o.edited || (r && r.ab !== +o.ab) ? tr.t('edited') : ''].filter(Boolean).join(' · '));
+  }
+  function oarPicker() {
+    const L = tr.t;
+    return `<details class="sub" data-fold="oarPicker" ${fold('oarPicker')}><summary>${esc(L('oar_picker'))}</summary>
+      <label class="f"><span>${esc(L('choose_endpoint'))}</span><select id="oar-choice"><option value="">—</option>${siteReferences().map(r => `<option value="${esc(r.name)}" ${state.oars.some(o => o.name === r.name) ? 'disabled' : ''}>${esc(r[state.lang])} · ${r.ab} Gy</option>`).join('')}</select></label>
+      <div id="oar-choice-inputs" hidden><p class="small" id="oar-choice-ref"></p><p class="hint">${esc(L('plan_ratio_note'))}</p>
+      <div class="fields"><label class="f"><span>${esc(L('plan_ratio'))}</span><input type="text" inputmode="decimal" id="oar-plan-ratio"></label>
+      ${state.brachy.on ? `<label class="f"><span>${esc(L('bt_ratio'))}</span><input type="number" step="any" min="0" max="5" id="oar-bt-ratio"></label>` : ''}</div>
+      <p class="small">${esc(L('preset_note'))}</p><button class="btn sm" type="button" data-act="add-reference">${esc(L('add_oar'))}</button></div></details>`;
+  }
+
   function givenSum() {
     const g = state.given; if (!g || !g.on) return tr.t('sum_none');
     if (g.dates) return (g.dates.length + (g.bidDates || []).length) + ' × ' + g.d + ' Gy';
@@ -510,6 +551,7 @@
       <div class="rowbtn"><a class="btn pri" href="#results">${esc(L('view_results'))}</a></div>
     </div>
     <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
+      <h3 class="mini">${esc(L('tumour_timing'))}</h3>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
         ${sel(L('rate'), 'tumour.mode', `<option value="k" ${s.tumour.mode === 'k' ? 'selected' : ''}>${esc(L('rate_k'))}</option><option value="dp" ${s.tumour.mode === 'dp' ? 'selected' : ''}>${esc(L('rate_dp'))}</option>`)}
         ${fld(L('rate'), 'tumour.rate', s.tumour.rate)}${fld(L('tk'), 'tumour.tk', s.tumour.tk)}</div>
@@ -519,8 +561,9 @@
       <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
       ${ptfHtml(site)}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
-      ${s.oars.map((o, i) => `<div class="phase"><div class="lvl" style="grid-template-columns:minmax(0,1fr) auto">${fld(L('name'), `oars.${i}.name`, o.name, 'type="text"')}<button type="button" class="btn x" data-act="rm-oar" data-i="${i}" aria-label="${esc(L('remove'))}" ${s.oars.length < 2 ? 'disabled' : ''}>✕</button></div>
-        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></div>`).join('')}
+      ${s.oars.map((o, i) => `<details class="sub oar-entry" data-fold="oar-${i}" ${fold('oar-' + i)}><summary id="oar-title-${i}">${oarSummary(o, i)}</summary><p class="small" id="oar-ref-${i}">${referenceLine(oarReferences.find(r => r.name === o.name))}</p><div class="lvl" style="grid-template-columns:minmax(0,1fr) auto">${fld(L('name'), `oars.${i}.name`, o.name, 'type="text"')}<button type="button" class="btn x" data-act="rm-oar" data-i="${i}" aria-label="${esc(L('remove'))}" ${s.oars.length < 2 ? 'disabled' : ''}>✕</button></div>
+        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></details>`).join('')}
+      ${oarPicker()}
       <p class="small" style="margin:0 0 4px">${esc(L('ratio_hint'))} ${refs(['BENTZEN99', 'THAMES'])}</p>
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
       ${protoSite(s.site) ? `<p class="small" style="margin:6px 0 0">${esc(L('proto_site_note'))}</p>` : ''}
@@ -615,6 +658,25 @@
     const sel = !excluded && model.sel === o;
     return `<tr class="${excluded ? '' : 'pick'} ${sel ? 'sel' : ''}" ${excluded ? '' : `data-opt="${o.key}" tabindex="0" role="button" aria-pressed="${sel}"`}><td class="t">${excluded ? '' : `<span class="tag">${i + 1}</span>`}${esc(tr.optTitle(o))}<br>${tags}${why}</td><td class="n">${tr.f2(o.d)}</td>${dcell(o.tumour.delta, true)}${late ? dcell(late.delta, false) : ''}<td class="n ${o.weeklyInc > 10 ? 'neg' : 'zero'}">${o.weeklyInc > 0.5 ? '+' + o.weeklyInc.toFixed(0) + ' %' : '±0'}</td><td class="n">${o.nNew}</td><td class="n">${esc(tr.dshort(o.end))}</td><td class="n">${tr.sgi(o.ext)}</td></tr>`;
   }
+  function scheduleRow(o, excluded) {
+    const L = tr.t, p = model.p, needs = [];
+    if (o.nSat) needs.push(tr.wd2[5] + ' ×' + o.nSat);
+    if (o.nSun) needs.push(tr.wd2[6] + ' ×' + o.nSun);
+    if (o.nBid) needs.push('BID ×' + o.nBid);
+    if (Math.abs(o.scale - p.s0) > 0.00001) needs.push(L('dose_adjust'));
+    if (o.nNew > p.remaining) needs.push(L('extra_fx') + ' +' + (o.nNew - p.remaining));
+    const flags = excluded ? o.rejected.concat(o.warnings) : o.warnings;
+    const title = esc(tr.optTitle(o));
+    return `<tr><td>${excluded ? title : `<button type="button" class="linkbtn" data-opt="${esc(o.key)}" data-schedule="1">${title}</button>`}${o.recommended ? ' ★' : ''}</td>
+      <td>${esc(tr.date(o.end))}</td><td class="n">${o.ext ? tr.sgi(o.ext) : '0'}</td>
+      <td>${esc(needs.length ? needs.join(' · ') : L('usual_schedule'))}</td>
+      <td>${flags.length ? `<details><summary class="schedule-flags">${esc(L('schedule_checks'))} (${flags.length})</summary><ul>${flags.map(w => `<li>${esc(tr.reason(w))}${refs(w.refs)}</li>`).join('')}</ul></details>` : '—'}</td></tr>`;
+  }
+  function scheduleTable(list, excluded) {
+    const L = tr.t;
+    return `<div class="scroll"><table class="schedule-table"><thead><tr>${['col_option', 'ebrt_end', 'calendar_shift', 'needs_dept', 'schedule_checks'].map(k => `<th scope="col">${esc(L(k))}</th>`).join('')}</tr></thead>
+      <tbody>${list.map(o => scheduleRow(o, excluded)).join('')}</tbody></table></div>`;
+  }
   function optHead() {
     const p = model.p, L = tr.t;
     return `<thead><tr><th>${esc(L('col_option'))}</th><th>${esc(L('col_d'))}</th><th>Δ ${esc(p.rx.multilevel ? p.tumour.name : L('col_t'))}</th>${p.oars.length ? `<th>Δ ${esc(p.oars[0].name)}</th>` : ''}<th>${esc(L('col_wk'))}</th><th>${esc(L('col_n'))}</th><th>${esc(L('col_end'))}</th><th>${esc(L('col_ext'))}</th></tr></thead>`;
@@ -690,8 +752,12 @@
     if (p.remaining && m.base) {
       B.chart += `<div class="card"><h2>${esc(L('chart_title'))} ${refs(['BCR', 'FOWLER'])}</h2><p class="hint">${esc(L('chart_sub'))}</p><div class="chartbox"><canvas id="chart" role="img" aria-label="${esc(L('chart_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--muted);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_planned'))}</span><span><i style="background:var(--bad);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_uncomp'))}</span>${m.sel && m.sel !== m.base ? `<span><i style="background:var(--accent);height:3px;border:0;vertical-align:3px"></i>${esc(L('ch_sel'))}</span>` : ''}<span><i style="background:var(--bad-soft)"></i>${esc(L('s_gap').toLowerCase())}</span></div></div>`;
-      B.opts += `<div class="card"><h2>${esc(L('options'))}${gl('eqd2')}</h2><p class="hint">${esc(L('options_hint'))} ${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
-        ${dec.rejected.length ? `<details style="margin-top:12px"><summary class="small">${esc(L('excluded'))} (${dec.rejected.length})</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</div>`;
+      B.opts += `<div class="card"><h2>${esc(L('options'))}</h2><p class="hint">${esc(L('schedule_overview'))}</p>
+        ${scheduleTable(dec.feasible, false)}
+        ${dec.rejected.length ? `<details class="sub" data-fold="excluded" ${fold('excluded')}><summary>${esc(L('excluded'))} (${dec.rejected.length})</summary>${scheduleTable(dec.rejected, true)}</details>` : ''}
+        <details class="sub" data-fold="numericOptions" ${printing ? 'open' : fold('numericOptions')}><summary>${esc(L('numeric_comparison'))}</summary>
+        <p class="hint">${esc(L('col_delta'))}. ${esc(L('acute_hint'))}${gl('peak7')}</p><div class="scroll"><table>${optHead()}<tbody>${dec.feasible.map((o, i) => optionRow(o, i, false)).join('')}</tbody></table></div>
+        ${dec.rejected.length ? `<details><summary>${esc(L('excluded'))}</summary><div class="scroll"><table>${optHead()}<tbody>${dec.rejected.map((o, i) => optionRow(o, i, true)).join('')}</tbody></table></div></details>` : ''}</details></div>`;
       B.opts += compareHtml(m);
       if (p.oars.length) B.map += `<div class="card"><h2>${esc(L('map_title'))} ${refs(['PUTORA'])}</h2><p class="hint">${esc(L('map_sub'))}</p><div class="chartbox" style="height:280px"><canvas id="map" role="img" aria-label="${esc(L('map_title'))}"></canvas></div>
         <div class="legend"><span><i style="background:var(--accent);border-radius:50%"></i>${esc(L('map_feas'))}</span><span><i style="border:1.5px solid var(--muted);border-radius:50%;background:transparent"></i>${esc(L('map_excl'))}</span>${m.given ? `<span><i style="background:var(--warn);transform:rotate(45deg)"></i>${esc(L('map_given'))}</span>` : ''}<span><i style="background:var(--ink);border-radius:50%"></i>${esc(L('ch_planned'))}</span></div></div>`;
@@ -904,11 +970,11 @@
       ${calendarHtml(p, o, false)}
       <p class="small" style="margin:6px 0"><b>${esc(L('cmp_pro'))}:</b> ${pros.length ? esc(pros.join(', ')) : '–'}</p>
       ${excl(o) ? '' : `<button type="button" class="btn sm ${m.sel === o ? '' : 'pri'}" data-opt="${esc(o.key)}">${esc(m.sel === o ? L('cmp_selected') : L('cmp_use'))}</button>`}</div>`;
-    return `<div class="card" id="compare"><h2>${esc(L('cmp_title'))}</h2><p class="hint">${esc(L('cmp_hint'))}</p>
+    return `<details class="card" id="compare" data-fold="compare" ${printing ? 'open' : fold('compare')}><summary>${esc(L('cmp_title'))}</summary><p class="hint">${esc(L('cmp_hint'))}</p>
       <div class="cmppick"><label><span class="cmptag a">A</span>${sel('cmp-a', A)}</label><button type="button" class="btn sm" data-act="cmp-swap" aria-label="swap">⇄</button><label><span class="cmptag b">B</span>${sel('cmp-b', B)}</label></div>
       <div class="scroll"><table class="cmptable"><thead><tr><th></th><th><span class="cmptag a">A</span></th><th><span class="cmptag b">B</span></th></tr></thead><tbody>${body}</tbody></table></div>
       <p class="small" style="margin:6px 0 12px"><span class="better" style="padding:1px 6px;border-radius:4px">${esc(L('cmp_legend'))}</span></p>
-      <div class="cmpgrid">${col(A, 'A', proA)}${col(B, 'B', proB)}</div></div>`;
+      <div class="cmpgrid">${col(A, 'A', proA)}${col(B, 'B', proB)}</div></details>`;
   }
   function kpiHtml(m) {
     const p = m.p, L = tr.t, b = m.base, o = m.sel;
@@ -1347,6 +1413,15 @@
       persist();
       return;
     }
+    if (t.id === 'oar-choice') {
+      if (ev.type !== 'change') return;
+      const r = siteReferences().find(x => x.name === t.value);
+      $('#oar-choice-inputs').hidden = !r;
+      $('#oar-choice-ref').innerHTML = r ? referenceLine(r) : '';
+      $('#oar-plan-ratio').value = '';
+      if ($('#oar-bt-ratio')) $('#oar-bt-ratio').value = '';
+      return;
+    }
     if (t.id === 'tool-picker') { showTool(t.value); return; }
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
     const b = t.dataset.bind; if (!b) return;
@@ -1358,7 +1433,14 @@
       const had = b in invalid; delete invalid[b]; showV(t, res); if (had) renderVBar();
     }
     if ((b === 'n' || /\.n$/.test(b)) && v != null) v = Math.round(v);
+    const changed = getPath(b) !== v;
     setPath(b, v);
+    if (changed && b.startsWith('oars.')) {
+      const i = Number(b.split('.')[1]), o = state.oars[i];
+      o.edited = true;
+      $('#oar-title-' + i).innerHTML = oarSummary(o, i);
+      if (b.endsWith('.name')) $('#oar-ref-' + i).innerHTML = referenceLine(oarReferences.find(r => r.name === o.name));
+    }
     if (b === 'pc.on' && v && model && model.p && !state.pc.from) { state.pc.from = state.resume || (model.p.missed.length ? RT.iso(model.p.resume) : ''); state.pc.n = model.p.remaining; state.pc.d = +model.p.dCur.toFixed(3); }
     if (b === 'given.on' && v && model && model.p && !state.given.dates) { if (!state.given.n) state.given.n = model.p.remaining; if (!state.given.d) state.given.d = model.p.dRef; }
     if (b === 'brachy.on' && v && !state.brachy.fx.length && model && model.p) state.brachy.fx = [0, 7, 14, 21].map((k) => ({ date: RT.iso(model.p.plannedEnd + 3 + k), dose: 7 }));
@@ -1398,7 +1480,7 @@
       if (m === 'missed' && state.resume && state.missed.length && state.resume <= state.missed.slice().sort().pop()) state.resume = '';
       refresh(false); const r = $('#i-resume'); if (r) r.value = state.resume; return;
     }
-    if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; compute(); persist(); renderResults(); { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; if (t.dataset.schedule) state.ui.tissueTable = true; compute(); persist(); renderResults(); if (t.dataset.schedule && $('#detail')) { const d = $('#detail'); d.tabIndex = -1; d.focus({ preventScroll: true }); d.scrollIntoView({ block: 'start' }); return; } { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
     if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { for (let d = inp.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
@@ -1407,7 +1489,26 @@
     if (a === 'rm-level') { state.phases[i].levels.splice(j, 1); refresh(true); return; }
     if (a === 'add-phase') { const last = state.phases[state.phases.length - 1]; state.phases.push({ name: 'Boost', n: 5, levels: [{ name: last.levels[0].name, d: last.levels[0].d }] }); refresh(true); return; }
     if (a === 'rm-phase') { state.phases.splice(i, 1); refresh(true); return; }
-    if (a === 'add-oar') { state.oars.push({ name: 'OAR ' + (state.oars.length + 1), ab: 3, ratio: 1, limit: null, repair: 4.4, bt: 1 }); refresh(true); return; }
+    if (a === 'add-oar' || a === 'add-reference') {
+      const o = { name: 'OAR ' + (state.oars.length + 1), ab: 3, ratio: 1, limit: null, repair: 4.4, bt: 1 };
+      if (a === 'add-reference') {
+        const r = siteReferences().find(x => x.name === $('#oar-choice').value);
+        if (!r || state.oars.some(x => x.name === r.name)) return;
+        const field = $('#oar-plan-ratio'), ratio = field.value.trim(), parts = ratio.split('/');
+        const err = vcheck('oars.0.ratio', ratio);
+        if (!ratio || err && err.lvl === 'err' || (parts.length !== 1 && parts.length !== (state.multi ? state.phases.length : 1))) {
+          field.focus(); toast(tr.t('ratio_required')); return;
+        }
+        const bt = $('#oar-bt-ratio');
+        if (bt && (!bt.value || !bt.checkValidity())) { bt.focus(); toast(tr.t('ratio_required')); return; }
+        Object.assign(o, { name: r.name, ab: r.ab, ratio, repair: r.repair ?? o.repair, bt: bt ? +bt.value : 1 });
+      }
+      const index = state.oars.length;
+      state.ui = state.ui || {}; state.ui['oar-' + index] = true;
+      state.oars.push(o); refresh(true);
+      $('#oar-title-' + index).focus();
+      return;
+    }
     if (a === 'add-bt') { const last = state.brachy.fx[state.brachy.fx.length - 1]; state.brachy.fx.push({ date: last && last.date ? RT.iso(RT.parseDate(last.date) + 7) : (model && model.p ? RT.iso(model.p.plannedEnd + 3) : ''), dose: last ? last.dose : 7 }); refresh(true); return; }
     if (a === 'bday') {
       const g = state.given, d = t.dataset.d; g.dates = g.dates || []; g.bidDates = g.bidDates || [];
@@ -1429,7 +1530,16 @@
     if (a === 'given-quick') { const g = state.given; g.n = (g.dates || []).length + (g.bidDates || []).length || null; g.bid = (g.bidDates || []).length; g.dates = null; g.bidDates = null; refresh(true); return; }
     if (a === 'given-reset') { state.given = { on: false, n: null, d: null, sat: false, sun: false, bid: 0, dates: null, bidDates: null }; refresh(true); return; }
     if (a === 'rm-bt') { state.brachy.fx.splice(i, 1); refresh(true); return; }
-    if (a === 'rm-oar') { state.oars.splice(i, 1); refresh(true); return; }
+    if (a === 'rm-oar') {
+      state.oars.splice(i, 1);
+      const drafts = Object.entries(invalid).filter(([path]) => path.startsWith('oars.'));
+      for (const [path] of drafts) delete invalid[path];
+      for (const [path, draft] of drafts) {
+        const [, index, key] = path.split('.');
+        if (+index !== i) invalid['oars.' + (+index > i ? +index - 1 : index) + '.' + key] = draft;
+      }
+      refresh(true); return;
+    }
     if (a === 'tf') { const o = (RT.SITES[state.site].published_time_factors || [])[+t.dataset.i]; if (!o) return; if (o.dprolif_eqd2_per_day != null) { state.tumour.mode = 'dp'; state.tumour.rate = o.dprolif_eqd2_per_day; } state.tumour.tk = o.kickoff_days; refresh(true); return; }
     if (a === 'proto-save') {
       const nm = ($('#proto-name') && $('#proto-name').value.trim()) || (proto && proto.name) || tr.t('proto_unnamed');

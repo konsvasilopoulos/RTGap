@@ -96,7 +96,11 @@
 
   const parseRatio = (v) => { if (typeof v === 'number') return v; const parts = String(v == null ? '' : v).split('/').map((x) => num(x)).filter((x) => x != null); return parts.length > 1 ? parts : (parts.length ? parts[0] : 1); };
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
-  const newCase = () => baseState({ start: RT.iso(Math.floor(Date.now() / 86400000)) });
+  const newCase = () => {
+    const s = baseState({ start: RT.iso(Math.floor(Date.now() / 86400000)) });
+    if (!proto) s.c.allow_bid = false;
+    return s;
+  };
   let state = newCase();
   try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; if (!state.model) { state.model = 'lq'; state.lqlF = 2; } } } } catch (e) { /* storage unavailable */ }
   let fromLink = false;
@@ -420,6 +424,13 @@
       <div class="fields"><label class="f"><span>${esc(L('proto_name'))}</span><input id="proto-name" type="text" value="${esc(proto ? proto.name : '')}" placeholder="${esc(L('proto_name_ph'))}"></label></div>
       <div class="rowbtn" style="margin-top:8px"><button type="button" class="btn sm pri" data-act="proto-save">${esc(L(proto ? 'proto_update' : 'proto_save'))}</button>${proto ? `<button type="button" class="btn sm" data-act="proto-export">${esc(L('proto_export'))}</button>` : ''}<label class="btn sm" style="position:relative;overflow:hidden">${esc(L('proto_import'))}<input type="file" id="proto-imp" accept=".json,application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>${proto ? `<button type="button" class="btn sm" data-act="proto-rm">${esc(L('proto_rm'))}</button>` : ''}</div></div>`;
   }
+  function prescriptionSummary() {
+    const s = state, L = tr.t;
+    const format = new Intl.NumberFormat(s.lang, { maximumFractionDigits: 3 });
+    const n = s.multi ? s.phases.reduce((sum, phase) => sum + phase.n, 0) : s.n;
+    const dose = s.multi ? L('levels_mode') : format.format(s.n * s.d) + ' Gy';
+    return dose + ' · ' + format.format(n) + ' ' + L(n === 1 ? 'fraction_one' : 'fractions').toLocaleLowerCase(s.lang) + (s.brachy.on ? ' + BT' : '');
+  }
   function givenSum() {
     const g = state.given; if (!g || !g.on) return tr.t('sum_none');
     if (g.dates) return (g.dates.length + (g.bidDates || []).length) + ' × ' + g.d + ' Gy';
@@ -464,7 +475,7 @@
       ${sel(L('cat'), 'category', [['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join(''), 'data-struct="1"', 'margin-top:10px')}
       </details>
     </div>
-    <div class="card" tabindex="-1" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
+    <details class="card fold" tabindex="-1" id="sec-2" data-fold="rx" ${s.ui && s.ui.rx === false ? '' : 'open'}><summary><h2><span class="step">2</span>${esc(L('s_rx'))}</h2><span class="fold-sum" id="rx-summary">${esc(prescriptionSummary())}</span></summary>
       <div class="fields" style="margin-bottom:10px">${fld(L('start'), 'start', s.start, 'type="date"')}</div>
       <div style="margin-top:8px">${rxHtml}</div>
       <details class="sub" data-fold="rxCalendar" ${fold('rxCalendar')}><summary>${esc(L('treat_days'))} · ${esc(s.weekdays.slice().sort().map(i => tr.wd2[i]).join(' '))}</summary>
@@ -476,7 +487,7 @@
       <div style="margin-top:4px">${chk(L('brachy'), 'brachy.on', s.brachy.on)}</div>
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
       </details>
-    </div>
+    </details>
     <div class="card" tabindex="-1" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint"><span id="gap-instruction">${esc(L(s.mark === 'missed' ? 'gap_hint' : 'event_hint'))}</span>${hbtn('mark')}</p>
       <label class="f"><span>${esc(L('calendar_action'))}</span><select id="calendar-action">
         <option value="missed" ${s.mark === 'missed' ? 'selected' : ''}>${esc(L('m_missed'))}</option>
@@ -517,8 +528,12 @@
     <details class="card fold" id="sec-5" data-fold="dept" ${fold('dept')}><summary><h2>${esc(L('s_dept'))}</h2><span class="fold-sum" id="dept-sum">${esc(deptSum())}</span></summary>${protoBox()}
       <div class="f"><span class="fl"><label for="i-guidance">${esc(L('guid_label'))}</label>${gl('guidance')}</span><select data-bind="guidance" id="i-guidance" data-struct="1">${['rcr2019', 'rcr5_draft'].map((g) => `<option value="${g}" ${s.guidance === g ? 'selected' : ''}>${esc(L('guid_' + g))}</option>`).join('')}</select></div>
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
-      <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
-      <div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
+      <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}</div>
+      <div class="bid-capability">${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}
+        ${c.allow_bid ? `<div class="bid-settings"><div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}</div>${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}</div>` : ''}
+      </div>
+      <div class="sw">${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
+      <div class="fields">${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
       <div class="fields" style="margin-top:12px">${fld(L('c_tolT'), 'c.max_tumour_deficit_pct', c.max_tumour_deficit_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}${fld(L('c_tolL'), 'c.max_late_increase_pct', c.max_late_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('not_set'))}"`)}</div>
       <p class="small" style="margin:6px 0 0">${esc(L('tol_hint'))}</p>
     </details>
@@ -642,6 +657,18 @@
     return lines.join('\n');
   }
   window.__rtgapHand = handText;
+  function scheduleImpact(m) {
+    const p = m.p, L = tr.t;
+    const item = (key, value) => `<div><dt>${esc(L(key))}</dt><dd>${esc(value)}</dd></div>`;
+    const metrics = [item('end_plan', tr.date(p.plannedEnd))];
+    if (m.base && m.base.end != null) {
+      const missed = p.interruptions.reduce((sum, gap) => sum + gap[2], 0);
+      metrics.push(item('end_base', tr.date(m.base.end)), item('calendar_shift', m.base.ext ? tr.sgi(m.base.ext) : '0'), item('missed_fractions', String(missed)));
+    }
+    return `<section class="card schedule-impact"><h2>${esc(L('schedule_title'))}</h2><dl>${metrics.join('')}</dl>
+      ${!p.missed.length && !m.base ? `<p class="hint">${esc(L('pick_missed'))}</p>` : ''}</section>`;
+  }
+
   function renderResults() {
     const out = $('#results'), L = tr.t, m = model;
     if (m.error) {
@@ -650,7 +677,9 @@
     }
     const p = m.p, dec = m.dec, rec = dec.recommended;
     const B = { chart: '', opts: '', map: '', det: '', sens: '', scen: '', rep: '' };
-    let h = `<div id="vbar">${vbarInner()}</div>` + (m.base ? `<div class="card"><h2>${esc(L('what_changed'))}</h2><div class="fields"><div>${esc(L('end_plan'))}<br><b>${esc(tr.date(p.plannedEnd))}</b></div><div>${esc(L('end_base'))}<br><b>${esc(tr.date(m.base.end))}</b> (Δ ${tr.sgi(m.base.end - p.plannedEnd)} d)</div></div></div>` : '') + `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
+    const empty = !p.missed.length && !m.base && dec.status === 'no_gap';
+    let h = `<div id="vbar">${vbarInner()}</div>` + scheduleImpact(m);
+    if (!empty || printing) h += `<div class="card decision ${dec.status}" id="decision"><div class="status">${esc(L('st_' + dec.status))}</div><div class="headline">${esc(tr.head(dec.head))}</div>
       ${rec && rec.family !== 'baseline' ? `<p class="subline">${esc(tr.optShort(rec))}</p><p class="small" style="margin:0 0 8px">${esc(L('dec_note'))}</p>` : ''}
       ${m.sens && rec && rec.family !== 'baseline' ? `<p class="small" style="margin:0 0 8px"><span class="pill ${m.sens.sameFraction >= 0.9 ? 'c3' : 'c2'}">${esc(L(m.sens.sameFraction >= 0.9 ? 'robust_yes' : 'robust_no'))}</span> ${esc(L('unc'))} (${m.sens.n}): Δ ${esc(p.tumour.name === p.rx.primary || !p.rx.multilevel ? L('col_t').toLowerCase() : p.tumour.name)} ${tr.sg(m.sens.tumourPctRange[0])} … ${tr.sg(m.sens.tumourPctRange[1])} %${p.oars.length ? `, Δ ${esc(p.oars[0].name)} ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][0])} … ${tr.sg(m.sens.oarPctRanges[p.oars[0].name][1])} %` : ''}; ${esc(L('unc_same'))} ${Math.round(100 * m.sens.sameFraction)} %.</p>` : ''}
       ${m.rec0 != null ? `<p class="small" style="margin:0 0 8px">${esc(L('rec_line'))} ${refs(['PUTORA'])}: <b>${Math.round(100 * m.rec0)} %</b> ${esc(L('rec_fixed'))}${m.rec5 != null && m.rec5 > m.rec0 + 0.005 ? `, <b>${Math.round(100 * m.rec5)} %</b> ${esc(L('rec_5'))}` : ''}.${m.base && lcText(m.base) ? ` ${esc(L('ch_uncomp'))}: ${esc(L('lc').toLowerCase())} ${esc(lcText(m.base))}.` : ''}</p>` : ''}
@@ -696,8 +725,10 @@
     const avail = ['plan', 'opts', 'an', 'rep'].filter((k) => panes[k]);
     let tab = (state.ui && state.ui.tab) || 'plan'; if (!avail.includes(tab)) tab = avail[0];
     if (printing) { out.innerHTML = `<pre class="printsum">${esc(summaryText())}</pre>` + h + avail.map((k) => `<h2 class="printh">${esc(L('tab_' + k))}</h2>` + (k === 'an' ? B.sens + B.scen + preflightHtml() : panes[k])).join(''); out.querySelectorAll('details[data-fold="why"]').forEach((d) => { d.open = true; }); drawChart(); drawMap(); return; }
+    if (empty) h += `<details class="card" data-fold="caseTools" ${fold('caseTools')}><summary>${esc(L('case_tools'))}</summary>`;
     if (avail.length > 1) h += `<div class="tabs" role="tablist" id="tabs">${avail.map((k) => `<button type="button" role="tab" data-act="tab" data-tab="${k}" aria-selected="${k === tab}">${esc(L('tab_' + k))}${k === 'opts' ? ` <span class="cnt">${dec.feasible.length}</span>` : ''}</button>`).join('')}</div>`;
     h += `<div class="pane" role="tabpanel">${panes[tab]}</div>`;
+    if (empty) h += '</details>';
     out.innerHTML = h;
     drawChart(); drawMap(); updateDock();
   }
@@ -1298,7 +1329,7 @@
   }
   function refresh(full) {
     compute(); persist(); setTimeout(announce, 0);
-    if (full) { renderStatic(); renderInputs(); } else { renderGapCal(); renderBioNote(); const ps = $('#proto-status'); if (ps) ps.innerHTML = protoStatus(); const ds = $('#dept-sum'); if (ds) ds.textContent = deptSum(); const bs = $('#bio-sum'); if (bs) bs.textContent = bioSum(); const tt = $('#rx-total'); if (tt) tt.textContent = ((state.n || 0) * (state.d || 0)).toFixed(2) + ' Gy'; refreshSiteMeta(); }
+    if (full) { renderStatic(); renderInputs(); } else { renderGapCal(); renderBioNote(); const ps = $('#proto-status'); if (ps) ps.innerHTML = protoStatus(); const ds = $('#dept-sum'); if (ds) ds.textContent = deptSum(); const bs = $('#bio-sum'); if (bs) bs.textContent = bioSum(); $('#rx-summary').textContent = prescriptionSummary(); const tt = $('#rx-total'); if (tt) tt.textContent = ((state.n || 0) * (state.d || 0)).toFixed(2) + ' Gy'; refreshSiteMeta(); }
     renderResults();
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
@@ -1333,10 +1364,11 @@
     if (b === 'brachy.on' && v && !state.brachy.fx.length && model && model.p) state.brachy.fx = [0, 7, 14, 21].map((k) => ({ date: RT.iso(model.p.plannedEnd + 3 + k), dose: 7 }));
     if (b === 'site') { const d = siteDefaults(v); state.tumour = d.tumour; state.oars = d.oars; state.category = 'auto'; }
     if (['caseRef', 'calcBy', 'checkedBy', 'pdfLang'].includes(b)) { persist(); return; }
-    const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'multi' || b === 'brachy.on' || b === 'given.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
+    const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'c.allow_bid' || b === 'multi' || b === 'brachy.on' || b === 'given.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
     clearTimeout(timer);
     if (struct || ev.type === 'change' && (t.type === 'checkbox' || t.tagName === 'SELECT' || t.type === 'date')) refresh(!!struct || b === 'holidays' || b === 'scen' || t.type === 'date');
     else timer = setTimeout(() => refresh(false), 160);
+    if (b === 'c.allow_bid') document.getElementById(fid(b)).focus({ preventScroll: true });
   }
   function toggle(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
   function onClick(ev) {
@@ -1369,7 +1401,7 @@
     if (t.dataset.opt) { ev.preventDefault(); state.sel = t.dataset.opt; state.ui = state.ui || {}; state.ui.tab = 'plan'; compute(); persist(); renderResults(); { const tb = $('#tabs'); if (tb && t.tagName !== 'A') tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } if (t.tagName === 'A') { const d = $('#detail'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     const a = t.dataset.act, i = +t.dataset.i, j = +t.dataset.j;
     if (a === 'close-ref') { $('#refpop').hidden = true; return; }
-    if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { const d = inp.closest('details'); if (d && !d.open) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
+    if (a === 'vfocus') { const inp = document.getElementById(fid(t.dataset.b)); if (inp) { for (let d = inp.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus({ preventScroll: true }); } return; }
     if (a === 'wd') { toggle(state.weekdays, i); state.weekdays.sort(); if (!state.weekdays.length) state.weekdays = [0, 1, 2, 3, 4]; refresh(true); return; }
     if (a === 'add-level') { state.phases[i].levels.push({ name: 'PTV' + (state.phases[i].levels.length + 1), d: 1.8 }); refresh(true); return; }
     if (a === 'rm-level') { state.phases[i].levels.splice(j, 1); refresh(true); return; }
@@ -1420,7 +1452,7 @@
     if (a === 'site-defaults') { const d = siteDefaults(state.site); state.tumour = d.tumour; state.oars = d.oars; refresh(true); return; }
     if (a === 'json') { saveFile(fileStem() + '.json', exportJson(), 'application/json'); return; }
     if (a === 'tab') { state.ui = state.ui || {}; state.ui.tab = t.dataset.tab; persist(); renderResults(); return; }
-    if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { el2.focus({ preventScroll: true }); el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { if (t.dataset.i === '2') el2.open = true; el2.focus({ preventScroll: true }); el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }

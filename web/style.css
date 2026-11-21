@@ -275,7 +275,24 @@ tr.pick { transition: background 0.12s; }
 .feats div { align-content: start; }
 .intro-in .rowbtn { margin-left: auto !important; }
 .top .ghost.icon { display: inline-flex; align-items: center; justify-content: center; height: 34px; }
-@media (min-width: 1001px) { .top .side { position: absolute; top: 16px; right: 16px; } .top-in { min-height: 200px; } }
+.bid-capability { margin-bottom: 10px; }
+.bid-settings { margin: 6px 0 0 8px; padding: 6px 0 2px 12px; border-inline-start: 2px solid var(--accent); }
+.schedule-impact dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px 14px; margin: 0; }
+.schedule-impact dt { font-size: .875rem; color: var(--muted); }
+.schedule-impact dd { margin: 3px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.schedule-impact .hint { margin: 8px 0 0; }
+#vbar:empty { display: none; }
+@media screen and (min-width: 901px) {
+  .top-in { min-height: 0; padding-block: 12px; align-items: center; flex-wrap: nowrap; gap: 16px; }
+  .top .logo { width: 32px; height: 32px; }
+  .top h1 { font-size: 2rem; }
+  .top .logo-row { gap: 8px; }
+  .top .brand p, .top .chips { display: none; }
+  .topctl { justify-content: flex-end; }
+  #results { align-self: stretch; align-content: start; }
+  .grid:has(#inputs:hover, #inputs:focus-within) .schedule-impact { position: sticky; top: 0; z-index: 7; }
+  .grid:has(#inputs:hover, #inputs:focus-within) #tabs { position: static; }
+}
 .steps { gap: 0; padding: 4px; } .steps button { font-size: 0.74rem; gap: 4px; padding: 6px 2px; } .steps button b { padding: 3px 4px; }
 .intro-in { flex-wrap: nowrap; } @media (max-width: 1100px) { .intro-in { flex-wrap: wrap; } }
 .intro-in .rowbtn { flex: none; flex-wrap: nowrap; }

@@ -24,12 +24,11 @@ h1 { font: 600 clamp(2.1rem, 5.2vw, 3.5rem)/1.04 var(--fd); margin: 0 0 14px; le
 .btn { display: inline-block; text-decoration: none; border-radius: 10px; padding: 12px 20px; font-weight: 600; border: 1px solid var(--line); color: var(--ink); }
 .btn.pri { background: var(--acc); color: #06142e; border-color: var(--acc); box-shadow: 0 8px 26px rgba(127,178,255,.28); } .btn:hover { filter: brightness(1.08); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; } .chips span { font: .72rem var(--fn); letter-spacing: .05em; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; color: var(--mut); }
-.shot { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5); background: #0b1730; } .shot img { display: block; width: 100%; height: auto; }
 section { padding: 34px 0; border-top: 1px solid var(--line); }
 h2 { font: 600 1.7rem/1.15 var(--fd); margin: 0 0 6px; } .sub { color: var(--mut); margin: 0 0 20px; max-width: 70ch; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 12px; }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; } .tile b { display: block; font: 600 1.06rem var(--fd); margin-bottom: 4px; } .tile span { color: var(--mut); font-size: .9rem; }
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; counter-reset: s; } .steps div { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 14px 54px; position: relative; }
+.steps { display: grid; grid-template-columns: 1fr; gap: 12px; counter-reset: s; } .steps div { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 14px 54px; position: relative; }
 .steps div::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--acc); color: var(--acc); font: 600 .8rem/26px var(--fn); text-align: center; }
 .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; } .nums div { border-left: 3px solid var(--amb); padding: 2px 0 2px 14px; } .nums b { display: block; font: 600 2rem/1.1 var(--fn); } .nums span { color: var(--mut); font-size: .88rem; }
 .note { border: 1px solid var(--amb); border-left-width: 4px; border-radius: 10px; padding: 12px 16px; background: rgba(243,180,90,.07); color: var(--ink); max-width: 80ch; }
@@ -48,17 +47,13 @@ footer { padding: 26px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     <div class="cta"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a><a class="btn" href="index.html#tour" data-el="Ξενάγηση" data-en="Take the tour"></a><a class="btn" href="https://github.com/konsvasilopoulos/RTGap" data-el="Κώδικας στο GitHub" data-en="Source on GitHub"></a></div>
     <div class="chips"><span data-el="Δωρεάν · ανοιχτός κώδικας" data-en="Free · open source"></span><span data-el="Χωρίς λογαριασμό" data-en="No account"></span><span data-el="Λειτουργεί χωρίς σύνδεση" data-en="Runs offline"></span><span>Ελληνικά · English</span></div>
   </div>
-  <a class="shot" href="index.html"><img src="screenshot.png" alt="RTGap" width="1280" height="860"></a>
+  <div class="steps">
+    <div><b data-el="Περιστατικό" data-en="Case"></b><br><span data-el="Επιλέξτε εντοπισμό όγκου και ελέγξτε την κατηγορία RCR." data-en="Choose the tumour site and review the RCR category."></span></div>
+    <div><b data-el="Συνταγογράφηση" data-en="Prescription"></b><br><span data-el="Δώστε ημερομηνία έναρξης, αριθμό κλασμάτων και δόση ανά κλάσμα." data-en="Enter the start date, number of fractions and dose per fraction."></span></div>
+    <div><b data-el="Διακοπή" data-en="Interruption"></b><br><span data-el="Σημειώστε τις χαμένες συνεδρίες και δείτε τις επιλογές αναπλήρωσης." data-en="Mark the missed sessions and review compensation options."></span></div>
+  </div>
 </header>
 
-<section>
-  <h2 data-el="Τρία βήματα" data-en="Three steps"></h2>
-  <div class="steps">
-    <div data-el="Διαλέξτε εντοπισμό και δώστε τη συνταγογράφηση." data-en="Choose the tumour site and enter the prescription."></div>
-    <div data-el="Πατήστε στο ημερολόγιο τις ημέρες που χάθηκαν." data-en="Tap the missed days on the calendar."></div>
-    <div data-el="Δείτε την πρόταση, συγκρίνετε τις επιλογές, κατεβάστε την αναφορά." data-en="Read the suggestion, compare the options, download the report."></div>
-  </div>
-</section>
 
 <section>
   <h2 data-el="Τι κάνει" data-en="What it does"></h2>

@@ -96,7 +96,8 @@
 
   const parseRatio = (v) => { if (typeof v === 'number') return v; const parts = String(v == null ? '' : v).split('/').map((x) => num(x)).filter((x) => x != null); return parts.length > 1 ? parts : (parts.length ? parts[0] : 1); };
   const fixOar = (o) => { if (o.repair === undefined) o.repair = 4.4; if (o.bt == null) o.bt = 1; return o; };
-  let state = EXAMPLES.hn_sib();
+  const newCase = () => baseState({ start: RT.iso(Math.floor(Date.now() / 86400000)) });
+  let state = newCase();
   try { const raw = localStorage.getItem('rtgap.state'); if (raw) { const s = JSON.parse(raw); if (s && s.v === 3) { state = Object.assign(baseState(), s); state.oars.forEach(fixOar); if (!state.given) state.given = baseState().given; if (!state.brachy) state.brachy = { on: false, fx: [] }; if (!state.ui) state.ui = {}; if (!state.extra) state.extra = []; if (!state.errors) state.errors = []; if (!state.pc) state.pc = { on: false, from: '', n: null, d: null }; if (!state.guidance) state.guidance = proto ? proto.guidance : 'rcr2019'; if (!state.model) { state.model = 'lq'; state.lqlF = 2; } } } } catch (e) { /* storage unavailable */ }
   let fromLink = false;
   try { const mh = /[#&]c=([\w\-]+)/.exec(location.hash || ''); if (mh) { const lang0 = state.lang; state = fromCase(JSON.parse(b64dEarly(mh[1]))); state.lang = lang0; fromLink = true; history.replaceState(null, '', location.pathname + location.search); } } catch (e) { /* bad link: ignore */ }
@@ -453,23 +454,30 @@
     }
     const c = s.c;
     el.innerHTML = `
-    <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}">${i < 3 ? `<b>${i + 1}</b>` : ''}${esc(x)}</button>`).join('')}</nav>
-    <div class="card" id="sec-1"><h2><span class="step">1</span>${esc(L('s_site'))}</h2><p class="hint">${esc(L('s_site_hint'))}</p>
+    <nav class="steps" aria-label="${esc(L('nav_label'))}">${L('nav').map((x, i) => `<button type="button" data-act="nav" data-i="${i + 1}"><b>${i + 1}</b>${esc(x)}</button>`).join('')}</nav>
+    <div class="card" tabindex="-1" id="sec-1"><h2><span class="step">1</span>${esc(L('case_step'))}</h2>
       ${sel(L('s_site'), 'site', og('RCR ' + L('cat') + ' 1', groups[1]) + og('RCR ' + L('cat') + ' 2', groups[2]) + og('RCR ' + L('cat') + ' 3', groups[3]) + og('—', groups.x), 'data-struct="1"')}
-      <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}${srcRefs}</div>
+      <div class="meta" id="site-meta">${catPill}${allow}${ott}${noacc}</div>
+      <details class="sub" data-fold="siteRules" ${fold('siteRules')}><summary>${esc(L('site_rules'))}${s.category !== 'auto' ? ' · ' + esc(L('edited')) : ''}</summary>
+      ${srcRefs}
       ${notes.length ? `<ul class="notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
       ${sel(L('cat'), 'category', [['auto', L('cat_auto')], ['1', L('cat1')], ['2', L('cat2')], ['3', L('cat3')], ['none', L('cat_none')]].map(([v, t2]) => `<option value="${v}" ${s.category === v ? 'selected' : ''}>${esc(t2)}</option>`).join(''), 'data-struct="1"', 'margin-top:10px')}
+      </details>
     </div>
-    <div class="card" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
+    <div class="card" tabindex="-1" id="sec-2"><h2><span class="step">2</span>${esc(L('s_rx'))}</h2>
       <div class="fields" style="margin-bottom:10px">${fld(L('start'), 'start', s.start, 'type="date"')}</div>
-      ${chk(L('levels_mode'), 'multi', s.multi)}
       <div style="margin-top:8px">${rxHtml}</div>
+      <details class="sub" data-fold="rxCalendar" ${fold('rxCalendar')}><summary>${esc(L('treat_days'))} · ${esc(s.weekdays.slice().sort().map(i => tr.wd2[i]).join(' '))}</summary>
       <div class="f" style="margin-top:10px"><span class="fl"><span id="lbl-wd">${esc(L('treat_days'))}</span>${hbtn('weekdays')}</span><div class="wdays" role="group" aria-labelledby="lbl-wd">${tr.wd2.map((w, i) => `<button type="button" data-act="wd" data-i="${i}" aria-pressed="${s.weekdays.includes(i)}">${w}</button>`).join('')}</div></div>
       <div style="margin-top:8px">${chk(L('gr_holidays'), 'holidays', s.holidays)}</div>
+      </details>
+      <details class="sub" data-fold="rxModes" ${fold('rxModes') || (s.multi || s.brachy.on ? 'open' : '')}><summary>${esc(L('rx_modes'))}</summary>
+      ${chk(L('levels_mode'), 'multi', s.multi)}
       <div style="margin-top:4px">${chk(L('brachy'), 'brachy.on', s.brachy.on)}</div>
       ${s.brachy.on ? `<p class="hint" style="margin-top:6px">${esc(L('brachy_hint'))}</p>${s.brachy.fx.map((f, i) => `<div class="lvl">${fld(L('bt_date'), `brachy.fx.${i}.date`, f.date, 'type="date"')}${fld(L('bt_dose'), `brachy.fx.${i}.dose`, f.dose)}<button type="button" class="btn x" data-act="rm-bt" data-i="${i}" aria-label="${esc(L('remove'))}">✕</button></div>`).join('')}<div class="rowbtn" style="margin-top:6px"><button type="button" class="btn sm" data-act="add-bt">+ ${esc(L('add_bt'))}</button></div>` : ''}
+      </details>
     </div>
-    <div class="card" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint">${esc(L('gap_hint'))}${hbtn('mark')}</p>
+    <div class="card" tabindex="-1" id="sec-3"><h2><span class="step">3</span>${esc(L('s_gap'))}</h2><p class="hint"><span id="gap-instruction">${esc(L(s.mark === 'missed' ? 'gap_hint' : 'event_hint'))}</span>${hbtn('mark')}</p>
       <label class="f"><span>${esc(L('calendar_action'))}</span><select id="calendar-action">
         <option value="missed" ${s.mark === 'missed' ? 'selected' : ''}>${esc(L('m_missed'))}</option>
         <optgroup label="${esc(L('other_events'))}">${['unavail', 'closed', 'extra', 'err', 'chemo'].map((m) => `<option value="${m}" ${s.mark === m ? 'selected' : ''}>${esc(L('m_' + m))}</option>`).join('')}</optgroup>
@@ -488,6 +496,7 @@
         ${s.pc.on ? `<div class="fields" style="margin-top:8px">${fld(L('pc_from'), 'pc.from', s.pc.from, 'type="date"')}${fld(L('pc_n'), 'pc.n', s.pc.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('pc_d'), 'pc.d', s.pc.d)}</div><p class="small" style="margin:6px 0 0">${esc(L('pc_hint'))}</p>` : ''}
       </details>
       ${chk(L('scen'), 'scen', s.scen)}
+      <div class="rowbtn"><a class="btn pri" href="#results">${esc(L('view_results'))}</a></div>
     </div>
     <details class="card fold" id="sec-4" data-fold="bio" ${fold('bio')}><summary><h2>${esc(L('s_bio'))}</h2><span class="fold-sum" id="bio-sum">${esc(bioSum())}</span></summary>
       <div class="fields">${fld(L('tumour') + ' ' + L('ab'), 'tumour.ab', s.tumour.ab)}
@@ -1107,7 +1116,7 @@
     fillInstall();
     let seen = false; try { seen = localStorage.getItem('rtgap.intro') === '1'; } catch (e) { /* ignore */ }
     $('#intro').hidden = seen;
-    $('#intro').innerHTML = `<div class="intro-in"><div class="intro-steps">${L('intro').map((x, i) => `<div><b>${i + 1}</b><span>${esc(x)}</span></div>`).join('')}</div>
+    $('#intro').innerHTML = `<div class="intro-in">
       <div class="rowbtn" style="margin:0"><button type="button" class="btn pri sm" data-act="tour">${esc(L('tour_btn'))}</button><button type="button" class="btn sm" data-act="intro-try">${esc(L('intro_try'))}</button><button type="button" class="btn sm" data-act="about">${esc(L('about_btn'))}</button><button type="button" class="btn sm" data-act="intro-hide">${esc(L('intro_hide'))}</button></div></div>`;
     renderTools();
   }
@@ -1301,7 +1310,12 @@
   }
   function onInput(ev) {
     const t = ev.target;
-    if (t.id === 'calendar-action') { state.mark = t.value; persist(); return; }
+    if (t.id === 'calendar-action') {
+      state.mark = t.value;
+      $('#gap-instruction').textContent = tr.t(t.value === 'missed' ? 'gap_hint' : 'event_hint');
+      persist();
+      return;
+    }
     if (t.id === 'tool-picker') { showTool(t.value); return; }
     if (t.dataset.tool) { toolState[t.dataset.tool] = num(t.value); renderTools(); return; }
     const b = t.dataset.bind; if (!b) return;
@@ -1406,7 +1420,7 @@
     if (a === 'site-defaults') { const d = siteDefaults(state.site); state.tumour = d.tumour; state.oars = d.oars; refresh(true); return; }
     if (a === 'json') { saveFile(fileStem() + '.json', exportJson(), 'application/json'); return; }
     if (a === 'tab') { state.ui = state.ui || {}; state.ui.tab = t.dataset.tab; persist(); renderResults(); return; }
-    if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { if (el2.tagName === 'DETAILS') el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (a === 'nav') { const el2 = $('#sec-' + t.dataset.i); if (el2) { el2.focus({ preventScroll: true }); el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (a === 'theme') { const order = ['auto', 'light', 'dark'], cur = theme(); setTheme(order[(order.indexOf(cur) + 1) % 3]); return; }
     if (a === 'about') { $('#about').hidden = false; return; }
     if (a === 'docs') { if (t.dataset.tab) docTab = t.dataset.tab; renderDocs(); $('#docs').hidden = false; $('#refpop').hidden = true; return; }
@@ -1634,7 +1648,7 @@
       window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; fillInstall(); });
     } catch (e) { /* ignore */ }
   }
-  $('#reset').addEventListener('click', () => loadState(baseState({ missed: [], start: RT.iso(Math.floor(Date.now() / 86400000)) })));
+  $('#reset').addEventListener('click', () => loadState(newCase()));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   if (mq && mq.addEventListener) mq.addEventListener('change', () => { drawChart(); drawMap(); });

@@ -41,7 +41,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   <div><b>928</b><span data-el="τυχαία περιστατικά όπου οι δύο μηχανές συμφωνούν" data-en="randomised cases on which the two engines agree"></span></div>
   <div><b>77</b><span data-el="αυτόματα tests σε Python" data-en="automated Python tests"></span></div>
   <div><b id="n-rad">–</b><span data-el="σχήματα σε συμφωνία με το RadComp" data-en="schedules in agreement with RadComp"></span></div>
-  <div><b id="n-lql">–</b><span data-el="σχήματα συγκρίθηκαν με το LQL-Equiv" data-en="schedules compared with LQL-Equiv"></span></div>
+  <div><b id="n-lql">–</b><span data-el="σχήματα εντός ανοχής στο συγκρίσιμο μέγεθος" data-en="schedules within tolerance vs LQL-Equiv"></span></div>
 </div>
 
 <section>
@@ -68,13 +68,13 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   <div class="scroll"><table><thead><tr><th data-el="Σχήμα" data-en="Schedule"></th><th>α/β (Gy)</th><th>BED RTGap</th><th>BED RadComp</th><th>EQD2 RTGap</th><th>EQD2 RadComp</th><th></th></tr></thead><tbody id="t-rad"></tbody></table></div>
 </section>
 
-<section>
+<section id="lql-equiv">
   <h2 data-el="4 · Σύγκριση με το LQL-Equiv" data-en="4 · Comparison with LQL-Equiv"></h2>
-  <p class="sub" data-el="Τα σχήματα με επαναπληθυσμό και με μεγάλα κλάσματα (LQ-L) χρειάζονται πρόγραμμα που τα υποστηρίζει. Η σύγκριση με το LQL-Equiv δεν έχει γίνει ακόμη· οι τιμές του RTGap δίνονται ώστε να μπορεί να τη κάνει οποιοσδήποτε." data-en="The schedules with repopulation and with large fractions (LQ-L) need a program that supports them. The comparison with LQL-Equiv has not been done yet; the RTGap values are given so that anyone can do it."></p>
-  <p class="small" data-el="Επαναπληθυσμός: α/β = 10 Gy, K = 0.9 Gy BED/ημέρα (D_prolif 0.75 Gy EQD2/ημέρα), T_k = 28 ημέρες, T = τελευταίο − πρώτο κλάσμα." data-en="Repopulation: α/β = 10 Gy, K = 0.9 Gy BED/day (D_prolif 0.75 Gy EQD2/day), T_k = 28 days, T = last minus first fraction."></p>
-  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>T (d)</th><th>BED RTGap</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th></th></tr></thead><tbody id="t-rep"></tbody></table></div>
+  <p class="sub"><span data-el="Στις 22/11/2026 εκτελέσαμε την έκδοση Python 3.0.0 των δημιουργών του LQL-Equiv σε 11 σχήματα. Ανοχή για κάθε συγκρίσιμο μέγεθος: 0,005 Gy." data-en="On 22 Nov 2026 we ran the authors’ LQL-Equiv-web Python package v3.0.0 on 11 schedules. Absolute tolerance for each comparable quantity: 0.005 Gy."></span> <a href="https://github.com/konsvasilopoulos/RTGap/blob/main/validation/benchmark.md" data-el="Μέθοδος και αναπαραγωγή" data-en="Method and reproduction"></a></p>
+  <p class="small" data-el="Επαναπληθυσμός · Έλεγχος του BED όγκου. α/β = 10 Gy, K = 0,9 Gy BED/ημέρα. Στο RTGap η πρώτη ημέρα είναι 0 και Tₖ = 28, στο LQL-Equiv είναι 1 και Tₖ = 29. Το RTGap μετατρέπει το διορθωμένο BED σε EQD2 διαιρώντας με 1,2. Το LQL-Equiv υπολογίζει ισοδύναμο σχήμα 2 Gy με δικό του ημερολόγιο. Οι δύο τιμές φαίνονται χωριστά." data-en="Repopulation · Tumour BED comparison. α/β = 10 Gy, K = 0.9 Gy BED/day. RTGap counts the first day as 0 with Tₖ = 28, LQL-Equiv as 1 with Tₖ = 29. RTGap divides corrected BED by 1.2 to obtain EQD2. LQL-Equiv solves for a 2 Gy reference schedule with its own calendar. Both outputs are shown."></p>
+  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>T (d)</th><th>BED RTGap</th><th>BED LQL-Equiv</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th>BED</th></tr></thead><tbody id="t-rep"></tbody></table></div>
   <p class="small" style="margin-top:16px" data-el="LQ-L (Astrahan 2008): δόση μετάβασης d_T = 2 × α/β, χωρίς παράγοντα χρόνου." data-en="LQ-L (Astrahan 2008): transition dose d_T = 2 × α/β, no time factor."></p>
-  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>α/β (Gy)</th><th>d<sub>T</sub> (Gy)</th><th>BED RTGap</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th></th></tr></thead><tbody id="t-lql"></tbody></table></div>
+  <div class="scroll"><table><thead><tr><th>#</th><th data-el="Σχήμα" data-en="Schedule"></th><th>α/β (Gy)</th><th>d<sub>T</sub> (Gy)</th><th>BED RTGap</th><th>BED LQL-Equiv</th><th>EQD2 RTGap</th><th>EQD2 LQL-Equiv</th><th>BED, EQD2</th></tr></thead><tbody id="t-lql"></tbody></table></div>
 </section>
 
 <section>
@@ -1126,11 +1126,10 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   try { var st = JSON.parse(localStorage.getItem('rtgap.state') || 'null'); lang = (st && st.lang) || localStorage.getItem('rtgap.wlang') || ((navigator.language || '').toLowerCase().indexOf('el') === 0 ? 'el' : 'en'); } catch (e) {}
   var T = { el: { ok: 'συμφωνεί', no: 'διαφέρει', pend: 'εκκρεμεί' }, en: { ok: 'agrees', no: 'differs', pend: 'pending' } };
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-  // Values read from the other programs. LQL: fill in as { 10: 56.50, ... } (EQD2, Gy) when the comparison is run.
   var RAD = [[35, 2, 3, 116.67, 70.00], [20, 2.75, 3, 105.42, 63.25], [15, 2.67, 3.5, 70.60, 44.93], [20, 3, 1.6, 172.50, 76.67], [5, 5, 10, 37.50, 31.25], [5, 5, 4, 56.25, 37.50], [10, 3, 10, 39.00, 32.50], [40, 2, 3, 133.33, 80.00], [35, 2, 10, 84.00, 70.00]];
   var REP = [[10, 35, 2, 46], [11, 30, 2, 39], [12, 25, 1.8, 32], [13, 33, 2.12, 44], [14, 20, 2.75, 25]];
   var LQL = [[15, 1, 24, 10], [16, 1, 34, 10], [17, 5, 7, 3], [18, 5, 11, 3], [19, 3, 18, 3], [20, 1, 24, 3]];
-  var OTHER = {};
+  var OTHER = {"10": {"bed": 67.8, "eqd2": 70.0}, "11": {"bed": 62.1, "eqd2": 60.0}, "12": {"bed": 49.5, "eqd2": 41.25}, "13": {"bed": 70.39152, "eqd2": 75.85536}, "14": {"bed": 70.125, "eqd2": 75.5}, "15": {"bed": 80.0, "eqd2": 66.666666667}, "16": {"bed": 130.0, "eqd2": 108.333333333}, "17": {"bed": 115.0, "eqd2": 69.0}, "18": {"bed": 215.0, "eqd2": 129.0}, "19": {"bed": 234.0, "eqd2": 140.4}, "20": {"bed": 108.0, "eqd2": 64.8}};
   function draw() {
     var t = T[lang], st = RT.selfTest(), okN = st.filter(function (s) { return s.ok; }).length;
     document.getElementById('n-self').textContent = okN + '/' + st.length;
@@ -1139,12 +1138,19 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     document.getElementById('t-rad').innerHTML = RAD.map(function (r) { var b = RT.bed(r[0], r[1], r[2]), e = RT.eqd2FromBed(b, r[2]), ok = Math.abs(b - r[3]) < 0.006 && Math.abs(e - r[4]) < 0.006; if (ok) radOk++;
       return '<tr><td>' + r[0] + ' × ' + r[1] + ' Gy</td><td class="n">' + r[2] + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + r[3].toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td><td class="n">' + r[4].toFixed(2) + '</td><td class="' + (ok ? 'ok">✓ ' + t.ok : 'no">✕ ' + t.no) + '</td></tr>'; }).join('');
     document.getElementById('n-rad').textContent = radOk + '/' + RAD.length;
-    var done = 0, cmp = function (id, e) { var o = OTHER[id]; if (o == null) return '<td class="n pend">–</td><td class="pend">' + t.pend + '</td>'; done++; var ok = Math.abs(o - e) < 0.06; return '<td class="n">' + (+o).toFixed(2) + '</td><td class="' + (ok ? 'ok">✓ ' + t.ok : 'no">✕ ' + t.no) + '</td>'; };
+    var passed = 0;
+    function comparison(id, bed, eqd2, compareEqd2) {
+      var external = OTHER[id];
+      var agrees = Math.abs(external.bed - bed) <= 0.005 && (!compareEqd2 || Math.abs(external.eqd2 - eqd2) <= 0.005);
+      if (agrees) passed++;
+      return [bed, external.bed, eqd2, external.eqd2].map(function (v) { return '<td class="n">' + v.toFixed(2) + '</td>'; }).join('')
+        + '<td class="' + (agrees ? 'ok">✓ ' + t.ok : 'no">✕ ' + t.no) + '</td>';
+    }
     document.getElementById('t-rep').innerHTML = REP.map(function (r) { var b = RT.bed(r[1], r[2], 10) - 0.9 * Math.max(0, r[3] - 28), e = RT.eqd2FromBed(b, 10);
-      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td>' + cmp(r[0], e) + '</tr>'; }).join('');
+      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td>' + comparison(r[0], b, e, false) + '</tr>'; }).join('');
     document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3]);
-      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + RT.lqlDt(tis) + '</td><td class="n">' + b.toFixed(2) + '</td><td class="n">' + e.toFixed(2) + '</td>' + cmp(r[0], e) + '</tr>'; }).join('');
-    document.getElementById('n-lql').textContent = done + '/' + (REP.length + LQL.length);
+      return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + RT.lqlDt(tis) + '</td>' + comparison(r[0], b, e, true) + '</tr>'; }).join('');
+    document.getElementById('n-lql').textContent = passed + '/' + (REP.length + LQL.length);
   }
   function set(l) {
     lang = l; document.documentElement.lang = l; try { localStorage.setItem('rtgap.wlang', l); } catch (e) {}

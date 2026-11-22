@@ -1,4 +1,50 @@
 {
- "_comment": "EQD2 (Gy) read from LQL-Equiv for the benchmark rows of validation/benchmark.md, keyed by row number. Empty until the comparison is run.",
- "eqd2": {}
+  "software": "LQL-Equiv-web",
+  "version": "3.0.0",
+  "rows": {
+    "10": {
+      "bed": 67.8,
+      "eqd2": 70.0
+    },
+    "11": {
+      "bed": 62.1,
+      "eqd2": 60.0
+    },
+    "12": {
+      "bed": 49.5,
+      "eqd2": 41.25
+    },
+    "13": {
+      "bed": 70.39152,
+      "eqd2": 75.85536
+    },
+    "14": {
+      "bed": 70.125,
+      "eqd2": 75.5
+    },
+    "15": {
+      "bed": 80.0,
+      "eqd2": 66.666666667
+    },
+    "16": {
+      "bed": 130.0,
+      "eqd2": 108.333333333
+    },
+    "17": {
+      "bed": 115.0,
+      "eqd2": 69.0
+    },
+    "18": {
+      "bed": 215.0,
+      "eqd2": 129.0
+    },
+    "19": {
+      "bed": 234.0,
+      "eqd2": 140.4
+    },
+    "20": {
+      "bed": 108.0,
+      "eqd2": 64.8
+    }
+  }
 }

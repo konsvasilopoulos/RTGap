@@ -12,6 +12,4 @@ late-tissue increase, peak 7-day dose, rule-of-thumb loss of local control, the 
 schedule breaks, and whether the two schedules are identical. Use anonymised data only.
 
 ## Comparison with independent software
-`rtgap benchmark > validation/benchmark.md` writes reference BED and EQD2 values for standard
-schedules, with empty columns for the values of another calculator (for example LQL-Equiv).
-Agreement within rounding on every row is the acceptance criterion; file the completed table.
+See [benchmark.md](benchmark.md) for the completed RadComp and LQL-Equiv-web comparisons, inputs, output definitions, and reproduction commands. Use `rtgap benchmark` for a fresh table of RTGap reference values.

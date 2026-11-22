@@ -16,36 +16,46 @@ Run on 2026-11-14 by entering total dose, number of fractions and α/β; values 
 | 8 | 40 × 2 Gy | 3 | 133.33 | 133.33 | 80.00 | 80.00 | 0 |
 | 9 | 35 × 2 Gy | 10 | 84.00 | 84.00 | 70.00 | 70.00 | 0 |
 
-All nine agree to the two decimals shown. RadComp has no repopulation term, so the
-time-corrected schedules below still need another program.
+All nine agree to the two decimals shown.
 
-## Pending: with repopulation (for LQL-Equiv or similar)
-α/β = 10 Gy, K = 0.9 Gy BED/day (D_prolif 0.75 Gy EQD2/day), T_k = 28 d.
-T = last minus first fraction day (RCR convention).
+## LQL-Equiv-web v3.0.0, 22 November 2026
 
-| # | Schedule | T (d) | rtgap BED | rtgap EQD2 | Other software | Difference |
-|---|---|---|---|---|---|---|
-| 10 | 35 × 2 Gy | 46 | 67.80 | 56.50 |  |  |
-| 11 | 30 × 2 Gy | 39 | 62.10 | 51.75 |  |  |
-| 12 | 25 × 1.8 Gy | 32 | 49.50 | 41.25 |  |  |
-| 13 | 33 × 2.12 Gy | 44 | 70.39 | 58.66 |  |  |
-| 14 | 20 × 2.75 Gy | 25 | 70.12 | 58.44 |  |  |
+We ran the authors’ Python package in its default equation mode on the following single-course schedules, with a 2 Gy reference fraction and one fraction per treatment day. Raw external outputs are in [lql_equiv.json](lql_equiv.json). The RTGap validation page computes the paired values using the browser engine. Tolerance is an absolute difference ≤0.005 Gy on unrounded comparable quantities.
 
-The repopulation term is also checked against the published worked examples of the RCR
-(2019, Appendix B) and Basic Clinical Radiobiology (ch. 9) in the test suite and the built-in self-test.
+### Tumour repopulation
 
-## Pending: large fractions with LQ-L (for LQL-Equiv)
-LQ-L (Astrahan 2008), transition dose d_T = 2 × α/β, no time factor. The rtgap values are shown,
-calculated live, on the validation page of the web app (validation.html).
+For rows 10–14, compare tumour **BED**. Use α/β = 10 Gy and K = 0.9 Gy BED/day. RTGap uses elapsed days from day zero with kick-off at 28. LQL-Equiv includes the first day, so its kick-off input is 29. This gives identical time after kick-off. RTGap EQD2 is corrected BED divided by 1.2. The external EQD2 solves for a reference course that itself incurs a proliferation penalty. We record both values and exclude their difference from the BED agreement test.
 
-| # | Schedule | α/β (Gy) | d_T (Gy) |
-|---|---|---|---|
-| 15 | 1 × 24 Gy | 10 | 20 |
-| 16 | 1 × 34 Gy | 10 | 20 |
-| 17 | 5 × 7 Gy | 3 | 6 |
-| 18 | 5 × 11 Gy | 3 | 6 |
-| 19 | 3 × 18 Gy | 3 | 6 |
-| 20 | 1 × 24 Gy | 3 | 6 |
+| # | Schedule | Elapsed days | RTGap BED | LQL-Equiv BED | RTGap EQD2 | LQL-Equiv EQD2 |
+|---|---|---:|---:|---:|---:|---:|
+| 10 | 35 × 2 Gy | 46 | 67.8 | 67.8 | 56.5 | 70 |
+| 11 | 30 × 2 Gy | 39 | 62.1 | 62.1 | 51.75 | 60 |
+| 12 | 25 × 1.8 Gy | 32 | 49.5 | 49.5 | 41.25 | 41.25 |
+| 13 | 33 × 2.12 Gy | 44 | 70.39152 | 70.39152 | 58.6596 | 75.85536 |
+| 14 | 20 × 2.75 Gy | 25 | 70.125 | 70.125 | 58.4375 | 75.5 |
 
-Values read from LQL-Equiv go into `validation/lql_equiv.json` (EQD2 in Gy, keyed by row number);
-the validation page then shows the comparison.
+### Large fractions
+
+For rows 15–20, compare **BED and EQD2** with zero proliferation, transition dose twice α/β and linear-tail slope γ/α = 5. Each pair agreed within tolerance.
+
+| # | Schedule | α/β (Gy) | Transition (Gy) | BED (both, Gy) | EQD2 (both, Gy) |
+|---|---|---:|---:|---:|---:|
+| 15 | 1 × 24 Gy | 10 | 20 | 80 | 66.6667 |
+| 16 | 1 × 34 Gy | 10 | 20 | 130 | 108.3333 |
+| 17 | 5 × 7 Gy | 3 | 6 | 115 | 69 |
+| 18 | 5 × 11 Gy | 3 | 6 | 215 | 129 |
+| 19 | 3 × 18 Gy | 3 | 6 | 234 | 140.4 |
+| 20 | 1 × 24 Gy | 3 | 6 | 108 | 64.8 |
+
+### Reproduce the external run
+
+From the RTGap repository with Python 3.10 or newer:
+
+```sh
+git clone https://github.com/cyrilvoyant/LQL-Equiv-web.git /tmp/lql-equiv-web
+git -C /tmp/lql-equiv-web checkout 877be0f428a1e6e88a8358878d4ee363d555c085
+PYTHONPATH=/tmp/lql-equiv-web/src python validation/run_lql_equiv.py > /tmp/lql-results.json
+diff validation/lql_equiv.json /tmp/lql-results.json
+```
+
+[Upstream implementation used](https://github.com/cyrilvoyant/LQL-Equiv-web/tree/877be0f428a1e6e88a8358878d4ee363d555c085).

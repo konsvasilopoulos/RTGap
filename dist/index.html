@@ -60,7 +60,7 @@ a { color: var(--accent); }
 .top { position: relative; overflow: hidden; color: var(--tank-ink);
   background: radial-gradient(90% 140% at 88% -10%, rgba(44, 104, 230, 0.55) 0%, transparent 55%),
               radial-gradient(60% 120% at 0% 120%, rgba(243, 180, 90, 0.10) 0%, transparent 60%), var(--tank); }
-#hero { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#hero { pointer-events: none; position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .top-in { position: relative; max-width: 1320px; margin: 0 auto; padding: 30px 16px 26px; display: flex; flex-wrap: wrap; gap: 18px 36px; align-items: flex-end; justify-content: space-between; min-height: 210px; }
 .brand { display: flex; flex-direction: column; gap: 8px; min-width: 0; max-width: 640px; }
 .logo-row { display: flex; align-items: center; gap: 14px; }
@@ -298,7 +298,9 @@ tr.pick { transition: background 0.12s; }
 .schedule-impact .hint { margin: 8px 0 0; }
 #vbar:empty { display: none; }
 @media screen and (min-width: 901px) {
-  .top-in { min-height: 0; padding-block: 12px; align-items: center; flex-wrap: nowrap; gap: 16px; }
+  .top-in { min-height: 0; padding-block: 8px; display: grid; grid-template-columns: auto clamp(215px, 22vw, 290px) minmax(0, 1fr); align-items: center; gap: 18px; }
+  #hero { position: static; width: 100%; height: 110px; pointer-events: none; }
+  .top .side { justify-items: end; }
   .top .logo { width: 32px; height: 32px; }
   .top h1 { font-size: 2rem; }
   .top .logo-row { gap: 8px; }
@@ -438,11 +440,16 @@ body.touring .dock { display: none !important; }
 .schedule-flags { color: var(--warn); }
 .schedule-table ul { padding-inline-start: 1.1rem; }
 
+#case-dialog { width: min(510px, 90vw); max-height: 85vh; overflow: auto; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+#case-dialog::backdrop { background: rgb(4 9 21 / .65); }
+#case-dialog h2 { margin: 0 0 8px; }
+#case-dialog .rowbtn { flex-wrap: wrap; }
+#case-save-error { color: var(--bad); }
+
 </style>
 </head>
 <body>
 <header class="top">
-  <canvas id="hero" aria-hidden="true"></canvas>
   <div class="top-in">
     <div class="brand">
       <div class="logo-row">
@@ -452,6 +459,7 @@ body.touring .dock { display: none !important; }
       <p id="tagline"></p>
       <div class="chips" id="herochips"></div>
     </div>
+    <canvas id="hero" aria-hidden="true"></canvas>
     <div class="side">
       <div class="topctl">
         <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="el">ΕΛ</button><button type="button" data-lang="en">EN</button></div>
@@ -459,6 +467,7 @@ body.touring .dock { display: none !important; }
         <select id="tool-picker"></select>
         <button type="button" class="ghost icon" id="undo" data-act="undo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M8 5 4 9l4 4M4 9h8a4 4 0 0 1 0 8h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" class="ghost icon" id="redo" data-act="redo" disabled><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m12 5 4 4-4 4m4-4H8a4 4 0 0 0 0 8h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="ghost" id="case-files" data-act="case-files"></button>
         <button type="button" class="ghost" id="reset"></button>
         <button type="button" class="ghost" id="docsbtn" data-act="docs"></button>
         <button type="button" class="ghost" id="aboutbtn" data-act="about"></button>
@@ -478,6 +487,7 @@ body.touring .dock { display: none !important; }
   <div><div class="foot-brand">RT<i>Gap</i> <span id="foot-ver"></span></div><p id="foot-dev"></p><p id="foot-contact"></p><p id="foot-site"></p><p id="foot-lic"></p></div>
   <p id="disc"></p>
 </div></footer>
+<dialog id="case-dialog" aria-labelledby="case-dialog-title"></dialog>
 <div id="refpop" role="dialog" hidden></div>
 <div id="about" class="modal" role="dialog" aria-modal="true" hidden></div>
 <div id="docs" class="modal" role="dialog" aria-modal="true" hidden></div>
@@ -1527,6 +1537,16 @@ body.touring .dock { display: none !important; }
       tagline: 'Compensation of unscheduled radiotherapy interruptions',
       sub: 'Linear-quadratic model · RCR decision order · every rule with its source',
       lang_label: 'Language', case: 'Case', result: 'Result', refs: 'References', tools: 'Calculators',
+      case_files: 'Save / open',
+      reset_prompt: 'Save this case before starting a new one?',
+      save_local: 'Save on this device',
+      save_new: 'Save and start new case',
+      discard_new: 'Start without saving',
+      cancel_case: 'Cancel',
+      case_use: 'A saved case can be reopened and edited in this browser. For transfer, use the JSON export in Report. The PDF is a report for reading or printing.',
+      saved_as: 'Saved as',
+      save_storage: 'Saving failed. The current case is still open. Check browser storage and the saved case list.',
+      save_invalid: 'Correct the highlighted inputs before saving; they have not been applied to the case.',
       examples: 'Load an example', ex_pick: 'Example cases…', reset: 'New case',
       s_site: 'Tumour site', case_step: 'Case', site_rules: 'RCR category and site notes', rx_modes: 'Multiple phases, SIB or brachytherapy', view_results: 'View results',
       cat: 'Category', cat_auto: 'from site', cat1: '1 · radical, fast-growing', cat2: '2 · radical, slower', cat3: '3 · palliative', cat_none: 'none',
@@ -1600,7 +1620,7 @@ body.touring .dock { display: none !important; }
         ['How sure is it?', '81-combination parameter sweep, resume-date scenarios, trade-off map, check-by-hand worksheet.'],
         ['Ready for the department', 'Department protocol, PDF report in Greek or English, treatment sheet for radiographers.'],
         ['Private and offline', 'One file, no server: nothing leaves the device. Open source (AGPL-3.0).']],
-      about_valid_t: 'Validation', about_valid: 'Built-in self-test against published worked examples: {a} pass on this device. The engine exists twice, in Python (75 tests) and in JavaScript, and the two agree on 928 randomised cases. Plain LQ results agree with RadComp on 9 schedules.',
+      about_valid_t: 'Validation', about_valid: 'Built-in self-test against published worked examples: {a} pass on this device. The engine exists twice, in Python (77 tests) and in JavaScript, and the two agree on 928 randomised cases. RadComp agrees on 9 plain LQ schedules. LQL-Equiv-web agrees on BED for 5 repopulation schedules and on BED and EQD2 for 6 large-fraction schedules.',
       about_use_t: 'Intended use', about_cite_t: 'How to cite',
       share_title: 'Share this case', share_hint: 'A link that opens this case in RTGap. The case travels inside the link itself, not through a server. The title, case reference and names are left out.', share_btn: 'Copy link to this case', share_ok: 'Link copied.',
       saved_title: 'Cases saved on this device', saved_hint: 'Kept only in this browser. Use a case number, not a patient name.', saved_name: 'Name or case number', saved_save: 'Save', saved_none: 'No saved cases yet.', saved_done: 'Case saved on this device.',
@@ -1695,7 +1715,7 @@ body.touring .dock { display: none !important; }
       refs_title: 'References', refs_hint: 'Numbers in square brackets across the page point here.',
       method: 'Method', method_text: 'BED = Σ d (1 + d / (α/β)) for every tissue; EQD2 = BED / (1 + 2 / (α/β)). For the tumour, repopulation is subtracted after the kick-off time: EQD2_T = EQD2 − D_prolif · (T − T_k), with T from the first to the last fraction. K (BED per day, RCR) and D_prolif (EQD2 per day) are related by K = D_prolif · (1 + 2 / (α/β)). When the dose per fraction changes, the whole plan is scaled and the scale is solved in closed form. Doses are rounded before they are evaluated. With several dose levels the primary level drives the decision and each level uses its own overall time.',
       disclaimer: 'Decision support, not a medical device. The calculation uses the linear-quadratic model with generic parameters and does not replace clinical judgement. All parameters and rules must be reviewed by the treating team, and every modified schedule must be checked independently before use.',
-      xval: 'The calculation engine of this page is verified against the reference Python implementation on 268 cases (1806 schedules) and reproduces the worked examples of refs [1] and [3]. On 9 standard LQ schedules it agrees exactly with the independent RadComp calculator.',
+      xval: 'Independent comparisons cover 9 LQ schedules with RadComp and 11 with LQL-Equiv-web 3.0.0. Tumour BED was compared with repopulation, and both BED and EQD2 for large fractions.',
       joiner_t: 'Dose-per-fraction error (Joiner)', joiner_h: 'A wrong dose per fraction was given for some fractions. The compensating schedule restores every tissue at once, whatever its α/β. Valid without incomplete repair and with unchanged overall time.',
       j_P: 'Planned total P (Gy)', j_p: 'Planned d (Gy)', j_E: 'Dose given in error E (Gy)', j_e: 'Erroneous d (Gy)', j_res: 'Compensation', j_bad: 'No exact compensation exists for these values.',
       eq_t: 'BED / EQD2', eq_n: 'Fractions', eq_d: 'd (Gy)', eq_ab: 'α/β (Gy)', eq_T: 'Overall time (d)', eq_dp: 'D_prolif (Gy/d)', eq_tk: 'T_k (d)',
@@ -1728,6 +1748,16 @@ body.touring .dock { display: none !important; }
       tagline: 'Αντιστάθμιση απρογραμμάτιστων διακοπών ακτινοθεραπείας',
       sub: 'Γραμμικό-τετραγωνικό μοντέλο · σειρά αποφάσεων RCR · κάθε κανόνας με την πηγή του',
       lang_label: 'Γλώσσα', case: 'Περιστατικό', result: 'Αποτέλεσμα', refs: 'Βιβλιογραφία', tools: 'Υπολογιστές',
+      case_files: 'Αποθήκευση / άνοιγμα',
+      reset_prompt: 'Να αποθηκευτεί το περιστατικό πριν ανοίξει νέο;',
+      save_local: 'Αποθήκευση στη συσκευή',
+      save_new: 'Αποθήκευση και νέο περιστατικό',
+      discard_new: 'Νέο χωρίς αποθήκευση',
+      cancel_case: 'Ακύρωση',
+      case_use: 'Το αποθηκευμένο περιστατικό ανοίγει ξανά για επεξεργασία στον ίδιο browser. Για μεταφορά χρησιμοποιήστε την εξαγωγή JSON στην Αναφορά. Το PDF είναι για ανάγνωση ή εκτύπωση.',
+      saved_as: 'Αποθηκεύτηκε ως',
+      save_storage: 'Η αποθήκευση απέτυχε. Το περιστατικό παραμένει ανοιχτό. Ελέγξτε τον χώρο του browser και τη λίστα αποθηκευμένων.',
+      save_invalid: 'Διορθώστε τα επισημασμένα πεδία πριν την αποθήκευση. Οι τιμές τους δεν έχουν εφαρμοστεί στο περιστατικό.',
       examples: 'Φόρτωση παραδείγματος', ex_pick: 'Παραδείγματα…', reset: 'Νέο περιστατικό',
       s_site: 'Εντοπισμός όγκου', case_step: 'Περιστατικό', site_rules: 'Κατηγορία RCR και σημειώσεις εντοπισμού', rx_modes: 'Πολλαπλές φάσεις, SIB ή βραχυθεραπεία', view_results: 'Προβολή αποτελεσμάτων',
       cat: 'Κατηγορία', cat_auto: 'από τον εντοπισμό', cat1: '1 · ριζική, ταχείας ανάπτυξης', cat2: '2 · ριζική, βραδύτερη', cat3: '3 · παρηγορική', cat_none: 'καμία',
@@ -1801,7 +1831,7 @@ body.touring .dock { display: none !important; }
         ['Πόσο σίγουρο είναι;', 'Σάρωση 81 συνδυασμών παραμέτρων, σενάρια επανέναρξης, χάρτης επιλογών, έλεγχος με το χέρι.'],
         ['Έτοιμο για το τμήμα', 'Πρωτόκολλο τμήματος, αναφορά PDF σε ελληνικά ή αγγλικά, φύλλο θεραπείας για τεχνολόγους.'],
         ['Ιδιωτικό και εκτός σύνδεσης', 'Ένα αρχείο, χωρίς διακομιστή: τίποτα δεν φεύγει από τη συσκευή. Ανοιχτός κώδικας (AGPL-3.0).']],
-      about_valid_t: 'Επικύρωση', about_valid: 'Ενσωματωμένος αυτοέλεγχος με δημοσιευμένα λυμένα παραδείγματα: {a} επιτυχείς σε αυτή τη συσκευή. Η μηχανή υπάρχει δύο φορές, σε Python (75 tests) και σε JavaScript, και οι δύο συμφωνούν σε 928 τυχαία περιστατικά. Τα αποτελέσματα απλού LQ συμφωνούν με το RadComp σε 9 σχήματα.',
+      about_valid_t: 'Επικύρωση', about_valid: 'Ενσωματωμένος αυτοέλεγχος με δημοσιευμένα λυμένα παραδείγματα: {a} επιτυχείς σε αυτή τη συσκευή. Η μηχανή υπάρχει δύο φορές, σε Python (77 tests) και σε JavaScript, και οι δύο συμφωνούν σε 928 τυχαία περιστατικά. Το RadComp συμφωνεί σε 9 σχήματα LQ. Το LQL-Equiv-web συμφωνεί στο BED για 5 σχήματα με επαναπληθυσμό και στα BED και EQD2 για 6 σχήματα μεγάλων κλασμάτων.',
       about_use_t: 'Προβλεπόμενη χρήση', about_cite_t: 'Πώς να το αναφέρετε',
       share_title: 'Κοινοποίηση περιστατικού', share_hint: 'Σύνδεσμος που ανοίγει αυτό το περιστατικό στο RTGap. Το περιστατικό ταξιδεύει μέσα στον ίδιο τον σύνδεσμο, όχι μέσω διακομιστή. Ο τίτλος, ο κωδικός περιστατικού και τα ονόματα δεν περιλαμβάνονται.', share_btn: 'Αντιγραφή συνδέσμου περιστατικού', share_ok: 'Ο σύνδεσμος αντιγράφηκε.',
       saved_title: 'Περιστατικά αποθηκευμένα στη συσκευή', saved_hint: 'Φυλάσσονται μόνο σε αυτόν τον browser. Χρησιμοποιήστε αριθμό περιστατικού, όχι όνομα ασθενούς.', saved_name: 'Όνομα ή αριθμός περιστατικού', saved_save: 'Αποθήκευση', saved_none: 'Δεν υπάρχουν αποθηκευμένα περιστατικά.', saved_done: 'Το περιστατικό αποθηκεύτηκε στη συσκευή.',
@@ -1896,7 +1926,7 @@ body.touring .dock { display: none !important; }
       refs_title: 'Βιβλιογραφία', refs_hint: 'Οι αριθμοί σε αγκύλες σε όλη τη σελίδα παραπέμπουν εδώ.',
       method: 'Μέθοδος', method_text: 'BED = Σ d (1 + d / (α/β)) για κάθε ιστό· EQD2 = BED / (1 + 2 / (α/β)). Για τον όγκο αφαιρείται ο επαναπληθυσμός μετά τον χρόνο έναρξης: EQD2_T = EQD2 − D_prolif · (T − T_k), με T από το πρώτο έως το τελευταίο κλάσμα. Το K (BED ανά ημέρα, RCR) και το D_prolif (EQD2 ανά ημέρα) συνδέονται με K = D_prolif · (1 + 2 / (α/β)). Όταν αλλάζει η δόση ανά κλάσμα, κλιμακώνεται ολόκληρο το πλάνο και ο συντελεστής λύνεται αναλυτικά. Οι δόσεις στρογγυλοποιούνται πριν αξιολογηθούν. Με πολλά επίπεδα δόσης, το κύριο επίπεδο καθορίζει την απόφαση και κάθε επίπεδο έχει τον δικό του συνολικό χρόνο.',
       disclaimer: 'Υποστήριξη απόφασης, όχι ιατροτεχνολογικό προϊόν. Ο υπολογισμός βασίζεται στο γραμμικό-τετραγωνικό μοντέλο με γενικές παραμέτρους και δεν υποκαθιστά την κλινική κρίση. Όλες οι παράμετροι και οι κανόνες πρέπει να ελεγχθούν από τη θεραπευτική ομάδα, και κάθε τροποποιημένο σχήμα να επαληθευτεί ανεξάρτητα πριν εφαρμοστεί.',
-      xval: 'Η υπολογιστική μηχανή της σελίδας έχει επαληθευτεί έναντι της υλοποίησης αναφοράς σε Python σε 268 περιστατικά (1806 σχήματα) και αναπαράγει τα λυμένα παραδείγματα των [1] και [3]. Σε 9 τυπικά σχήματα LQ συμφωνεί ακριβώς με τον ανεξάρτητο υπολογιστή RadComp.',
+      xval: 'Έλεγχος με το RadComp σε 9 σχήματα LQ και με το LQL-Equiv-web 3.0.0 σε 11 σχήματα. Με επαναπληθυσμό συγκρίθηκε το BED όγκου. Στα μεγάλα κλάσματα συγκρίθηκαν BED και EQD2.',
       joiner_t: 'Λάθος δόσης ανά κλάσμα (Joiner)', joiner_h: 'Σε κάποια κλάσματα δόθηκε λάθος δόση ανά κλάσμα. Το σχήμα αντιστάθμισης επαναφέρει όλους τους ιστούς ταυτόχρονα, ανεξάρτητα από το α/β. Ισχύει χωρίς ατελή επιδιόρθωση και με αμετάβλητο συνολικό χρόνο.',
       j_P: 'Προγραμματισμένη ολική P (Gy)', j_p: 'Προγραμματισμένη d (Gy)', j_E: 'Δόση που δόθηκε λάθος E (Gy)', j_e: 'Λανθασμένη d (Gy)', j_res: 'Αντιστάθμιση', j_bad: 'Δεν υπάρχει ακριβής αντιστάθμιση για αυτές τις τιμές.',
       eq_t: 'BED / EQD2', eq_n: 'Κλάσματα', eq_d: 'd (Gy)', eq_ab: 'α/β (Gy)', eq_T: 'Συνολικός χρόνος (ημ.)', eq_dp: 'D_prolif (Gy/ημ.)', eq_tk: 'T_k (ημ.)',
@@ -3710,6 +3740,37 @@ body.touring .dock { display: none !important; }
     const L = tr.t;
     return `<div class="card"><h2>${esc(L('share_title'))}</h2><p class="hint">${esc(L('share_hint'))}</p><div class="rowbtn" style="margin-top:0"><button type="button" class="btn" data-act="share">${esc(L('share_btn'))}</button></div></div>`;
   }
+  function writeCase(label, keepBoth) {
+    if (Object.keys(invalid).length) return { error: 'save_invalid' };
+    const base = (label.trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start)).slice(0, 80);
+    try {
+      const list = JSON.parse(localStorage.getItem(CKEY) || '[]');
+      if (!Array.isArray(list)) return { error: 'save_storage' };
+      let name = base;
+      if (keepBoth) {
+        for (let i = 2; list.some(c => c.name === name); i++) {
+          const suffix = ' (' + i + ')';
+          name = base.slice(0, 80 - suffix.length) + suffix;
+        }
+      }
+      const rest = list.filter(c => c.name !== name);
+      if (rest.length >= 400) return { error: 'save_storage' };
+      rest.unshift({ name, when: new Date().toISOString().slice(0, 10), sum: tr.siteName(state.site, RT.SITES[state.site]), state });
+      return storeCases(rest) ? { name } : { error: 'save_storage' };
+    } catch (e) { return { error: 'save_storage' }; }
+  }
+  function openCaseDialog(reset) {
+    const dlg = $('#case-dialog'), L = tr.t;
+    dlg.dataset.reset = reset ? '1' : '0';
+    const list = reset ? [] : loadCases();
+    dlg.innerHTML = `<h2 id="case-dialog-title">${esc(L(reset ? 'reset_prompt' : 'case_files'))}</h2>
+      <p>${esc(L('case_use'))}</p><label class="f"><span>${esc(L('saved_name'))}</span><input id="dialog-case-name" maxlength="80" autocomplete="off" value="${esc(($('#save-name') && $('#save-name').value) || state.caseRef || '')}"></label>
+      <p id="case-save-error" role="alert"></p><div class="rowbtn"><button class="btn pri" type="button" data-act="dialog-save">${esc(L(reset ? 'save_new' : 'save_local'))}</button>
+      ${reset ? `<button class="btn" type="button" data-act="discard-case">${esc(L('discard_new'))}</button>` : ''}
+      <button class="btn" type="button" data-act="cancel-case">${esc(L('cancel_case'))}</button></div>
+      ${reset ? '' : `<h3>${esc(L('saved_title'))}</h3>${list.length ? `<ul class="saved">${list.map((c,i) => `<li><button class="linkbtn" type="button" data-act="case-load" data-i="${i}">${esc(c.name)}</button><span>${esc(c.when)}</span></li>`).join('')}</ul>` : esc(L('saved_none'))}`}`;
+    dlg.showModal(); $('#dialog-case-name').focus();
+  }
   function savedHtml() {
     const L = tr.t, list = loadCases();
     return `<div class="card"><h2>${esc(L('saved_title'))}</h2><p class="hint">${esc(L('saved_hint'))}</p>
@@ -3833,14 +3894,16 @@ body.touring .dock { display: none !important; }
   function drawHero(now) {
     const cv = $('#hero'); if (!cv) return;
     const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
-    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const t = performance.now();
     if (heroT0 == null) heroT0 = t;
     const prog = (reduce || now === 'full') ? 1 : Math.max(0, Math.min(1, (t - heroT0) / 1600)), ease = 1 - Math.pow(1 - prog, 3);
     if (prog >= 1) heroDone = true;
-    const wide = W > 1000, x0 = wide ? Math.max(W * 0.55, 700) : W * 0.06, x1 = wide ? x0 + Math.min(W * 0.14, 190) : W - 14, y0 = wide ? 66 : 20, y1 = H - 24, Dmax = 14, decades = 5;
+    const wide = window.matchMedia('(min-width: 901px)').matches;
+    const x0 = wide ? 32 : W * 0.06, x1 = wide ? W - 77 : W - 14;
+    const y0 = wide ? 13 : 20, y1 = H - 20, Dmax = 14, decades = 5;
     g.globalAlpha = wide ? 1 : 0.4;
     const X = (D) => x0 + (D / Dmax) * (x1 - x0), Y = (lg) => y0 + (-lg / decades) * (y1 - y0);
     g.lineWidth = 1; g.strokeStyle = 'rgba(159,176,207,0.10)';
@@ -3861,7 +3924,7 @@ body.touring .dock { display: none !important; }
     curve((D) => lgS(D, 0.35, 10), 'rgba(127,178,255,0.8)', 1.6, 12, 'α/β = 10');
     curve((D) => lgS(D, 0.25, 3), 'rgba(234,240,251,0.4)', 1.3, 0, 'α/β = 3');
     curve((D) => { const n = Math.floor(D / 2), r = D - 2 * n; return n * lgS(2, 0.25, 3) + lgS(r, 0.25, 3); }, 'rgba(243,180,90,0.9)', 1.8, 10, '2 Gy × n');
-    if (wide) { let ly = y0 + 4; g.textAlign = 'left'; for (const [c2, lab] of legendItems) { g.fillStyle = c2; g.fillRect(x1 - 104, ly - 1, 14, 2); g.fillStyle = 'rgba(214,224,242,0.75)'; g.fillText(lab, x1 - 84, ly); ly += 14; } }
+    if (wide) { let ly = y0 + 4; g.textAlign = 'left'; for (const [c2, lab] of legendItems) { g.fillStyle = c2; g.fillRect(x1 + 4, ly - 1, 14, 2); g.fillStyle = 'rgba(214,224,242,0.75)'; g.fillText(lab, x1 + 21, ly); ly += 14; } }
     g.fillStyle = 'rgba(169,184,214,0.5)'; g.textAlign = 'center'; g.fillText('D (Gy)', x1 - 14, y1 + 13); g.textAlign = 'left'; if (wide) g.fillText('S', x0 + 4, y0 - 8);
     g.globalAlpha = 1;
     if (prog < 1 && now !== 'full') requestAnimationFrame(drawHero);
@@ -3881,7 +3944,7 @@ body.touring .dock { display: none !important; }
     document.documentElement.lang = state.lang;
     document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === state.lang));
     $('#ex').innerHTML = `<option value="">${esc(L('ex_pick'))}</option>` + Object.keys(EXAMPLES).map((k) => `<option value="${k}">${esc(EX_NAMES[state.lang][k])}</option>`).join('');
-    $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset');
+    $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset'); $('#case-files').textContent = L('case_files');
     const tf = (k, lab) => `<label class="f"><span>${esc(lab)}</span><input type="number" step="any" inputmode="decimal" data-tool="${k}" id="t-${k}" value="${toolState[k]}"></label>`;
     const picker = $('#tool-picker'), selectedTool = picker.value;
     picker.setAttribute('aria-label', L('tool_menu'));
@@ -4304,13 +4367,24 @@ body.touring .dock { display: none !important; }
     if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
     if (a === 'intro-try') { loadState(EXAMPLES.hn_70()); const r0 = $('#results'); if (r0 && window.innerWidth <= 900) r0.scrollIntoView({ behavior: 'smooth' }); return; }
     if (a === 'share') { const u = shareUrl(); try { navigator.clipboard.writeText(u).then(() => toast(tr.t('share_ok')), () => window.prompt(tr.t('share_btn'), u)); } catch (e) { toast(tr.t('save_fail')); } return; }
-    if (a === 'case-save') {
-      const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
-      const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
-      list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
-      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); renderAudit(); return;
+    if (a === 'case-files') { openCaseDialog(false); return; }
+    if (a === 'cancel-case') { $('#case-dialog').close(); return; }
+    if (a === 'discard-case') { $('#case-dialog').close(); loadState(newCase()); return; }
+    if (a === 'dialog-save' || a === 'case-save') {
+      const dialog = a === 'dialog-save', dlg = $('#case-dialog');
+      const result = writeCase($(dialog ? '#dialog-case-name' : '#save-name').value, dialog);
+      if (result.error) {
+        if (dialog) $('#case-save-error').textContent = tr.t(result.error);
+        else toast(tr.t(result.error));
+        return;
+      }
+      if (dialog) dlg.close();
+      if (dialog && dlg.dataset.reset === '1') loadState(newCase());
+      else { renderResults(); renderTriage(); renderAudit(); }
+      toast(tr.t('saved_as') + ' ' + result.name);
+      return;
     }
-    if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
+    if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { if ($('#case-dialog').open) $('#case-dialog').close(); const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
     if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); renderAudit(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
@@ -4492,7 +4566,7 @@ body.touring .dock { display: none !important; }
       window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; fillInstall(); });
     } catch (e) { /* ignore */ }
   }
-  $('#reset').addEventListener('click', () => loadState(newCase()));
+  $('#reset').addEventListener('click', () => openCaseDialog(true));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   if (mq && mq.addEventListener) mq.addEventListener('change', () => { drawChart(); drawMap(); });

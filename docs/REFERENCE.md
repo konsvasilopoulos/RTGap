@@ -129,8 +129,7 @@ and it can override or add sites (see `examples/protocol_example.yaml`).
   `validation/README.md`).
 * **Benchmark for independent software**: `rtgap benchmark` writes reference
   BED/EQD2 values. Nine plain LQ schedules agree exactly with RadComp
-  (`validation/benchmark.md`); the five time-corrected schedules still await
-  LQL-Equiv or similar.
+  (`validation/benchmark.md`); LQL-Equiv-web v3.0.0 agrees on tumour BED for five time-corrected schedules and on BED and EQD2 for six large-fraction schedules. Definitions and reproducible inputs are in the same benchmark.
 
 ## Review round 2 (v0.5)
 

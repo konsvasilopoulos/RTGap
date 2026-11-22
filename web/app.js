@@ -1008,6 +1008,37 @@
     const L = tr.t;
     return `<div class="card"><h2>${esc(L('share_title'))}</h2><p class="hint">${esc(L('share_hint'))}</p><div class="rowbtn" style="margin-top:0"><button type="button" class="btn" data-act="share">${esc(L('share_btn'))}</button></div></div>`;
   }
+  function writeCase(label, keepBoth) {
+    if (Object.keys(invalid).length) return { error: 'save_invalid' };
+    const base = (label.trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start)).slice(0, 80);
+    try {
+      const list = JSON.parse(localStorage.getItem(CKEY) || '[]');
+      if (!Array.isArray(list)) return { error: 'save_storage' };
+      let name = base;
+      if (keepBoth) {
+        for (let i = 2; list.some(c => c.name === name); i++) {
+          const suffix = ' (' + i + ')';
+          name = base.slice(0, 80 - suffix.length) + suffix;
+        }
+      }
+      const rest = list.filter(c => c.name !== name);
+      if (rest.length >= 400) return { error: 'save_storage' };
+      rest.unshift({ name, when: new Date().toISOString().slice(0, 10), sum: tr.siteName(state.site, RT.SITES[state.site]), state });
+      return storeCases(rest) ? { name } : { error: 'save_storage' };
+    } catch (e) { return { error: 'save_storage' }; }
+  }
+  function openCaseDialog(reset) {
+    const dlg = $('#case-dialog'), L = tr.t;
+    dlg.dataset.reset = reset ? '1' : '0';
+    const list = reset ? [] : loadCases();
+    dlg.innerHTML = `<h2 id="case-dialog-title">${esc(L(reset ? 'reset_prompt' : 'case_files'))}</h2>
+      <p>${esc(L('case_use'))}</p><label class="f"><span>${esc(L('saved_name'))}</span><input id="dialog-case-name" maxlength="80" autocomplete="off" value="${esc(($('#save-name') && $('#save-name').value) || state.caseRef || '')}"></label>
+      <p id="case-save-error" role="alert"></p><div class="rowbtn"><button class="btn pri" type="button" data-act="dialog-save">${esc(L(reset ? 'save_new' : 'save_local'))}</button>
+      ${reset ? `<button class="btn" type="button" data-act="discard-case">${esc(L('discard_new'))}</button>` : ''}
+      <button class="btn" type="button" data-act="cancel-case">${esc(L('cancel_case'))}</button></div>
+      ${reset ? '' : `<h3>${esc(L('saved_title'))}</h3>${list.length ? `<ul class="saved">${list.map((c,i) => `<li><button class="linkbtn" type="button" data-act="case-load" data-i="${i}">${esc(c.name)}</button><span>${esc(c.when)}</span></li>`).join('')}</ul>` : esc(L('saved_none'))}`}`;
+    dlg.showModal(); $('#dialog-case-name').focus();
+  }
   function savedHtml() {
     const L = tr.t, list = loadCases();
     return `<div class="card"><h2>${esc(L('saved_title'))}</h2><p class="hint">${esc(L('saved_hint'))}</p>
@@ -1131,14 +1162,16 @@
   function drawHero(now) {
     const cv = $('#hero'); if (!cv) return;
     const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
-    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const t = performance.now();
     if (heroT0 == null) heroT0 = t;
     const prog = (reduce || now === 'full') ? 1 : Math.max(0, Math.min(1, (t - heroT0) / 1600)), ease = 1 - Math.pow(1 - prog, 3);
     if (prog >= 1) heroDone = true;
-    const wide = W > 1000, x0 = wide ? Math.max(W * 0.55, 700) : W * 0.06, x1 = wide ? x0 + Math.min(W * 0.14, 190) : W - 14, y0 = wide ? 66 : 20, y1 = H - 24, Dmax = 14, decades = 5;
+    const wide = window.matchMedia('(min-width: 901px)').matches;
+    const x0 = wide ? 32 : W * 0.06, x1 = wide ? W - 77 : W - 14;
+    const y0 = wide ? 13 : 20, y1 = H - 20, Dmax = 14, decades = 5;
     g.globalAlpha = wide ? 1 : 0.4;
     const X = (D) => x0 + (D / Dmax) * (x1 - x0), Y = (lg) => y0 + (-lg / decades) * (y1 - y0);
     g.lineWidth = 1; g.strokeStyle = 'rgba(159,176,207,0.10)';
@@ -1159,7 +1192,7 @@
     curve((D) => lgS(D, 0.35, 10), 'rgba(127,178,255,0.8)', 1.6, 12, 'α/β = 10');
     curve((D) => lgS(D, 0.25, 3), 'rgba(234,240,251,0.4)', 1.3, 0, 'α/β = 3');
     curve((D) => { const n = Math.floor(D / 2), r = D - 2 * n; return n * lgS(2, 0.25, 3) + lgS(r, 0.25, 3); }, 'rgba(243,180,90,0.9)', 1.8, 10, '2 Gy × n');
-    if (wide) { let ly = y0 + 4; g.textAlign = 'left'; for (const [c2, lab] of legendItems) { g.fillStyle = c2; g.fillRect(x1 - 104, ly - 1, 14, 2); g.fillStyle = 'rgba(214,224,242,0.75)'; g.fillText(lab, x1 - 84, ly); ly += 14; } }
+    if (wide) { let ly = y0 + 4; g.textAlign = 'left'; for (const [c2, lab] of legendItems) { g.fillStyle = c2; g.fillRect(x1 + 4, ly - 1, 14, 2); g.fillStyle = 'rgba(214,224,242,0.75)'; g.fillText(lab, x1 + 21, ly); ly += 14; } }
     g.fillStyle = 'rgba(169,184,214,0.5)'; g.textAlign = 'center'; g.fillText('D (Gy)', x1 - 14, y1 + 13); g.textAlign = 'left'; if (wide) g.fillText('S', x0 + 4, y0 - 8);
     g.globalAlpha = 1;
     if (prog < 1 && now !== 'full') requestAnimationFrame(drawHero);
@@ -1179,7 +1212,7 @@
     document.documentElement.lang = state.lang;
     document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.lang === state.lang));
     $('#ex').innerHTML = `<option value="">${esc(L('ex_pick'))}</option>` + Object.keys(EXAMPLES).map((k) => `<option value="${k}">${esc(EX_NAMES[state.lang][k])}</option>`).join('');
-    $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset');
+    $('#ex').setAttribute('aria-label', L('examples')); $('#reset').textContent = L('reset'); $('#case-files').textContent = L('case_files');
     const tf = (k, lab) => `<label class="f"><span>${esc(lab)}</span><input type="number" step="any" inputmode="decimal" data-tool="${k}" id="t-${k}" value="${toolState[k]}"></label>`;
     const picker = $('#tool-picker'), selectedTool = picker.value;
     picker.setAttribute('aria-label', L('tool_menu'));
@@ -1602,13 +1635,24 @@
     if (a === 'intro-hide') { try { localStorage.setItem('rtgap.intro', '1'); } catch (e) { /* ignore */ } $('#intro').hidden = true; return; }
     if (a === 'intro-try') { loadState(EXAMPLES.hn_70()); const r0 = $('#results'); if (r0 && window.innerWidth <= 900) r0.scrollIntoView({ behavior: 'smooth' }); return; }
     if (a === 'share') { const u = shareUrl(); try { navigator.clipboard.writeText(u).then(() => toast(tr.t('share_ok')), () => window.prompt(tr.t('share_btn'), u)); } catch (e) { toast(tr.t('save_fail')); } return; }
-    if (a === 'case-save') {
-      const nm = (($('#save-name') && $('#save-name').value) || '').trim() || (tr.siteName(state.site, RT.SITES[state.site]) + ' ' + state.start);
-      const list = loadCases().filter((c) => c.name !== nm), d0 = new Date();
-      list.unshift({ name: nm.slice(0, 80), when: d0.toISOString().slice(0, 10), sum: model && !model.error ? tr.siteName(model.p.siteId, model.p.site) : '', state: JSON.parse(JSON.stringify(state)) });
-      toast(tr.t(storeCases(list) ? 'saved_done' : 'save_fail')); renderResults(); renderTriage(); renderAudit(); return;
+    if (a === 'case-files') { openCaseDialog(false); return; }
+    if (a === 'cancel-case') { $('#case-dialog').close(); return; }
+    if (a === 'discard-case') { $('#case-dialog').close(); loadState(newCase()); return; }
+    if (a === 'dialog-save' || a === 'case-save') {
+      const dialog = a === 'dialog-save', dlg = $('#case-dialog');
+      const result = writeCase($(dialog ? '#dialog-case-name' : '#save-name').value, dialog);
+      if (result.error) {
+        if (dialog) $('#case-save-error').textContent = tr.t(result.error);
+        else toast(tr.t(result.error));
+        return;
+      }
+      if (dialog) dlg.close();
+      if (dialog && dlg.dataset.reset === '1') loadState(newCase());
+      else { renderResults(); renderTriage(); renderAudit(); }
+      toast(tr.t('saved_as') + ' ' + result.name);
+      return;
     }
-    if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
+    if (a === 'case-load') { const c = loadCases()[+t.dataset.i]; if (c && c.state) { if ($('#case-dialog').open) $('#case-dialog').close(); const s2 = Object.assign(baseState(), c.state); s2.oars.forEach(fixOar); loadState(s2); toast(c.name); } return; }
     if (a === 'case-del') { const list = loadCases(); list.splice(+t.dataset.i, 1); storeCases(list); renderResults(); renderTriage(); renderAudit(); return; }
     if (a === 'add-err') { const p0 = model && model.p, f = p0 && p0.delivered.length ? p0.delivered[p0.delivered.length - 1] : null; state.errors.push({ date: f ? RT.iso(f.day) : '', dose: f ? +f.dose.toFixed(3) : null }); refresh(true); return; }
     if (a === 'rm-err') { state.errors.splice(+t.dataset.i, 1); refresh(true); return; }
@@ -1790,7 +1834,7 @@
       window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; fillInstall(); });
     } catch (e) { /* ignore */ }
   }
-  $('#reset').addEventListener('click', () => loadState(newCase()));
+  $('#reset').addEventListener('click', () => openCaseDialog(true));
   window.addEventListener('resize', () => { drawChart(); drawMap(); drawHero(heroDone ? 'full' : undefined); });
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   if (mq && mq.addEventListener) mq.addEventListener('change', () => { drawChart(); drawMap(); });

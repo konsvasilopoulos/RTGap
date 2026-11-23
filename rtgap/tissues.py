@@ -54,10 +54,11 @@ class Tissue:
         (EQD2 Gy/day, Joiner) or as K (BED Gy/day, RCR)."""
         if dprolif is not None and k_bed is not None:
             raise ValueError("give either dprolif or k_bed, not both")
-        if k_bed is not None:
-            dprolif = lq.dprolif_from_k_bed(k_bed, alpha_beta)
-        return cls(name=name, alpha_beta=alpha_beta, dprolif=dprolif or 0.0,
+        tissue = cls(name=name, alpha_beta=alpha_beta, dprolif=dprolif or 0.0,
                    kickoff_days=kickoff_days, **kw)
+        if k_bed is not None:
+            tissue.dprolif = lq.dprolif_from_k_bed(k_bed, alpha_beta, tissue.lql_dt)
+        return tissue
 
     def ratio(self, phase: int = 0) -> float:
         r = self.dose_ratio
@@ -67,7 +68,7 @@ class Tissue:
 
     @property
     def k_bed(self) -> float:
-        return lq.k_bed_from_dprolif(self.dprolif, self.alpha_beta)
+        return lq.k_bed_from_dprolif(self.dprolif, self.alpha_beta, self.lql_dt)
 
     @property
     def has_time_factor(self) -> bool:
@@ -105,7 +106,7 @@ class Tissue:
         return self.bed_without_time(fractions, bid_interval_h) - self.repopulation_bed(fractions)
 
     def eqd2(self, fractions: Sequence[Fraction], bid_interval_h: float = 6.0) -> float:
-        return lq.eqd2_from_bed(self.bed(fractions, bid_interval_h), self.alpha_beta)
+        return lq.eqd2_from_bed(self.bed(fractions, bid_interval_h), self.alpha_beta, self.lql_dt)
 
     def describe(self) -> str:
         parts = [f"α/β = {self.alpha_beta:g} Gy"]

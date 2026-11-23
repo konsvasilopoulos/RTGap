@@ -39,14 +39,18 @@ def quad_term(d: float, dt: float | None = None) -> float:
     return 2.0 * dt * d - dt * dt
 
 
-def eqd2_from_bed(bed_value: float, alpha_beta: float) -> float:
+def reference_factor(alpha_beta: float, dt: float | None = None) -> float:
+    """BED per Gy of the 2 Gy reference fraction, using the course model."""
     _check_ab(alpha_beta)
-    return bed_value / (1.0 + 2.0 / alpha_beta)
+    return 1.0 + quad_term(2.0, dt) / (2.0 * alpha_beta)
 
 
-def bed_from_eqd2(eqd2_value: float, alpha_beta: float) -> float:
-    _check_ab(alpha_beta)
-    return eqd2_value * (1.0 + 2.0 / alpha_beta)
+def eqd2_from_bed(bed_value: float, alpha_beta: float, dt: float | None = None) -> float:
+    return bed_value / reference_factor(alpha_beta, dt)
+
+
+def bed_from_eqd2(eqd2_value: float, alpha_beta: float, dt: float | None = None) -> float:
+    return eqd2_value * reference_factor(alpha_beta, dt)
 
 
 def eqd2(n: float, d: float, alpha_beta: float) -> float:
@@ -54,12 +58,12 @@ def eqd2(n: float, d: float, alpha_beta: float) -> float:
     return eqd2_from_bed(bed(n, d, alpha_beta), alpha_beta)
 
 
-def k_bed_from_dprolif(dprolif: float, alpha_beta: float) -> float:
-    return dprolif * (1.0 + 2.0 / alpha_beta)
+def k_bed_from_dprolif(dprolif: float, alpha_beta: float, dt: float | None = None) -> float:
+    return dprolif * reference_factor(alpha_beta, dt)
 
 
-def dprolif_from_k_bed(k_bed: float, alpha_beta: float) -> float:
-    return k_bed / (1.0 + 2.0 / alpha_beta)
+def dprolif_from_k_bed(k_bed: float, alpha_beta: float, dt: float | None = None) -> float:
+    return k_bed / reference_factor(alpha_beta, dt)
 
 
 def repopulation_eqd2(overall_time: float, dprolif: float, kickoff: float | None) -> float:

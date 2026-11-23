@@ -500,7 +500,7 @@ body.touring .dock { display: none !important; }
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.11.0';
+  const VERSION = '1.11.1';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -548,10 +548,11 @@ body.touring .dock { display: none !important; }
 
   // ------------------------------------------------------------------ LQ
   const bed = (n, d, ab) => n * d * (1 + d / ab);
-  const eqd2FromBed = (b, ab) => b / (1 + 2 / ab);
+  const referenceFactor = (ab, dt) => 1 + quadTerm(2, dt) / (2 * ab);
+  const eqd2FromBed = (b, ab, dt) => b / referenceFactor(ab, dt);
   const eqd2 = (n, d, ab) => eqd2FromBed(bed(n, d, ab), ab);
-  const kFromDprolif = (dp, ab) => dp * (1 + 2 / ab);
-  const dprolifFromK = (k, ab) => k / (1 + 2 / ab);
+  const kFromDprolif = (dp, ab, dt) => dp * referenceFactor(ab, dt);
+  const dprolifFromK = (k, ab, dt) => eqd2FromBed(k, ab, dt);
   const repairFactor = (h, half) => Math.exp(-Math.LN2 * h / half);
   function solveQuadratic(a, b, target) {
     if (target <= 0) return 0;
@@ -595,11 +596,11 @@ body.touring .dock { display: none !important; }
     }
     if (hasTime(t)) {
       const own = fx.filter((f) => f.dose * tRatio(t, f.phase) > 0);
-      total -= kFromDprolif(t.dprolif, t.ab) * Math.max(0, overallTime(own) - t.tk);
+      total -= kFromDprolif(t.dprolif, t.ab, lqlDt(t)) * Math.max(0, overallTime(own) - t.tk);
     }
     return total;
   }
-  const tissueEqd2 = (t, fx, bidH) => eqd2FromBed(tissueBed(t, fx, bidH), t.ab);
+  const tissueEqd2 = (t, fx, bidH) => eqd2FromBed(tissueBed(t, fx, bidH), t.ab, lqlDt(t));
   const tissueBedNoTime = (t, fx, bidH) => tissueBed(Object.assign({}, t, { dprolif: 0 }), fx, bidH);
 
   // ------------------------------------------------------------------ rules / constraints
@@ -788,7 +789,7 @@ body.touring .dock { display: none !important; }
     return out;
   }
   /** EQD2 (no time factor) delivered to a tissue minus what was intended, over the delivered fractions. */
-  const errorEffect = (p, t) => { const bi = p.c.bid_interval_h; return eqd2FromBed(tissueBedNoTime(t, p.delivered, bi) - tissueBedNoTime(t, p.deliveredIntended, bi), t.ab); };
+  const errorEffect = (p, t) => { const bi = p.c.bid_interval_h; return eqd2FromBed(tissueBedNoTime(t, p.delivered, bi) - tissueBedNoTime(t, p.deliveredIntended, bi), t.ab, lqlDt(t)); };
   /** Generalised Joiner correction (BCR eq. 9.3–9.4): linear and quadratic dose sums L, Q still to give. */
   function joinerTarget(p) {
     const rest = p.remainingPhases.map((ph) => p.s0 * p.rx.refDose(ph));
@@ -799,7 +800,7 @@ body.touring .dock { display: none !important; }
   /** Largest EQD2 of the primary level (tumour α/β, no time factor) delivered within any 7 consecutive days. */
   function weeklyPeak(p, fx) {
     const t = p.tumour, per = new Map();
-    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(bedFraction(t, d), t.ab)); }
+    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(bedFraction(t, d), t.ab, lqlDt(t))); }
     const days = [...per.keys()].sort((a, b) => a - b); let best = 0;
     for (let i = 0; i < days.length; i++) { let tot = 0; for (let j = i; j < days.length && days[j] - days[i] <= 6; j++) tot += per.get(days[j]); if (tot > best) best = tot; }
     return best;
@@ -1244,8 +1245,8 @@ body.touring .dock { display: none !important; }
       const fx = course.filter((f) => f.day <= d);
       const noTime = Object.assign({}, t, { dprolif: 0 });
       let b = tissueBed(noTime, fx, bi);
-      if (hasTime(t)) b -= kFromDprolif(t.dprolif, t.ab) * Math.max(0, d - start - t.tk);
-      pts.push({ day: d, y: eqd2FromBed(b, t.ab) });
+      if (hasTime(t)) b -= kFromDprolif(t.dprolif, t.ab, lqlDt(t)) * Math.max(0, d - start - t.tk);
+      pts.push({ day: d, y: eqd2FromBed(b, t.ab, lqlDt(t)) });
     }
     return pts;
   }
@@ -1271,10 +1272,10 @@ body.touring .dock { display: none !important; }
     terms.sort((a, b) => b.n - a.n);
     const noTime = terms.reduce((s, x) => s + x.bed, 0);
     const own = course.filter((f) => f.dose * tRatio(t, f.phase) > 0), T = overallTime(own);
-    const K = hasTime(t) ? kFromDprolif(t.dprolif, t.ab) : 0, loss = hasTime(t) ? K * Math.max(0, T - t.tk) : 0;
+    const K = hasTime(t) ? kFromDprolif(t.dprolif, t.ab, lqlDt(t)) : 0, loss = hasTime(t) ? K * Math.max(0, T - t.tk) : 0;
     const total = noTime - loss;
     if (Math.abs(total - tissueBed(t, course, bi)) > 1e-6) return null;
-    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab), ab: t.ab, theta, bidH: bi, dt: lqlDt(t) };
+    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab, lqlDt(t)), ab: t.ab, theta, bidH: bi, dt: lqlDt(t) };
   }
 
   /** Built-in self-test against published worked examples (runs in the browser at start-up). */
@@ -1398,16 +1399,16 @@ body.touring .dock { display: none !important; }
     if ('dprolif_eqd2_per_day' in ct) delete t.k_bed_per_day;
     if ('k_bed_per_day' in ct) delete t.dprolif_eqd2_per_day;
     const ab = +(t.alpha_beta == null ? 10 : t.alpha_beta);
-    const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab) : (+t.dprolif_eqd2_per_day || 0);
-    const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
-    const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
     const model = cfg.model || protocol.model || 'lq';
     if (!['lq', 'lql'].includes(model)) throw ValidationError([{ code: 'e_generic', p: { msg: 'model ' + model } }]);
+    const fac = model === 'lql' ? +(cfg.lql_dt_factor || protocol.lql_dt_factor || 2) : null;
     if (model === 'lql') {
-      const fac = +(cfg.lql_dt_factor || protocol.lql_dt_factor || 2);
       if (!(fac > 0)) throw ValidationError([{ code: 'e_generic', p: { msg: 'lql_dt_factor' } }]);
-      tumour.lql = fac; for (const o of oars) o.lql = fac;
     }
+    const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab, fac == null ? null : fac * ab) : (+t.dprolif_eqd2_per_day || 0);
+    const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, lql: fac, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
+    const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
+    for (const o of oars) o.lql = fac;
     const guidance = cfg.guidance || protocol.guidance || 'rcr2019';
     if (!GUIDANCES.includes(guidance)) throw ValidationError([{ code: 'e_generic', p: { msg: 'guidance ' + guidance } }]);
     let rx;
@@ -1517,7 +1518,7 @@ body.touring .dock { display: none !important; }
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
     solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
-    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt };
+    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt, referenceFactor, tRatio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1593,6 +1594,17 @@ body.touring .dock { display: none !important; }
       tri_none: 'Save some cases first (Report tab → Cases saved on this device).', tri_from: 'First day of the outage', tri_to: 'Last day of the outage', tri_n: 'saved cases', tri_unaff: 'not affected by these days', tri_err: 'could not be calculated',
       tri_load: 'Extra sessions the suggestions would need', tri_note: 'Each row is the suggestion for that patient alone, from the case as saved. Capacity on the weekend or for second fractions is not checked: use the list of extra sessions to judge it.',
       tab_plan: 'Schedule', tab_opts: 'Options', tab_an: 'Analysis', tab_rep: 'Report',
+      planned_thresholds: 'Thresholds in the prescribed course',
+      bid_timing_note: 'Enter the planned interval between sessions. The tissue repair half-time is set separately under organs at risk.',
+      thresholds: 'LQ-L thresholds by tissue · selected course',
+      maximum_fraction: 'largest fraction',
+      linear_used: 'linear branch used',
+      lq_only: 'within LQ range',
+      eq_time: 'time-corrected EQD2',
+      delta_tum_bed: 'Tumour ΔBED vs prescription',
+      breast_estimate: 'START reference for locoregional relapse: α/β 3.5 Gy (95% CI 1.2–5.7).',
+      prostate_estimate: 'Biochemical control in prostate trials: α/β 1.6 Gy (95% CI 1.3–2.0).',
+      cervix_estimate: 'Cervical cancer, EBRT and LDR brachytherapy: published Tₖ 19 days (11–22).',
       kpi_missed: 'Missed', kpi_left: 'fx still to give', kpi_ext: 'Prolongation', kpi_tum: 'Tumour dose', kpi_late: 'Late tissue',
       nav_label: 'Sections', nav: ['Case', 'Prescription', 'Interruption'],
       about_btn: 'About', theme_auto: 'Theme: follows the device', theme_light: 'Theme: light', theme_dark: 'Theme: dark',
@@ -1661,18 +1673,18 @@ body.touring .dock { display: none !important; }
       sum_notime: 'no time factor', sum_oars: 'organs', sum_dose: 'change of d', sum_tol: 'tolerances', sum_notol: 'no automatic dose change', sum_none: 'none entered',
       gl_what: 'What do these mean?', copy_sum: 'Copy summary',
       gloss: { ab: ['α/β ratio', 'How sensitive a tissue is to the size of each fraction. Low values (about 1.5–4 Gy) for late-responding tissues and for tumours such as prostate and breast; about 10 Gy for most fast-growing tumours and for acute reactions. Larger fractions hurt low-α/β tissues more.'],
-        k: ['Repopulation: K or D_prolif', 'The dose lost per day once tumour cells start to regrow faster during treatment. RCR gives it as K in BED per day (0.9 Gy/day for head and neck); textbooks often give D_prolif in EQD2 per day. K = D_prolif · (1 + 2/(α/β)).'],
+        k: ['Repopulation: K or D_prolif', 'The dose lost per day once tumour cells start to regrow faster during treatment. RCR gives it as K in BED per day (0.9 Gy/day for head and neck); textbooks often give D_prolif in EQD2 per day. K = D_prolif · BED(1 × 2 Gy)/2.'],
         tk: ['Kick-off time T_k', 'The day, counted from the start of treatment, after which accelerated repopulation is assumed (28 days in the RCR generic values). Before T_k, prolongation costs the tumour nothing in this model.'],
         repair: ['Repair half-time T½', 'How fast a tissue repairs sublethal damage between two fractions on the same day. With long half-times (about 4 h for late effects), 6 h is not enough for full repair, so twice-daily treatment adds late-tissue dose.'],
         eqd2: ['EQD2', 'The total dose in 2-Gy fractions that would have the same biological effect. For the tumour it is also corrected for repopulation (EQD2_T). The tables show the change from the prescribed plan.'],
         peak7: ['Peak 7-day dose', 'The largest EQD2 delivered in any 7 consecutive days: a simple indicator of how intense the treatment is for acute reactions such as mucositis. It is this tool\'s indicator, not an RCR quantity.'],
-        lql: ['LQ and LQ-L', 'The LQ model bends the survival curve ever more steeply, which overestimates the effect of very large fractions. LQ-L (Astrahan 2008) follows LQ up to a transition dose d_T and continues along the tangent above it: BED = d_T(1 + d_T/(α/β)) + (1 + 2d_T/(α/β))(d − d_T). d_T is set as a multiple of each tissue\'s α/β (default 2, so 20 Gy for α/β 10 and 6 Gy for α/β 3). Use it to see how much a result with large fractions depends on the model; it is not validated clinically.'],
+        lql: ['LQ and LQ-L', 'At large doses per fraction the predicted effect depends on the model. LQ-L (Astrahan 2008) follows LQ up to a transition dose d_T and continues along the tangent above it: BED = d_T(1 + d_T/(α/β)) + (1 + 2d_T/(α/β))(d − d_T). d_T is set as a multiple of each tissue\'s α/β (default 2, so 20 Gy for α/β 10 and 6 Gy for α/β 3). Use it to see how much a result with large fractions depends on the model; it is not validated clinically.'],
         guidance: ['RCR guidance: 2019 or 5th edition draft', 'Both editions keep the same decision order and categories. With the 5th edition draft: (1) 1-week breast schedules get no extra dose for an interruption and should finish within 3 weeks where possible; (2) 3-week breast schedules should not exceed an overall time of 5 weeks; (3) medulloblastoma aims for a total time under 45 days; (4) BID on a chemotherapy day is excluded only when the chemotherapy is not daily or d > 1.5 Gy, while the 2019 text advises against accelerated treatment on any day of concomitant chemotherapy. In both editions SABR resumes on non-consecutive days.'],
         proto: ['Department protocol', 'The department\'s standing settings: which days and methods are available, the dose rounding, any tolerances, and its own radiobiological values per site. It is kept on this device and starts every new case. A case file always contains the values actually used, so it can be re-calculated without the protocol.'],
         hist: ['Several interruptions and dose errors', 'RCR counts the prolongation over the whole course, from the original end date, so earlier interruptions are marked too. A dose error is corrected with the Joiner method: the remaining dose and fraction size are chosen so that the total dose and the sum of squared fraction doses equal those intended, which brings every tissue back together whatever its α/β (exact without a time factor and incomplete repair; the number of fractions is rounded).'] }, dev: 'Developed by', lic: 'Open source under the GNU AGPL-3.0. Commercial licences are available from the author.', src: 'Source code',
       repair: 'Repair T½ (h)', bt_ratio: 'Brachy dose ratio', brachy: 'Brachytherapy (HDR) is part of the course', brachy_hint: 'Fixed dates and doses. The primary level receives the full dose, other levels none, each organ its brachytherapy dose ratio. No external beam is planned on these days, and they count in the overall time. If the dates move, enter the new ones.', bt_date: 'Date', bt_dose: 'Dose (Gy)', add_bt: 'Add fraction', lg_bt: 'brachytherapy',
-      ratio_hint: 'With several phases, a dose ratio can be given per phase as 0.9/0.1. Repair T½ applies between two fractions on the same day; leave it empty for complete repair.',
-      generic_note: 'These are the generic RCR values, derived mainly from head and neck data. For this site they are an assumption to review.',
+      ratio_hint: 'The 4.4 h default comes from subcutaneous fibrosis (CHART). Review the repair half-time for other endpoints. With several phases, a dose ratio can be given per phase as 0.9/0.1. Repair T½ applies between two fractions on the same day; leave it empty for complete repair.',
+      generic_note: 'The pair K = 0.9 and Tₖ = 28 days comes from head and neck data. Its use here is an extrapolation.',
       unc: 'With the parameters varied', unc_same: 'same suggestion in', robust_yes: 'robust', robust_no: 'parameter-sensitive',
       hand: 'Check by hand', hand_hint: 'The same result as a short sum, for independent verification with a calculator.', hand_rep: 'repopulation', hand_bid: 'two per day',
       selftest: 'Self-test against published worked examples', st_exp: 'Published', st_got: 'This engine', st_pass: 'passed',
@@ -1713,7 +1725,7 @@ body.touring .dock { display: none !important; }
       save_fail: 'The file could not be saved here.', import_fail: 'This file is not an RTGap input.',
       checksum: 'Input SHA-256', software: 'Software', generated: 'Generated',
       refs_title: 'References', refs_hint: 'Numbers in square brackets across the page point here.',
-      method: 'Method', method_text: 'BED = Σ d (1 + d / (α/β)) for every tissue; EQD2 = BED / (1 + 2 / (α/β)). For the tumour, repopulation is subtracted after the kick-off time: EQD2_T = EQD2 − D_prolif · (T − T_k), with T from the first to the last fraction. K (BED per day, RCR) and D_prolif (EQD2 per day) are related by K = D_prolif · (1 + 2 / (α/β)). When the dose per fraction changes, the whole plan is scaled and the scale is solved in closed form. Doses are rounded before they are evaluated. With several dose levels the primary level drives the decision and each level uses its own overall time.',
+      method: 'Method', method_text: 'LQ: BED = Σ d (1 + d / (α/β)) for every tissue; EQD2 = BED / R, R = BED(1 × 2 Gy)/2 (LQ or LQ-L). For the tumour, repopulation is subtracted after the kick-off time: EQD2_T = EQD2 − D_prolif · (T − T_k), with T from the first to the last fraction. K (BED per day, RCR) and D_prolif (EQD2 per day) are related by K = D_prolif · R. When the dose per fraction changes, the whole plan is scaled and the scale is solved using the selected model. Doses are rounded before they are evaluated. With several dose levels the primary level drives the decision and each level uses its own overall time.',
       disclaimer: 'Decision support, not a medical device. The calculation uses the linear-quadratic model with generic parameters and does not replace clinical judgement. All parameters and rules must be reviewed by the treating team, and every modified schedule must be checked independently before use.',
       xval: 'Independent comparisons cover 9 LQ schedules with RadComp and 11 with LQL-Equiv-web 3.0.0. Tumour BED was compared with repopulation, and both BED and EQD2 for large fractions.',
       joiner_t: 'Dose-per-fraction error (Joiner)', joiner_h: 'A wrong dose per fraction was given for some fractions. The compensating schedule restores every tissue at once, whatever its α/β. Valid without incomplete repair and with unchanged overall time.',
@@ -1804,6 +1816,17 @@ body.touring .dock { display: none !important; }
       tri_none: 'Αποθηκεύστε πρώτα μερικά περιστατικά (καρτέλα Αναφορά → Περιστατικά αποθηκευμένα στη συσκευή).', tri_from: 'Πρώτη ημέρα βλάβης', tri_to: 'Τελευταία ημέρα βλάβης', tri_n: 'αποθηκευμένα περιστατικά', tri_unaff: 'δεν επηρεάζεται από αυτές τις ημέρες', tri_err: 'δεν υπολογίστηκε',
       tri_load: 'Επιπλέον συνεδρίες που θα χρειάζονταν οι προτάσεις', tri_note: 'Κάθε γραμμή είναι η πρόταση για τον ασθενή μόνο του, από το περιστατικό όπως αποθηκεύτηκε. Δεν ελέγχεται η διαθεσιμότητα το Σαββατοκύριακο ή για δεύτερα κλάσματα: κρίνετέ τη από τη λίστα των επιπλέον συνεδριών.',
       tab_plan: 'Σχήμα', tab_opts: 'Επιλογές', tab_an: 'Ανάλυση', tab_rep: 'Αναφορά',
+      planned_thresholds: 'Κατώφλια στο αρχικό πλάνο',
+      bid_timing_note: 'Δηλώστε πόσες ώρες θα μεσολαβήσουν μεταξύ συνεδριών. Ο χρόνος ημιεπιδιόρθωσης ορίζεται χωριστά για κάθε όργανο σε κίνδυνο.',
+      thresholds: 'Κατώφλια LQ-L ανά ιστό · επιλεγμένο σχήμα',
+      maximum_fraction: 'μέγιστη δόση ανά κλάσμα',
+      linear_used: 'χρησιμοποιήθηκε ο γραμμικός κλάδος',
+      lq_only: 'εντός περιοχής LQ',
+      eq_time: 'EQD2 με διόρθωση χρόνου',
+      delta_tum_bed: 'ΔBED όγκου από το αρχικό πλάνο',
+      breast_estimate: 'START, τοπικοπεριοχική υποτροπή: α/β 3,5 Gy (95% ΔΕ 1,2–5,7).',
+      prostate_estimate: 'Βιοχημικός έλεγχος προστάτη: α/β 1,6 Gy (95% ΔΕ 1,3–2,0).',
+      cervix_estimate: 'Καρκίνος τραχήλου μήτρας, εξωτερική θεραπεία και LDR βραχυθεραπεία: δημοσιευμένο Tₖ 19 ημέρες (11–22).',
       kpi_missed: 'Χάθηκαν', kpi_left: 'κλ. απομένουν', kpi_ext: 'Παράταση', kpi_tum: 'Δόση όγκου', kpi_late: 'Όψιμοι ιστοί',
       nav_label: 'Ενότητες', nav: ['Περιστατικό', 'Συνταγογράφηση', 'Διακοπή'],
       about_btn: 'Σχετικά', theme_auto: 'Θέμα: όπως η συσκευή', theme_light: 'Θέμα: φωτεινό', theme_dark: 'Θέμα: σκούρο',
@@ -1872,18 +1895,18 @@ body.touring .dock { display: none !important; }
       sum_notime: 'χωρίς παράγοντα χρόνου', sum_oars: 'όργανα', sum_dose: 'αλλαγή d', sum_tol: 'ανοχές', sum_notol: 'χωρίς αυτόματη αλλαγή δόσης', sum_none: 'δεν δόθηκε',
       gl_what: 'Τι σημαίνουν;', copy_sum: 'Αντιγραφή σύνοψης',
       gloss: { ab: ['Λόγος α/β', 'Πόσο ευαίσθητος είναι ένας ιστός στο μέγεθος του κάθε κλάσματος. Χαμηλές τιμές (περίπου 1.5–4 Gy) για τους όψιμα αντιδρώντες ιστούς και για όγκους όπως ο προστάτης και ο μαστός· περίπου 10 Gy για τους περισσότερους ταχέως αναπτυσσόμενους όγκους και για τις οξείες αντιδράσεις. Τα μεγαλύτερα κλάσματα βλάπτουν περισσότερο τους ιστούς με χαμηλό α/β.'],
-        k: ['Επαναπληθυσμός: K ή D_prolif', 'Η δόση που χάνεται ανά ημέρα όταν τα καρκινικά κύτταρα αρχίζουν να πολλαπλασιάζονται ταχύτερα κατά τη θεραπεία. Το RCR τη δίνει ως K σε BED ανά ημέρα (0.9 Gy/ημέρα για κεφαλή-τράχηλο)· τα συγγράμματα συχνά ως D_prolif σε EQD2 ανά ημέρα. K = D_prolif · (1 + 2/(α/β)).'],
+        k: ['Επαναπληθυσμός: K ή D_prolif', 'Η δόση που χάνεται ανά ημέρα όταν τα καρκινικά κύτταρα αρχίζουν να πολλαπλασιάζονται ταχύτερα κατά τη θεραπεία. Το RCR τη δίνει ως K σε BED ανά ημέρα (0.9 Gy/ημέρα για κεφαλή-τράχηλο)· τα συγγράμματα συχνά ως D_prolif σε EQD2 ανά ημέρα. K = D_prolif · BED(1 × 2 Gy)/2.'],
         tk: ['Χρόνος έναρξης T_k', 'Η ημέρα, μετρώντας από την αρχή της θεραπείας, μετά την οποία θεωρείται ότι ξεκινά ο επιταχυνόμενος επαναπληθυσμός (28 ημέρες στις γενικές τιμές του RCR). Πριν από το T_k η παράταση δεν κοστίζει στον όγκο σε αυτό το μοντέλο.'],
         repair: ['Χρόνος ημιζωής επιδιόρθωσης T½', 'Πόσο γρήγορα ένας ιστός επιδιορθώνει την υποθανατηφόρο βλάβη μεταξύ δύο κλασμάτων της ίδιας ημέρας. Με μεγάλους χρόνους (περίπου 4 ώρες για τις όψιμες επιδράσεις) οι 6 ώρες δεν αρκούν για πλήρη επιδιόρθωση, οπότε το BID αυξάνει τη δόση στους όψιμους ιστούς.'],
         eqd2: ['EQD2', 'Η ολική δόση σε κλάσματα των 2 Gy που θα είχε το ίδιο βιολογικό αποτέλεσμα. Για τον όγκο διορθώνεται και για τον επαναπληθυσμό (EQD2_T). Οι πίνακες δείχνουν τη μεταβολή έναντι του αρχικού πλάνου.'],
         peak7: ['Δόση αιχμής 7 ημερών', 'Η μεγαλύτερη EQD2 που δίνεται σε 7 συνεχόμενες ημέρες: απλός δείκτης της έντασης της θεραπείας για τις οξείες αντιδράσεις, όπως η βλεννογονίτιδα. Είναι δείκτης του εργαλείου, όχι μέγεθος του RCR.'],
-        lql: ['LQ και LQ-L', 'Το μοντέλο LQ καμπυλώνει την καμπύλη επιβίωσης όλο και πιο απότομα, και έτσι υπερεκτιμά την επίδραση των πολύ μεγάλων κλασμάτων. Το LQ-L (Astrahan 2008) ακολουθεί το LQ μέχρι μια δόση μετάβασης d_T και από εκεί συνεχίζει κατά την εφαπτομένη: BED = d_T(1 + d_T/(α/β)) + (1 + 2d_T/(α/β))(d − d_T). Η d_T ορίζεται ως πολλαπλάσιο του α/β κάθε ιστού (προεπιλογή 2, δηλαδή 20 Gy για α/β 10 και 6 Gy για α/β 3). Χρησιμεύει για να φανεί πόσο εξαρτάται από το μοντέλο ένα αποτέλεσμα με μεγάλα κλάσματα· δεν έχει επικυρωθεί κλινικά.'],
+        lql: ['LQ και LQ-L', 'Στις μεγάλες δόσεις ανά κλάσμα η πρόβλεψη εξαρτάται από το μοντέλο. Το LQ-L (Astrahan 2008) ακολουθεί το LQ μέχρι μια δόση μετάβασης d_T και από εκεί συνεχίζει κατά την εφαπτομένη: BED = d_T(1 + d_T/(α/β)) + (1 + 2d_T/(α/β))(d − d_T). Η d_T ορίζεται ως πολλαπλάσιο του α/β κάθε ιστού (προεπιλογή 2, δηλαδή 20 Gy για α/β 10 και 6 Gy για α/β 3). Χρησιμεύει για να φανεί πόσο εξαρτάται από το μοντέλο ένα αποτέλεσμα με μεγάλα κλάσματα· δεν έχει επικυρωθεί κλινικά.'],
         guidance: ['Οδηγία RCR: 2019 ή σχέδιο 5ης έκδοσης', 'Και οι δύο εκδόσεις κρατούν την ίδια σειρά αποφάσεων και τις ίδιες κατηγορίες. Με το σχέδιο της 5ης έκδοσης: (1) στα σχήματα μαστού 1 εβδομάδας δεν δίνεται επιπλέον δόση για διακοπή και η θεραπεία ολοκληρώνεται, όπου γίνεται, εντός 3 εβδομάδων· (2) στα σχήματα μαστού 3 εβδομάδων ο συνολικός χρόνος δεν ξεπερνά τις 5 εβδομάδες· (3) για το μυελοβλάστωμα ο στόχος είναι συνολικός χρόνος κάτω από 45 ημέρες· (4) το BID σε ημέρα χημειοθεραπείας αποκλείεται μόνο όταν η χημειοθεραπεία δεν είναι καθημερινή ή d > 1.5 Gy, ενώ το κείμενο του 2019 συστήνει να μη γίνεται επιταχυνόμενη θεραπεία σε καμία ημέρα συγχορηγούμενης χημειοθεραπείας. Και στις δύο εκδόσεις το SABR συνεχίζεται σε μη διαδοχικές ημέρες.'],
         proto: ['Πρωτόκολλο τμήματος', 'Οι μόνιμες ρυθμίσεις του τμήματος: ποιες ημέρες και μέθοδοι είναι διαθέσιμες, η στρογγυλοποίηση δόσης, τυχόν ανοχές, και δικές του ραδιοβιολογικές τιμές ανά εντοπισμό. Φυλάσσεται σε αυτή τη συσκευή και αποτελεί την αφετηρία κάθε νέου περιστατικού. Το αρχείο περιστατικού περιέχει πάντα τις τιμές που χρησιμοποιήθηκαν, ώστε να ξαναϋπολογίζεται και χωρίς το πρωτόκολλο.'],
         hist: ['Πολλές διακοπές και λάθη δόσης', 'Το RCR μετρά την παράταση σε όλη τη θεραπεία, από την αρχική ημερομηνία λήξης, γι’ αυτό σημειώνονται και οι προηγούμενες διακοπές. Ένα λάθος δόσης διορθώνεται με τη μέθοδο Joiner: η υπόλοιπη δόση και το μέγεθος κλάσματος επιλέγονται ώστε η ολική δόση και το άθροισμα των τετραγώνων των δόσεων ανά κλάσμα να είναι όσα σχεδιάστηκαν, κάτι που επαναφέρει μαζί όλους τους ιστούς για οποιοδήποτε α/β (ακριβώς χωρίς παράγοντα χρόνου και ατελή επιδιόρθωση· ο αριθμός κλασμάτων στρογγυλοποιείται).'] }, dev: 'Ανάπτυξη', lic: 'Ανοιχτό λογισμικό με άδεια GNU AGPL-3.0. Εμπορικές άδειες διατίθενται από τον δημιουργό.', src: 'Πηγαίος κώδικας',
       repair: 'T½ επιδιόρθωσης (ώρες)', bt_ratio: 'Λόγος δόσης βραχυθ.', brachy: 'Το σχήμα περιλαμβάνει βραχυθεραπεία (HDR)', brachy_hint: 'Σταθερές ημερομηνίες και δόσεις. Το κύριο επίπεδο παίρνει ολόκληρη τη δόση, τα άλλα επίπεδα καμία, κάθε όργανο τον δικό του λόγο δόσης βραχυθεραπείας. Τις ημέρες αυτές δεν προγραμματίζεται εξωτερική ακτινοθεραπεία, και μετρούν στον συνολικό χρόνο. Αν οι ημερομηνίες αλλάξουν, δώστε τις νέες.', bt_date: 'Ημερομηνία', bt_dose: 'Δόση (Gy)', add_bt: 'Προσθήκη κλάσματος', lg_bt: 'βραχυθεραπεία',
-      ratio_hint: 'Με πολλές φάσεις, ο λόγος δόσης δίνεται ανά φάση ως 0.9/0.1. Ο T½ επιδιόρθωσης ισχύει μεταξύ δύο κλασμάτων της ίδιας ημέρας· αφήστε τον κενό για πλήρη επιδιόρθωση.',
-      generic_note: 'Πρόκειται για τις γενικές τιμές του RCR, που προέρχονται κυρίως από δεδομένα κεφαλής-τραχήλου. Για αυτόν τον εντοπισμό είναι παραδοχή προς έλεγχο.',
+      ratio_hint: 'Οι 4,4 ώρες προέρχονται από δεδομένα υποδόριας ίνωσης (CHART). Για άλλο όργανο ελέγξτε τον χρόνο επιδιόρθωσης. Με πολλές φάσεις, ο λόγος δόσης δίνεται ανά φάση ως 0.9/0.1. Ο T½ επιδιόρθωσης ισχύει μεταξύ δύο κλασμάτων της ίδιας ημέρας· αφήστε τον κενό για πλήρη επιδιόρθωση.',
+      generic_note: 'Το ζεύγος K = 0,9 και Tₖ = 28 ημέρες προέρχεται από δεδομένα κεφαλής–τραχήλου. Η χρήση του εδώ αποτελεί παραδοχή.',
       unc: 'Με μεταβολή των παραμέτρων', unc_same: 'ίδια πρόταση στο', robust_yes: 'σταθερή', robust_no: 'ευαίσθητη στις παραμέτρους',
       hand: 'Έλεγχος με το χέρι', hand_hint: 'Το ίδιο αποτέλεσμα ως σύντομο άθροισμα, για ανεξάρτητη επαλήθευση με αριθμομηχανή.', hand_rep: 'επαναπληθυσμός', hand_bid: 'δύο την ημέρα',
       selftest: 'Αυτοέλεγχος με δημοσιευμένα λυμένα παραδείγματα', st_exp: 'Δημοσιευμένο', st_got: 'Η μηχανή', st_pass: 'επιτυχείς',
@@ -1924,7 +1947,7 @@ body.touring .dock { display: none !important; }
       save_fail: 'Το αρχείο δεν μπόρεσε να αποθηκευτεί εδώ.', import_fail: 'Το αρχείο δεν είναι στοιχεία RTGap.',
       checksum: 'SHA-256 στοιχείων', software: 'Λογισμικό', generated: 'Δημιουργήθηκε',
       refs_title: 'Βιβλιογραφία', refs_hint: 'Οι αριθμοί σε αγκύλες σε όλη τη σελίδα παραπέμπουν εδώ.',
-      method: 'Μέθοδος', method_text: 'BED = Σ d (1 + d / (α/β)) για κάθε ιστό· EQD2 = BED / (1 + 2 / (α/β)). Για τον όγκο αφαιρείται ο επαναπληθυσμός μετά τον χρόνο έναρξης: EQD2_T = EQD2 − D_prolif · (T − T_k), με T από το πρώτο έως το τελευταίο κλάσμα. Το K (BED ανά ημέρα, RCR) και το D_prolif (EQD2 ανά ημέρα) συνδέονται με K = D_prolif · (1 + 2 / (α/β)). Όταν αλλάζει η δόση ανά κλάσμα, κλιμακώνεται ολόκληρο το πλάνο και ο συντελεστής λύνεται αναλυτικά. Οι δόσεις στρογγυλοποιούνται πριν αξιολογηθούν. Με πολλά επίπεδα δόσης, το κύριο επίπεδο καθορίζει την απόφαση και κάθε επίπεδο έχει τον δικό του συνολικό χρόνο.',
+      method: 'Μέθοδος', method_text: 'LQ: BED = Σ d (1 + d / (α/β)) για κάθε ιστό· EQD2 = BED / R, R = BED(1 × 2 Gy)/2 (LQ ή LQ-L). Για τον όγκο αφαιρείται ο επαναπληθυσμός μετά τον χρόνο έναρξης: EQD2_T = EQD2 − D_prolif · (T − T_k), με T από το πρώτο έως το τελευταίο κλάσμα. Το K (BED ανά ημέρα, RCR) και το D_prolif (EQD2 ανά ημέρα) συνδέονται με K = D_prolif · R. Όταν αλλάζει η δόση ανά κλάσμα, κλιμακώνεται ολόκληρο το πλάνο και ο συντελεστής λύνεται αναλυτικά. Οι δόσεις στρογγυλοποιούνται πριν αξιολογηθούν. Με πολλά επίπεδα δόσης, το κύριο επίπεδο καθορίζει την απόφαση και κάθε επίπεδο έχει τον δικό του συνολικό χρόνο.',
       disclaimer: 'Υποστήριξη απόφασης, όχι ιατροτεχνολογικό προϊόν. Ο υπολογισμός βασίζεται στο γραμμικό-τετραγωνικό μοντέλο με γενικές παραμέτρους και δεν υποκαθιστά την κλινική κρίση. Όλες οι παράμετροι και οι κανόνες πρέπει να ελεγχθούν από τη θεραπευτική ομάδα, και κάθε τροποποιημένο σχήμα να επαληθευτεί ανεξάρτητα πριν εφαρμοστεί.',
       xval: 'Έλεγχος με το RadComp σε 9 σχήματα LQ και με το LQL-Equiv-web 3.0.0 σε 11 σχήματα. Με επαναπληθυσμό συγκρίθηκε το BED όγκου. Στα μεγάλα κλάσματα συγκρίθηκαν BED και EQD2.',
       joiner_t: 'Λάθος δόσης ανά κλάσμα (Joiner)', joiner_h: 'Σε κάποια κλάσματα δόθηκε λάθος δόση ανά κλάσμα. Το σχήμα αντιστάθμισης επαναφέρει όλους τους ιστούς ταυτόχρονα, ανεξάρτητα από το α/β. Ισχύει χωρίς ατελή επιδιόρθωση και με αμετάβλητο συνολικό χρόνο.',
@@ -2065,8 +2088,8 @@ body.touring .dock { display: none !important; }
       'pc.d': ['Dose per fraction of the new plan', 'Physical dose per fraction of the new plan at the reference point, in Gy.'],
       scen: ['Resume date unknown', 'When you do not yet know when treatment can restart (for example a machine fault), the whole decision is repeated for each possible resume day, so you can see when each option runs out.'],
       'tumour.ab': ['Tumour α/β', 'How sensitive the tumour is to the size of each fraction. About 10 Gy for squamous carcinomas and most fast-growing tumours; about 1.5–4 Gy for prostate and breast.', ['RCR19', 'VB13', 'START']],
-      'tumour.mode': ['Units of the repopulation rate', 'K is given in Gy BED per day (as in RCR), D_prolif in Gy EQD2 per day (as in most textbooks). K = D_prolif · (1 + 2/(α/β)). The note under the fields shows both.', ['DALE', 'BCR']],
-      'tumour.rate': ['Repopulation rate', 'Dose lost per day of prolongation after T_k. The RCR generic value for category 1 is K = 0.9 Gy BED/day (about 0.75 Gy EQD2/day for α/β 10). 0 means no time factor: prolongation then costs the tumour nothing in the model.', ['RCR19', 'DALE']],
+      'tumour.mode': ['Units of the repopulation rate', 'K is given in Gy BED per day (as in RCR), D_prolif in Gy EQD2 per day (as in most textbooks). K = D_prolif · BED(1 × 2 Gy)/2. The note under the fields shows both.', ['DALE', 'BCR']],
+      'tumour.rate': ['Repopulation rate', 'Dose lost per day of prolongation after T_k. The RCR working value for head and neck cancer is K = 0.9 Gy BED/day (about 0.75 Gy EQD2/day for α/β 10). 0 means no time factor: prolongation then costs the tumour nothing in the model.', ['RCR19', 'DALE']],
       'tumour.tk': ['Kick-off time T_k', 'Day, counted from the first fraction, after which accelerated repopulation is assumed (28 days in the RCR generic values). Prolongation before T_k costs the tumour nothing in this model.', ['RCR19']],
       lqlF: ['Transition dose factor', 'd_T = factor × α/β of each tissue; above d_T the LQ-L curve continues in a straight line. The default 2 gives d_T = 20 Gy for α/β 10 and 6 Gy for α/β 3. Change it to see how much a result with large fractions depends on the model.', ['ASTRAHAN']],
       'oars.*.ab': ['α/β of the organ', 'α/β of the late endpoint of this organ: about 3 Gy is the generic value for late effects; about 2 Gy is often used for spinal cord and lower values for fibrosis.', ['BCR']],
@@ -2125,8 +2148,8 @@ body.touring .dock { display: none !important; }
       'pc.d': ['Δόση ανά κλάσμα του νέου πλάνου', 'Η φυσική δόση ανά κλάσμα του νέου πλάνου στο σημείο αναφοράς, σε Gy.'],
       scen: ['Άγνωστη ημερομηνία επανέναρξης', 'Όταν δεν ξέρετε ακόμη πότε θα ξαναρχίσει η θεραπεία (π.χ. βλάβη μηχανήματος), η απόφαση επαναλαμβάνεται για κάθε πιθανή ημέρα επανέναρξης, ώστε να φαίνεται πότε εξαντλείται κάθε επιλογή.'],
       'tumour.ab': ['α/β του όγκου', 'Πόσο ευαίσθητος είναι ο όγκος στο μέγεθος του κλάσματος. Περίπου 10 Gy για τα πλακώδη καρκινώματα και τους περισσότερους ταχέως αναπτυσσόμενους όγκους· περίπου 1.5–4 Gy για προστάτη και μαστό.', ['RCR19', 'VB13', 'START']],
-      'tumour.mode': ['Μονάδες του ρυθμού επαναπληθυσμού', 'Το K δίνεται σε Gy BED ανά ημέρα (όπως στο RCR), το D_prolif σε Gy EQD2 ανά ημέρα (όπως στα περισσότερα συγγράμματα). K = D_prolif · (1 + 2/(α/β)). Η σημείωση κάτω από τα πεδία δείχνει και τα δύο.', ['DALE', 'BCR']],
-      'tumour.rate': ['Ρυθμός επαναπληθυσμού', 'Η δόση που χάνεται ανά ημέρα παράτασης μετά το T_k. Η γενική τιμή του RCR για την κατηγορία 1 είναι K = 0.9 Gy BED/ημέρα (περίπου 0.75 Gy EQD2/ημέρα για α/β 10). Με 0 δεν υπάρχει παράγοντας χρόνου: η παράταση δεν κοστίζει στον όγκο στο μοντέλο.', ['RCR19', 'DALE']],
+      'tumour.mode': ['Μονάδες του ρυθμού επαναπληθυσμού', 'Το K δίνεται σε Gy BED ανά ημέρα (όπως στο RCR), το D_prolif σε Gy EQD2 ανά ημέρα (όπως στα περισσότερα συγγράμματα). K = D_prolif · BED(1 × 2 Gy)/2. Η σημείωση κάτω από τα πεδία δείχνει και τα δύο.', ['DALE', 'BCR']],
+      'tumour.rate': ['Ρυθμός επαναπληθυσμού', 'Η δόση που χάνεται ανά ημέρα παράτασης μετά το T_k. Η τιμή εργασίας του RCR για κεφαλή–τράχηλο είναι K = 0.9 Gy BED/ημέρα (περίπου 0.75 Gy EQD2/ημέρα για α/β 10). Με 0 δεν υπάρχει παράγοντας χρόνου: η παράταση δεν κοστίζει στον όγκο στο μοντέλο.', ['RCR19', 'DALE']],
       'tumour.tk': ['Χρόνος έναρξης T_k', 'Η ημέρα, μετρώντας από το πρώτο κλάσμα, μετά την οποία θεωρείται ότι ξεκινά ο επιταχυνόμενος επαναπληθυσμός (28 ημέρες στις γενικές τιμές του RCR). Παράταση πριν από το T_k δεν κοστίζει στον όγκο σε αυτό το μοντέλο.', ['RCR19']],
       lqlF: ['Συντελεστής δόσης μετάβασης', 'd_T = συντελεστής × α/β κάθε ιστού· πάνω από τη d_T η καμπύλη LQ-L συνεχίζει ευθύγραμμα. Η προεπιλογή 2 δίνει d_T = 20 Gy για α/β 10 και 6 Gy για α/β 3. Αλλάξτε τον για να δείτε πόσο εξαρτάται από το μοντέλο ένα αποτέλεσμα με μεγάλα κλάσματα.', ['ASTRAHAN']],
       'oars.*.ab': ['α/β του οργάνου', 'Το α/β της όψιμης επίδρασης του οργάνου: περίπου 3 Gy είναι η γενική τιμή για όψιμες επιδράσεις· για τον νωτιαίο μυελό χρησιμοποιείται συχνά περίπου 2 Gy και για την ίνωση χαμηλότερες τιμές.', ['BCR']],
@@ -2531,7 +2554,7 @@ body.touring .dock { display: none !important; }
     const rxLine = rx.multilevel ? rx.phases.map((ph, i) => (ph.name || L('phase') + ' ' + (i + 1)) + ': ' + ph.n + ' × (' + Object.entries(ph.levels).filter(([, v]) => v > 0).map(([k, v]) => k + ' ' + v).join(', ') + ') Gy').join('; ') + ' → ' + rx.levelNames.map((k) => k + ' ' + (+rx.totalLevel(k).toFixed(2)) + ' Gy').join(', ')
       : rx.n + ' × ' + rx.refDose(0) + ' Gy = ' + (+rx.totalDose.toFixed(2)) + ' Gy';
     const T0 = p.plannedEnd - p.planned[0].day, c = p.c, yn = (b) => (b ? L('yes') : L('no')), t = p.tumour;
-    const tum = 'α/β = ' + t.ab + ' Gy' + (RT.hasTime(t) ? '; D_prolif = ' + t.dprolif.toFixed(2) + ' Gy/' + (tr.el ? 'ημ.' : 'd') + ' (K = ' + RT.kFromDprolif(t.dprolif, t.ab).toFixed(2) + '); T_k = ' + t.tk + ' ' + L('days') : '') + '; EQD2_T ' + (p.tumours.length > 1 ? p.tumours.map((x, i) => x.name + ' ' + p.plannedLevels[i].toFixed(1)).join(', ') : p.plannedTumour.toFixed(1)) + ' Gy';
+    const tum = 'α/β = ' + t.ab + ' Gy' + (RT.hasTime(t) ? '; D_prolif = ' + t.dprolif.toFixed(2) + ' Gy/' + (tr.el ? 'ημ.' : 'd') + ' (K = ' + RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)).toFixed(2) + '); T_k = ' + t.tk + ' ' + L('days') : '') + '; EQD2_T ' + (p.tumours.length > 1 ? p.tumours.map((x, i) => x.name + ' ' + p.plannedLevels[i].toFixed(1)).join(', ') : p.plannedTumour.toFixed(1)) + ' Gy';
     d.kv([
       [L('rx_line'), rxLine + (p.fixed.length ? ' + ' + L('lg_bt') + ' ' + p.fixed.map((f) => f.dose + ' Gy (' + tr.dshort(f.day) + ')').join(', ') : '')], [L('start') + ' → ' + L('ends'), tr.date(p.planned[0].day) + ' → ' + tr.date(p.plannedEnd) + ' (T = ' + T0 + ' ' + L('days') + ')'],
       [L('missed_n'), p.missed.length ? p.missed.map(tr.dshort).join(', ') : '–'], [L('cause'), L('cause_' + (p.rules.gapCause || ''))],
@@ -2555,7 +2578,7 @@ body.touring .dock { display: none !important; }
       calendar(d, p, o, tr);
       const rem = rx.multilevel ? Object.keys(o.phaseCounts).sort().map((ph) => (rx.phases[ph].name || L('phase') + ' ' + (+ph + 1)) + ': ' + o.phaseCounts[ph] + ' × (' + Object.entries(o.phaseDoses[ph]).map(([k, v]) => k + ' ' + v.toFixed(2)).join(', ') + ') Gy').join('; ') + ' (' + L('scale') + ' ' + o.scale.toFixed(3) + ')'
         : o.nNew + ' × ' + o.d.toFixed(2) + ' Gy = ' + (o.nNew * o.d).toFixed(2) + ' Gy' + (o.exact != null && Math.abs(o.exact - o.d) > 1e-4 ? ' (' + L('exact') + ' ' + o.exact.toFixed(3) + ' Gy)' : '');
-      d.kv([[L('remaining'), rem], [L('ends'), tr.date(o.end) + ' · ' + L('ot') + ' ' + o.T + ' ' + L('days') + ' (' + tr.sgi(o.ext) + ' ' + L('vs_plan') + ')'],
+      d.kv([[L('delta_tum_bed'), tr.sg(o.tumour.delta * RT.referenceFactor(t.ab, RT.lqlDt(t))) + ' Gy (α/β ' + t.ab + ' Gy) · ' + tr.sg(o.tumour.delta) + ' Gy ' + (RT.hasTime(t) ? L('eq_time') : 'EQD2')], [L('remaining'), rem], [L('ends'), tr.date(o.end) + ' · ' + L('ot') + ' ' + o.T + ' ' + L('days') + ' (' + tr.sgi(o.ext) + ' ' + L('vs_plan') + ')'],
         ].concat(a.lc && a.lc(o) ? [[L('lc'), a.lc(o) + ' [1]. ' + L('lc_hint')]] : [], [
         [L('dates'), [...RT.groupByDay(o.newFx).entries()].sort((x, y) => x[0] - y[0]).map(([day, fx]) => tr.dshort(day) + (fx.length > 1 ? ' ×2' : '')).join(', ')]]));
       const dc = (x, goodPos) => ({ t: tr.sg(x), mono: true, color: Math.abs(x) < 0.05 ? COL.muted : ((x > 0) === goodPos ? COL.good : COL.bad) });
@@ -2788,7 +2811,8 @@ body.touring .dock { display: none !important; }
     const tum = { alpha_beta: ab, kickoff_days: t.tk };
     let rate = t.rate || 0, mode = t.mode;
     const want = lib.k_bed_per_day != null ? 'k' : (lib.dprolif_eqd2_per_day != null ? 'dp' : mode);
-    if (want !== mode && rate) rate = want === 'k' ? RT.kFromDprolif(rate, ab) : RT.dprolifFromK(rate, ab);
+    const dt = s.model === 'lql' ? s.lqlF * ab : null;
+    if (want !== mode && rate) rate = want === 'k' ? RT.kFromDprolif(rate, ab, dt) : RT.dprolifFromK(rate, ab, dt);
     tum[want === 'k' ? 'k_bed_per_day' : 'dprolif_eqd2_per_day'] = +(+rate).toFixed(6);
     return { tumour: tum, oars: s.oars.map((o) => { const r = { name: o.name || 'OAR', alpha_beta: o.ab, dose_ratio: parseRatio(o.ratio), repair_half_time_h: o.repair || null }; if (o.limit != null) r.max_eqd2 = o.limit; return r; }) };
   }
@@ -3290,11 +3314,11 @@ body.touring .dock { display: none !important; }
       <p class="small gl-row"><span>${esc(L('gl_what'))}</span><span>${gl('ab')} α/β</span><span>${gl('k')} K / D<sub>prolif</sub></span><span>${gl('tk')} T<sub>k</sub></span><span>${gl('repair')} T½</span><span>${gl('eqd2')} EQD2</span></p>
       <div class="fields" style="margin-top:10px"><div class="f"><span class="fl"><label for="i-model">${esc(L('model_label'))}</label>${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></div>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
       ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
-      <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
+      <p class="small" style="margin:6px 0 12px" id="bio-note"></p><div id="planned-thresholds"></div>
       ${ptfHtml(site)}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
       ${s.oars.map((o, i) => `<details class="sub oar-entry" data-fold="oar-${i}" ${fold('oar-' + i)}><summary id="oar-title-${i}">${oarSummary(o, i)}</summary><p class="small" id="oar-ref-${i}">${referenceLine(oarReferences.find(r => r.name === o.name))}</p><div class="lvl" style="grid-template-columns:minmax(0,1fr) auto">${fld(L('name'), `oars.${i}.name`, o.name, 'type="text"')}<button type="button" class="btn x" data-act="rm-oar" data-i="${i}" aria-label="${esc(L('remove'))}" ${s.oars.length < 2 ? 'disabled' : ''}>✕</button></div>
-        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></details>`).join('')}
+        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="—"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></details>`).join('')}
       ${oarPicker()}
       <p class="small" style="margin:0 0 4px">${esc(L('ratio_hint'))} ${refs(['BENTZEN99', 'THAMES'])}</p>
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
@@ -3305,7 +3329,7 @@ body.touring .dock { display: none !important; }
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}</div>
       <div class="bid-capability">${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}
-        ${c.allow_bid ? `<div class="bid-settings"><div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}</div>${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}</div>` : ''}
+        ${c.allow_bid ? `<div class="bid-settings"><p class="small">${esc(L('bid_timing_note'))}</p><div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}</div>${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}</div>` : ''}
       </div>
       <div class="sw">${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
@@ -3375,11 +3399,23 @@ body.touring .dock { display: none !important; }
     const summary = dates.length ? `<p class="small intr"><b>${count} ${esc(L(count === 1 ? 'miss_one' : 'miss_many'))}</b> · ${esc(dates.join(', '))}</p>` : '';
     box.innerHTML = calendarHtml(p, null, true) + summary + legend(keys);
   }
+  function thresholdDetails(p, course, label) {
+    const L = tr.t;
+    const tissues = p.tumours.concat(p.oars);
+    return p.tumour.lql ? '<details class="sub" data-fold="' + label + '" ' + fold(label) + '><summary>'  + esc(L(label)) + '</summary><ul>' + tissues.map(t => {
+      const dt = RT.lqlDt(t);
+      const largest = Math.max(0, ...course.map(f => f.dose * RT.tRatio(t, f.phase)));
+      return '<li>' + esc(t.name) + ' · d<sub>T</sub> ' + tr.f2(dt) + ' Gy · ' + esc(L('maximum_fraction')) + ' ' + tr.f2(largest) + ' Gy · ' + esc(L(largest > dt ? 'linear_used' : 'lq_only')) + '</li>';
+    }).join('') + '</ul></details>' : '';
+  }
   function renderBioNote() {
     const n = $('#bio-note'); if (!n || !model || !model.p) return;
+    $('#planned-thresholds').innerHTML = thresholdDetails(model.p, model.p.plannedCourse, 'planned_thresholds');
     const t = model.p.tumour;
-    const gen = model.p.site && model.p.site.category === 1 && model.p.siteId !== 'hn_scc' && RT.hasTime(t) && Math.abs(RT.kFromDprolif(t.dprolif, t.ab) - 0.9) < 1e-6 && t.tk === 28 ? '<br>' + esc(tr.t('generic_note')) : '';
-    n.innerHTML = (RT.hasTime(t) ? `K = ${RT.kFromDprolif(t.dprolif, t.ab).toFixed(2)} Gy<sub>${t.ab}</sub>/${state.lang === 'el' ? 'ημέρα' : 'day'} ≡ D<sub>prolif</sub> = ${t.dprolif.toFixed(2)} Gy EQD2/${state.lang === 'el' ? 'ημέρα' : 'day'}, T<sub>k</sub> = ${t.tk} ${refs(['RCR19', 'DALE', 'BCR'])}` : (state.lang === 'el' ? 'Χωρίς παράγοντα χρόνου: η παράταση δεν μειώνει τη δόση του όγκου στο μοντέλο.' : 'No time factor: prolongation does not reduce the tumour dose in the model.')) + gen;
+    const gen = model.p.site && model.p.site.category === 1 && model.p.siteId !== 'hn_scc' && RT.hasTime(t) && Math.abs(RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)) - 0.9) < 1e-6 && t.tk === 28 ? '<br>' + esc(tr.t('generic_note')) : '';
+    const L = tr.t, site = model.p.siteId;
+    const evidence = { breast: ['breast_estimate', 'START'], prostate: ['prostate_estimate', 'VB20'], cervix_scc: ['cervix_estimate', 'HUANG12'], cervix_scc_brachy: ['cervix_estimate', 'HUANG12'] }[site];
+    n.innerHTML = (RT.hasTime(t) ? `K = ${RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)).toFixed(2)} Gy<sub>${t.ab}</sub>/${state.lang === 'el' ? 'ημέρα' : 'day'} ≡ D<sub>prolif</sub> = ${t.dprolif.toFixed(2)} Gy EQD2/${state.lang === 'el' ? 'ημέρα' : 'day'}, T<sub>k</sub> = ${t.tk} ${refs(['RCR19', 'DALE', 'BCR'])}` : (state.lang === 'el' ? 'Χωρίς παράγοντα χρόνου: η παράταση δεν μειώνει τη δόση του όγκου στο μοντέλο.' : 'No time factor: prolongation does not reduce the tumour dose in the model.')) + gen + (evidence ? '<br>' + esc(L(evidence[0])) + refs([evidence[1]]) : '');
   }
 
   // ------------------------------------------------------------------ results
@@ -3418,11 +3454,12 @@ body.touring .dock { display: none !important; }
     let rem;
     if (p.rx.multilevel) rem = Object.keys(o.phaseCounts).sort().map((ph) => `${esc(p.rx.phases[ph].name || (L('phase') + ' ' + (+ph + 1)))}: ${o.phaseCounts[ph]} × (${Object.entries(o.phaseDoses[ph]).map(([k, v]) => esc(k) + ' ' + tr.f2(v)).join(', ')}) Gy`).join('<br>') + `<br><span class="small">${esc(L('scale'))}: ${o.scale.toFixed(3)}</span>`;
     else rem = `${o.nNew} × ${tr.f2(o.d)} Gy = ${(o.nNew * o.d).toFixed(2)} Gy` + (o.exact != null && Math.abs(o.exact - o.d) > 1e-4 ? ` <span class="small">(${esc(L('exact'))} ${o.exact.toFixed(3)} Gy)</span>` : '');
-    const row = (r, tum) => `<tr><td>${esc(r.name)}${tum ? ' <span class="small">EQD2<sub>T</sub></span>' : ''}</td><td class="n">${tr.f1(r.planned)}</td><td class="n">${tr.f1(r.eqd2)}</td>${dcell(r.delta, tum)}<td class="n">${tr.sg(r.deltaPct)} %</td></tr>`;
+    const row = (r, tum) => `<tr><td>${esc(r.name)}${tum && RT.hasTime(p.tumour) ? ' <span class="small">' + esc(L('eq_time')) + '</span>' : ''}</td><td class="n">${tr.f1(r.planned)}</td><td class="n">${tr.f1(r.eqd2)}</td>${dcell(r.delta, tum)}<td class="n">${tr.sg(r.deltaPct)} %</td></tr>`;
+    const thresholds = thresholdDetails(p, o.course, 'thresholds');
     const byDay = [...RT.groupByDay(o.newFx).entries()].sort((a, b) => a[0] - b[0]);
     return `<div class="card" id="detail"><h2>${esc(L('detail'))}: ${esc(tr.optTitle(o))}</h2><p class="hint">${esc(m.text)}${refs(m.refs)}</p>
       <div class="split"><div>${calendarHtml(p, o, false)}${legend(['delivered', 'missed', 'new', 'bid', 'holiday', 'end'].concat(p.fixed.length ? ['bt'] : []))}</div>
-      <div class="grow"><dl class="kv"><dt>${esc(L('remaining'))}</dt><dd>${rem}</dd><dt>${esc(L('ends'))}</dt><dd>${esc(tr.date(o.end))} · ${esc(L('ot'))} ${o.T} ${esc(L('days'))} (${tr.sgi(o.ext)} ${esc(L('vs_plan'))})</dd>${lcHtml(o)}</dl>
+      <div class="grow"><dl class="kv"><dt>${esc(L('remaining'))}</dt><dd>${rem}</dd><dt>${esc(L('ends'))}</dt><dd>${esc(tr.date(o.end))} · ${esc(L('ot'))} ${o.T} ${esc(L('days'))} (${tr.sgi(o.ext)} ${esc(L('vs_plan'))})</dd>${lcHtml(o)}</dl>${thresholds}
       <details data-fold="tissueTable" ${printing ? 'open' : fold('tissueTable')}><summary>${esc(L('tissues'))} · EQD2</summary><div class="scroll" style="margin-top:10px"><table><thead><tr><th>${esc(L('tissues'))}</th><th>${esc(L('planned_c'))}</th><th>${esc(L('eqd2'))}</th><th>Δ Gy</th><th>Δ %</th></tr></thead><tbody>${row(o.tumour, true)}${o.levels.map((r) => row(r, true)).join('')}${o.oars.map((r) => row(r, false)).join('')}<tr><td>${esc(L('acute_row'))}</td><td class="n">${tr.f1(o.weeklyPlanned)}</td><td class="n">${tr.f1(o.weeklyPeak)}</td>${dcell(o.weeklyPeak - o.weeklyPlanned, false)}<td class="n">${tr.sg(o.weeklyInc)} %</td></tr></tbody></table></div></details><p class="small" style="margin:6px 0 0">${esc(L('acute_hint'))}</p></div></div>
       ${o.warnings.length ? `<ul class="warn">${o.warnings.map((w) => `<li>${esc(tr.reason(w))}${refs(w.refs)}</li>`).join('')}</ul>` : ''}
       <details style="margin-top:10px"><summary class="small">${esc(L('hand'))}</summary><p class="small">${esc(L('hand_hint'))}</p>${[p.tumour].concat(p.oars.slice(0, 1)).map((t) => `<div class="out" style="margin-top:6px">${esc(handText(p, o, t))}</div>`).join('')}</details>
@@ -3446,7 +3483,7 @@ body.touring .dock { display: none !important; }
       else lines.push(x.n + ' × ' + x.d.toFixed(2) + ' Gy: ' + x.n + '·' + x.d.toFixed(2) + '·(1 + ' + x.d.toFixed(2) + '/' + t.ab + ') = ' + x.bed.toFixed(2));
     }
     if (w.loss > 0 || w.K > 0) lines.push('− ' + L('hand_rep') + ': K·(T − Tk) = ' + w.K.toFixed(2) + '·(' + w.T + ' − ' + w.tk + ') = ' + w.loss.toFixed(2));
-    lines.push('BED = ' + w.bed.toFixed(2) + ' Gy' + t.ab + '   →   EQD2 = BED / (1 + 2/' + t.ab + ') = ' + w.eqd2.toFixed(2) + ' Gy');
+    lines.push('BED = ' + w.bed.toFixed(2) + ' Gy' + t.ab + '   →   ' + (RT.hasTime(t) ? L('eq_time') : 'EQD2') + ' = BED / ' + RT.referenceFactor(t.ab, w.dt).toFixed(4) + ' = ' + w.eqd2.toFixed(2) + ' Gy');
     if (w.terms.some((x) => x.m > 1 && x.theta)) lines.push('θ = exp(−ln2 · ' + w.bidH + ' h / ' + t.repairH + ' h) = ' + w.theta.toFixed(3));
     return lines.join('\n');
   }
@@ -3531,7 +3568,7 @@ body.touring .dock { display: none !important; }
     drawChart(); drawMap(); updateDock();
   }
   // ---- published estimates of the time factor for the chosen site (never applied by default)
-  const dpNow = () => { const t = state.tumour; if (t.rate == null || !(t.ab > 0)) return null; return t.mode === 'dp' ? t.rate : t.rate / (1 + 2 / t.ab); };
+  const dpNow = () => { const t = state.tumour; if (t.rate == null || !(t.ab > 0)) return null; return t.mode === 'dp' ? t.rate : RT.dprolifFromK(t.rate, t.ab, state.model === 'lql' ? state.lqlF * t.ab : null); };
   function ptfApplied(site) {
     const dp = dpNow(), tk = state.tumour.tk == null ? 0 : state.tumour.tk;
     return (site.published_time_factors || []).find((o) => o.kickoff_days === tk && (o.dprolif_eqd2_per_day == null || (dp != null && Math.abs(o.dprolif_eqd2_per_day - dp) < 5e-4))) || null;
@@ -3714,12 +3751,13 @@ body.touring .dock { display: none !important; }
     const nMiss = p.interruptions.reduce((a, x) => a + x[2], 0), same = !o || o === b;
     const cls = (bad) => (bad ? 'bad' : 'ok');
     const pair = (x0, x1, fmt, unit) => same ? `<b>${fmt(x0)}</b> ${unit}` : `<s>${fmt(x0)}</s> <span class="arr">→</span> <b>${fmt(x1)}</b> ${unit}`;
-    const late = o && o.oars.length ? o.oars.reduce((a, r) => (r.deltaPct > a.deltaPct ? r : a), o.oars[0]) : null;
-    const mx = p.rules.max != null ? p.rules.max : 0, cur = same ? b : o;
+    const mx = p.rules.max != null ? p.rules.max : 0, cur = o || b;
+    const late = cur.oars.length ? cur.oars.reduce((a, r) => r.deltaPct > a.deltaPct ? r : a) : null;
+    const factor = RT.referenceFactor(p.tumour.ab, RT.lqlDt(p.tumour));
     const tiles = [
+      [L('delta_tum_bed'), pair(b.tumour.delta * factor, cur.tumour.delta * factor, tr.sg, 'Gy<sub>' + esc(p.tumour.ab) + '</sub>'), tr.sg(cur.tumour.delta) + ' Gy · ' + (RT.hasTime(p.tumour) ? L('eq_time') : 'EQD2'), cls(cur.tumour.deltaPct < -1)],
       [L('kpi_missed'), `<b>${nMiss}</b> ${esc(L('fx'))}`, p.remaining + ' ' + L('kpi_left') + (p.doseErrors.length ? ' · ' + p.doseErrors.length + ' ' + L('lg_err') : ''), nMiss || p.doseErrors.length ? 'warn' : 'ok'],
       [L('kpi_ext'), pair(b.ext, cur.ext, tr.sgi, esc(L('days'))), L('allowance') + ' ≤ ' + mx + ' ' + L('days'), cur.ext > mx ? 'bad' : (cur.ext > (p.rules.ideal || 0) ? 'warn' : 'ok')],
-      [L('kpi_tum'), pair(b.tumour.delta, cur.tumour.delta, (x) => tr.sg(x), 'Gy'), tr.sg(cur.tumour.deltaPct) + ' % EQD2' + (RT.hasTime(p.tumour) ? '' : ' · ' + L('sum_notime')), cls(cur.tumour.deltaPct < -1)],
     ];
     if (late) tiles.push([L('kpi_late'), `<b>${tr.sg(late.deltaPct)}</b> %`, late.name + ' · ' + tr.sg(late.delta) + ' Gy', late.deltaPct > 5 ? 'bad' : (late.deltaPct > 1 ? 'warn' : 'ok')]);
     return `<div class="kpis">${tiles.map(([k, v, sub, c]) => `<div class="kpi ${c}"><span class="k">${esc(k)}</span><span class="v">${v}</span><span class="s">${esc(sub)}</span></div>`).join('')}</div>`;
@@ -4211,6 +4249,10 @@ body.touring .dock { display: none !important; }
     if (b === 'brachy.on' && v && !state.brachy.fx.length && model && model.p) state.brachy.fx = [0, 7, 14, 21].map((k) => ({ date: RT.iso(model.p.plannedEnd + 3 + k), dose: 7 }));
     if (b === 'site') { const d = siteDefaults(v); state.tumour = d.tumour; state.oars = d.oars; state.category = 'auto'; }
     if (['caseRef', 'calcBy', 'checkedBy', 'pdfLang'].includes(b)) { persist(); return; }
+    if (b === 'model') {
+      state.ui = state.ui || {};
+      state.ui.bio = true;
+    }
     const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'c.allow_bid' || b === 'multi' || b === 'brachy.on' || b === 'given.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
     clearTimeout(timer);
     if (struct || ev.type === 'change' && (t.type === 'checkbox' || t.tagName === 'SELECT' || t.type === 'date')) refresh(!!struct || b === 'holidays' || b === 'scen' || t.type === 'date');

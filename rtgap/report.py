@@ -448,9 +448,9 @@ window.addEventListener('beforeprint',()=>document.querySelectorAll('details').f
 {_scenarios_html(scenarios, outage_start, e)}
 {record}
 <h2>Method</h2><div class="card note">
-<p>BED = Σ d (1 + d/(α/β)) per tissue, with optional incomplete repair between same-day fractions
+<p>For LQ, BED = Σ d (1 + d/(α/β)) per tissue, with optional incomplete repair between same-day fractions
 (mono-exponential, Thames). Tumour EQD2<sub>T</sub> = EQD2 − D<sub>prolif</sub>·(T − T<sub>k</sub>) for T &gt; T<sub>k</sub>,
-T = last − first fraction date; K (RCR, BED/day) = D<sub>prolif</sub>(1 + 2/(α/β)).
+T = last − first fraction date; K (RCR, BED/day) = D<sub>prolif</sub> × BED(1 × 2 Gy)/2 using the selected model.
 Doses are rounded to {p.c.dose_rounding:g} Gy before evaluation. OAR doses use dose ratio × prescribed fraction dose
 (1.0 = point dose at prescription, conservative). With several dose levels the plan is scaled as a whole
 (all levels by the same factor), and the primary level drives the decision.</p>

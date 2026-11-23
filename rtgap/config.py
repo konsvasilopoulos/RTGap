@@ -95,11 +95,19 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
         t_cfg.pop("k_bed_per_day", None)
     if "k_bed_per_day" in (cfg.get("tumour") or {}):
         t_cfg.pop("dprolif_eqd2_per_day", None)
+    model = cfg.get("model") or protocol.get("model") or "lq"
+    if model not in ("lq", "lql"):
+        raise ValidationError([f"unknown model {model!r}: use lq or lql"])
+    factor = None
+    if model == "lql":
+        factor = float(cfg.get("lql_dt_factor") or protocol.get("lql_dt_factor") or 2.0)
+        if factor <= 0:
+            raise ValidationError(["lql_dt_factor must be > 0"])
     tumour = Tissue.tumour(
         t_cfg.get("name", site.name if site else "Tumour"), float(t_cfg.get("alpha_beta", 10.0)),
         dprolif=t_cfg.get("dprolif_eqd2_per_day"), k_bed=t_cfg.get("k_bed_per_day"),
         kickoff_days=t_cfg.get("kickoff_days"), dose_ratio=float(t_cfg.get("dose_ratio", 1.0)),
-        repair_half_time_h=t_cfg.get("repair_half_time_h"),
+        repair_half_time_h=t_cfg.get("repair_half_time_h"), lql_factor=factor,
     )
     if cfg.get("oars"):
         oars = [oar_from_dict(o) for o in cfg["oars"]]
@@ -108,14 +116,7 @@ def planner_from_dict(cfg: dict, protocol: dict | None = None) -> tuple[GapPlann
     else:
         oars = [oar_from_dict({"name": "Late (α/β 3)", "alpha_beta": 3})]
 
-    model = cfg.get("model") or protocol.get("model") or "lq"
-    if model not in ("lq", "lql"):
-        raise ValidationError([f"unknown model {model!r}: use lq or lql"])
-    if model == "lql":
-        factor = float(cfg.get("lql_dt_factor") or protocol.get("lql_dt_factor") or 2.0)
-        if factor <= 0:
-            raise ValidationError(["lql_dt_factor must be > 0"])
-        tumour.lql_factor = factor
+    if factor is not None:
         for o in oars:
             o.lql_factor = factor
     guidance = cfg.get("guidance") or protocol.get("guidance") or "rcr2019"

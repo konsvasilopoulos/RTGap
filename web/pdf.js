@@ -155,7 +155,7 @@
     const rxLine = rx.multilevel ? rx.phases.map((ph, i) => (ph.name || L('phase') + ' ' + (i + 1)) + ': ' + ph.n + ' × (' + Object.entries(ph.levels).filter(([, v]) => v > 0).map(([k, v]) => k + ' ' + v).join(', ') + ') Gy').join('; ') + ' → ' + rx.levelNames.map((k) => k + ' ' + (+rx.totalLevel(k).toFixed(2)) + ' Gy').join(', ')
       : rx.n + ' × ' + rx.refDose(0) + ' Gy = ' + (+rx.totalDose.toFixed(2)) + ' Gy';
     const T0 = p.plannedEnd - p.planned[0].day, c = p.c, yn = (b) => (b ? L('yes') : L('no')), t = p.tumour;
-    const tum = 'α/β = ' + t.ab + ' Gy' + (RT.hasTime(t) ? '; D_prolif = ' + t.dprolif.toFixed(2) + ' Gy/' + (tr.el ? 'ημ.' : 'd') + ' (K = ' + RT.kFromDprolif(t.dprolif, t.ab).toFixed(2) + '); T_k = ' + t.tk + ' ' + L('days') : '') + '; EQD2_T ' + (p.tumours.length > 1 ? p.tumours.map((x, i) => x.name + ' ' + p.plannedLevels[i].toFixed(1)).join(', ') : p.plannedTumour.toFixed(1)) + ' Gy';
+    const tum = 'α/β = ' + t.ab + ' Gy' + (RT.hasTime(t) ? '; D_prolif = ' + t.dprolif.toFixed(2) + ' Gy/' + (tr.el ? 'ημ.' : 'd') + ' (K = ' + RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)).toFixed(2) + '); T_k = ' + t.tk + ' ' + L('days') : '') + '; EQD2_T ' + (p.tumours.length > 1 ? p.tumours.map((x, i) => x.name + ' ' + p.plannedLevels[i].toFixed(1)).join(', ') : p.plannedTumour.toFixed(1)) + ' Gy';
     d.kv([
       [L('rx_line'), rxLine + (p.fixed.length ? ' + ' + L('lg_bt') + ' ' + p.fixed.map((f) => f.dose + ' Gy (' + tr.dshort(f.day) + ')').join(', ') : '')], [L('start') + ' → ' + L('ends'), tr.date(p.planned[0].day) + ' → ' + tr.date(p.plannedEnd) + ' (T = ' + T0 + ' ' + L('days') + ')'],
       [L('missed_n'), p.missed.length ? p.missed.map(tr.dshort).join(', ') : '–'], [L('cause'), L('cause_' + (p.rules.gapCause || ''))],
@@ -179,7 +179,7 @@
       calendar(d, p, o, tr);
       const rem = rx.multilevel ? Object.keys(o.phaseCounts).sort().map((ph) => (rx.phases[ph].name || L('phase') + ' ' + (+ph + 1)) + ': ' + o.phaseCounts[ph] + ' × (' + Object.entries(o.phaseDoses[ph]).map(([k, v]) => k + ' ' + v.toFixed(2)).join(', ') + ') Gy').join('; ') + ' (' + L('scale') + ' ' + o.scale.toFixed(3) + ')'
         : o.nNew + ' × ' + o.d.toFixed(2) + ' Gy = ' + (o.nNew * o.d).toFixed(2) + ' Gy' + (o.exact != null && Math.abs(o.exact - o.d) > 1e-4 ? ' (' + L('exact') + ' ' + o.exact.toFixed(3) + ' Gy)' : '');
-      d.kv([[L('remaining'), rem], [L('ends'), tr.date(o.end) + ' · ' + L('ot') + ' ' + o.T + ' ' + L('days') + ' (' + tr.sgi(o.ext) + ' ' + L('vs_plan') + ')'],
+      d.kv([[L('delta_tum_bed'), tr.sg(o.tumour.delta * RT.referenceFactor(t.ab, RT.lqlDt(t))) + ' Gy (α/β ' + t.ab + ' Gy) · ' + tr.sg(o.tumour.delta) + ' Gy ' + (RT.hasTime(t) ? L('eq_time') : 'EQD2')], [L('remaining'), rem], [L('ends'), tr.date(o.end) + ' · ' + L('ot') + ' ' + o.T + ' ' + L('days') + ' (' + tr.sgi(o.ext) + ' ' + L('vs_plan') + ')'],
         ].concat(a.lc && a.lc(o) ? [[L('lc'), a.lc(o) + ' [1]. ' + L('lc_hint')]] : [], [
         [L('dates'), [...RT.groupByDay(o.newFx).entries()].sort((x, y) => x[0] - y[0]).map(([day, fx]) => tr.dshort(day) + (fx.length > 1 ? ' ×2' : '')).join(', ')]]));
       const dc = (x, goodPos) => ({ t: tr.sg(x), mono: true, color: Math.abs(x) < 0.05 ? COL.muted : ((x > 0) === goodPos ? COL.good : COL.bad) });

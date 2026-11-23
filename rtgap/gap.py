@@ -469,7 +469,7 @@ class GapPlanner:
         """EQD2 (no time factor) delivered to ``tissue`` minus what was intended, over the delivered fractions."""
         bi = self.c.bid_interval_h
         return lq.eqd2_from_bed(tissue.bed_without_time(self.delivered, bi) - tissue.bed_without_time(self.delivered_intended, bi),
-                                tissue.alpha_beta)
+                                tissue.alpha_beta, tissue.lql_dt)
 
     def joiner_target(self) -> tuple[float, float] | None:
         """Generalised Joiner correction (BCR eq. 9.3–9.4) for the remaining fractions, on the reference
@@ -491,7 +491,7 @@ class GapPlanner:
         per_day: dict[dt.date, float] = {}
         for f in fractions:
             d = f.dose * t.ratio(f.phase)
-            per_day[f.date] = per_day.get(f.date, 0.0) + lq.eqd2_from_bed(t.bed_fraction(d), t.alpha_beta)
+            per_day[f.date] = per_day.get(f.date, 0.0) + lq.eqd2_from_bed(t.bed_fraction(d), t.alpha_beta, t.lql_dt)
         days = sorted(per_day)
         best = 0.0
         for i, d0 in enumerate(days):

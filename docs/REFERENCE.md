@@ -134,7 +134,7 @@ and it can override or add sites (see `examples/protocol_example.yaml`).
 ## Review round 2 (v0.5)
 
 * **Incomplete repair is calculated, not only flagged.** Late-responding organs
-  get a default repair half-time of 4.4 h (Bentzen, Saunders & Dische 1999),
+  get a default repair half-time of 4.4 h from the CHART subcutaneous fibrosis endpoint (Bentzen, Saunders & Dische 1999). Applying this value to other endpoints is an assumption,
   so two fractions on one day raise their EQD2. Set `repair_half_time_h: null`
   for complete repair.
 * **Brachytherapy.** `brachy: {fractions: [{date, dose}]}` adds fixed HDR
@@ -280,8 +280,8 @@ Custom patterns (explicit dates and BID days) can be added in the case file.
 * Tumour: EQD2_T = EQD2 − D_prolif · (T − T_k) for T > T_k, where
   T = last − first fraction date (RCR convention: 35 fx Mon→Fri = 46 d).
   D_prolif (EQD2/day, *Basic Clinical Radiobiology*) and K (BED/day, RCR)
-  are related by K = D_prolif (1 + 2/(α/β)). Either can be given.
-* The tumour EQD2 is exactly quadratic in the new dose per fraction, so
+  are related by K = D_prolif × BED(1 × 2 Gy)/2. The reference fraction uses the same model as the course, including the linear branch when d_T < 2 Gy. RTGap divides net BED by this reference factor to express time-corrected EQD2. The change relative to the prescription is the primary comparison.
+* Under plain LQ the tumour EQD2 is exactly quadratic in the new dose per fraction, so
   solutions are closed-form (positive root). Doses are rounded (default
   0.01 Gy) **before** evaluation. The unrounded value is shown in the report.
 * Dose errors (Joiner 2004): D = P − E, d = (Pp − Ee)/(P − E). These restore

@@ -70,3 +70,18 @@ def test_lql_gives_less_weight_to_large_fractions():
 def test_unknown_model_is_an_input_error():
     with pytest.raises(ValidationError):
         case("lqc")
+
+
+@pytest.mark.parametrize("ab,factor", [(0.9, 2), (1.6, 1), (1, 2), (15, 2)])
+def test_reference_fraction_uses_same_model_for_dose_and_time(ab, factor):
+    cfg = dict(model="lql", lql_dt_factor=factor,
+               prescription=dict(start=MON, n_fractions=3, dose_per_fraction=2),
+               tumour=dict(alpha_beta=ab, k_bed_per_day=0.5, kickoff_days=1))
+    planner, _ = planner_from_dict(cfg)
+    tumour = planner.tumour
+    fx = planner.planned
+    one = tumour.bed_fraction(2)
+    assert tumour.eqd2(fx[:1]) == pytest.approx(2)
+    assert tumour.k_bed == pytest.approx(0.5)
+    assert tumour.bed(fx) == pytest.approx(3 * one - 0.5)
+    assert tumour.eqd2(fx) == pytest.approx(6 - 0.5 / (one / 2))

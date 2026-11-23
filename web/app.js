@@ -56,7 +56,8 @@
     const tum = { alpha_beta: ab, kickoff_days: t.tk };
     let rate = t.rate || 0, mode = t.mode;
     const want = lib.k_bed_per_day != null ? 'k' : (lib.dprolif_eqd2_per_day != null ? 'dp' : mode);
-    if (want !== mode && rate) rate = want === 'k' ? RT.kFromDprolif(rate, ab) : RT.dprolifFromK(rate, ab);
+    const dt = s.model === 'lql' ? s.lqlF * ab : null;
+    if (want !== mode && rate) rate = want === 'k' ? RT.kFromDprolif(rate, ab, dt) : RT.dprolifFromK(rate, ab, dt);
     tum[want === 'k' ? 'k_bed_per_day' : 'dprolif_eqd2_per_day'] = +(+rate).toFixed(6);
     return { tumour: tum, oars: s.oars.map((o) => { const r = { name: o.name || 'OAR', alpha_beta: o.ab, dose_ratio: parseRatio(o.ratio), repair_half_time_h: o.repair || null }; if (o.limit != null) r.max_eqd2 = o.limit; return r; }) };
   }
@@ -558,11 +559,11 @@
       <p class="small gl-row"><span>${esc(L('gl_what'))}</span><span>${gl('ab')} α/β</span><span>${gl('k')} K / D<sub>prolif</sub></span><span>${gl('tk')} T<sub>k</sub></span><span>${gl('repair')} T½</span><span>${gl('eqd2')} EQD2</span></p>
       <div class="fields" style="margin-top:10px"><div class="f"><span class="fl"><label for="i-model">${esc(L('model_label'))}</label>${gl('lql')}</span><select data-bind="model" id="i-model" data-struct="1"><option value="lq" ${s.model !== 'lql' ? 'selected' : ''}>${esc(L('model_lq'))}</option><option value="lql" ${s.model === 'lql' ? 'selected' : ''}>${esc(L('model_lql'))}</option></select></div>${s.model === 'lql' ? fld(L('model_f'), 'lqlF', s.lqlF) : ''}</div>
       ${s.model === 'lql' ? `<p class="small" style="margin:6px 0 0">${esc(L('model_note'))} ${refs(['ASTRAHAN'])}</p>` : ''}
-      <p class="small" style="margin:6px 0 12px" id="bio-note"></p>
+      <p class="small" style="margin:6px 0 12px" id="bio-note"></p><div id="planned-thresholds"></div>
       ${ptfHtml(site)}
       <h3 style="font:600 0.95rem var(--f-body);margin-bottom:4px">${esc(L('oars'))}</h3><p class="hint">${esc(L('oar_hint'))}</p>
       ${s.oars.map((o, i) => `<details class="sub oar-entry" data-fold="oar-${i}" ${fold('oar-' + i)}><summary id="oar-title-${i}">${oarSummary(o, i)}</summary><p class="small" id="oar-ref-${i}">${referenceLine(oarReferences.find(r => r.name === o.name))}</p><div class="lvl" style="grid-template-columns:minmax(0,1fr) auto">${fld(L('name'), `oars.${i}.name`, o.name, 'type="text"')}<button type="button" class="btn x" data-act="rm-oar" data-i="${i}" aria-label="${esc(L('remove'))}" ${s.oars.length < 2 ? 'disabled' : ''}>✕</button></div>
-        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="∞"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></details>`).join('')}
+        <div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">${fld(L('ab'), `oars.${i}.ab`, o.ab)}${fld(L('ratio'), `oars.${i}.ratio`, o.ratio, 'type="text" inputmode="decimal"')}${s.brachy.on ? fld(L('bt_ratio'), `oars.${i}.bt`, o.bt) : ''}${fld(L('repair'), `oars.${i}.repair`, o.repair, `type="number" step="any" inputmode="decimal" placeholder="—"`)}${fld(L('limit'), `oars.${i}.limit`, o.limit)}</div></details>`).join('')}
       ${oarPicker()}
       <p class="small" style="margin:0 0 4px">${esc(L('ratio_hint'))} ${refs(['BENTZEN99', 'THAMES'])}</p>
       <div class="rowbtn"><button type="button" class="btn sm" data-act="add-oar">+ ${esc(L('add_oar'))}</button><button type="button" class="btn sm" data-act="site-defaults">${esc(L(protoSite(s.site) ? 'site_defaults_dept' : 'site_defaults'))}</button><button type="button" class="btn sm" data-act="proto-site">${esc(L('proto_site_save'))}</button>${protoSite(s.site) ? `<button type="button" class="btn sm" data-act="proto-site-rm">${esc(L('proto_site_rm'))}</button>` : ''}</div>
@@ -573,7 +574,7 @@
       ${s.guidance === 'rcr5_draft' ? `<p class="small warnnote" style="margin:6px 0 10px">${esc(L('guid_draft_note'))} ${refs(['RCR5d'])}</p>` : `<p class="small" style="margin:6px 0 10px">${esc(L('guid_19_note'))} ${refs(['RCR19'])}</p>`}<p class="hint">${esc(L('dept_hint'))}</p>
       <div class="sw">${chk(L('c_sat'), 'c.allow_saturday', c.allow_saturday)}${chk(L('c_sun'), 'c.allow_sunday', c.allow_sunday)}</div>
       <div class="bid-capability">${chk(L('c_bid'), 'c.allow_bid', c.allow_bid, refs(['RCR19']))}
-        ${c.allow_bid ? `<div class="bid-settings"><div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}</div>${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}</div>` : ''}
+        ${c.allow_bid ? `<div class="bid-settings"><p class="small">${esc(L('bid_timing_note'))}</p><div class="fields">${fld(L('c_bid_h'), 'c.bid_interval_h', c.bid_interval_h)}${fld(L('c_bid_max'), 'c.bid_max_dose', c.bid_max_dose)}</div>${chk(L('c_consec'), 'c.allow_consecutive_bid', c.allow_consecutive_bid)}</div>` : ''}
       </div>
       <div class="sw">${chk(L('c_dose'), 'c.allow_dose_change', c.allow_dose_change)}${chk(L('c_extra'), 'c.allow_extra_fractions', c.allow_extra_fractions)}${chk(L('c_chemo_daily'), 'c.chemo_daily', c.chemo_daily, refs(['RCR5d']))}</div>
       <div class="fields">${fld(L('c_maxd'), 'c.max_dose_per_fraction', c.max_dose_per_fraction, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_week'), 'c.max_fractions_per_week', c.max_fractions_per_week, `type="number" step="1" inputmode="numeric" placeholder="${esc(L('none_opt'))}"`)}${fld(L('c_round'), 'c.dose_rounding', c.dose_rounding)}${fld(L('c_weekly'), 'c.max_weekly_increase_pct', c.max_weekly_increase_pct, `type="number" step="any" inputmode="decimal" placeholder="${esc(L('none_opt'))}"`)}</div>
@@ -643,11 +644,23 @@
     const summary = dates.length ? `<p class="small intr"><b>${count} ${esc(L(count === 1 ? 'miss_one' : 'miss_many'))}</b> · ${esc(dates.join(', '))}</p>` : '';
     box.innerHTML = calendarHtml(p, null, true) + summary + legend(keys);
   }
+  function thresholdDetails(p, course, label) {
+    const L = tr.t;
+    const tissues = p.tumours.concat(p.oars);
+    return p.tumour.lql ? '<details class="sub" data-fold="' + label + '" ' + fold(label) + '><summary>'  + esc(L(label)) + '</summary><ul>' + tissues.map(t => {
+      const dt = RT.lqlDt(t);
+      const largest = Math.max(0, ...course.map(f => f.dose * RT.tRatio(t, f.phase)));
+      return '<li>' + esc(t.name) + ' · d<sub>T</sub> ' + tr.f2(dt) + ' Gy · ' + esc(L('maximum_fraction')) + ' ' + tr.f2(largest) + ' Gy · ' + esc(L(largest > dt ? 'linear_used' : 'lq_only')) + '</li>';
+    }).join('') + '</ul></details>' : '';
+  }
   function renderBioNote() {
     const n = $('#bio-note'); if (!n || !model || !model.p) return;
+    $('#planned-thresholds').innerHTML = thresholdDetails(model.p, model.p.plannedCourse, 'planned_thresholds');
     const t = model.p.tumour;
-    const gen = model.p.site && model.p.site.category === 1 && model.p.siteId !== 'hn_scc' && RT.hasTime(t) && Math.abs(RT.kFromDprolif(t.dprolif, t.ab) - 0.9) < 1e-6 && t.tk === 28 ? '<br>' + esc(tr.t('generic_note')) : '';
-    n.innerHTML = (RT.hasTime(t) ? `K = ${RT.kFromDprolif(t.dprolif, t.ab).toFixed(2)} Gy<sub>${t.ab}</sub>/${state.lang === 'el' ? 'ημέρα' : 'day'} ≡ D<sub>prolif</sub> = ${t.dprolif.toFixed(2)} Gy EQD2/${state.lang === 'el' ? 'ημέρα' : 'day'}, T<sub>k</sub> = ${t.tk} ${refs(['RCR19', 'DALE', 'BCR'])}` : (state.lang === 'el' ? 'Χωρίς παράγοντα χρόνου: η παράταση δεν μειώνει τη δόση του όγκου στο μοντέλο.' : 'No time factor: prolongation does not reduce the tumour dose in the model.')) + gen;
+    const gen = model.p.site && model.p.site.category === 1 && model.p.siteId !== 'hn_scc' && RT.hasTime(t) && Math.abs(RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)) - 0.9) < 1e-6 && t.tk === 28 ? '<br>' + esc(tr.t('generic_note')) : '';
+    const L = tr.t, site = model.p.siteId;
+    const evidence = { breast: ['breast_estimate', 'START'], prostate: ['prostate_estimate', 'VB20'], cervix_scc: ['cervix_estimate', 'HUANG12'], cervix_scc_brachy: ['cervix_estimate', 'HUANG12'] }[site];
+    n.innerHTML = (RT.hasTime(t) ? `K = ${RT.kFromDprolif(t.dprolif, t.ab, RT.lqlDt(t)).toFixed(2)} Gy<sub>${t.ab}</sub>/${state.lang === 'el' ? 'ημέρα' : 'day'} ≡ D<sub>prolif</sub> = ${t.dprolif.toFixed(2)} Gy EQD2/${state.lang === 'el' ? 'ημέρα' : 'day'}, T<sub>k</sub> = ${t.tk} ${refs(['RCR19', 'DALE', 'BCR'])}` : (state.lang === 'el' ? 'Χωρίς παράγοντα χρόνου: η παράταση δεν μειώνει τη δόση του όγκου στο μοντέλο.' : 'No time factor: prolongation does not reduce the tumour dose in the model.')) + gen + (evidence ? '<br>' + esc(L(evidence[0])) + refs([evidence[1]]) : '');
   }
 
   // ------------------------------------------------------------------ results
@@ -686,11 +699,12 @@
     let rem;
     if (p.rx.multilevel) rem = Object.keys(o.phaseCounts).sort().map((ph) => `${esc(p.rx.phases[ph].name || (L('phase') + ' ' + (+ph + 1)))}: ${o.phaseCounts[ph]} × (${Object.entries(o.phaseDoses[ph]).map(([k, v]) => esc(k) + ' ' + tr.f2(v)).join(', ')}) Gy`).join('<br>') + `<br><span class="small">${esc(L('scale'))}: ${o.scale.toFixed(3)}</span>`;
     else rem = `${o.nNew} × ${tr.f2(o.d)} Gy = ${(o.nNew * o.d).toFixed(2)} Gy` + (o.exact != null && Math.abs(o.exact - o.d) > 1e-4 ? ` <span class="small">(${esc(L('exact'))} ${o.exact.toFixed(3)} Gy)</span>` : '');
-    const row = (r, tum) => `<tr><td>${esc(r.name)}${tum ? ' <span class="small">EQD2<sub>T</sub></span>' : ''}</td><td class="n">${tr.f1(r.planned)}</td><td class="n">${tr.f1(r.eqd2)}</td>${dcell(r.delta, tum)}<td class="n">${tr.sg(r.deltaPct)} %</td></tr>`;
+    const row = (r, tum) => `<tr><td>${esc(r.name)}${tum && RT.hasTime(p.tumour) ? ' <span class="small">' + esc(L('eq_time')) + '</span>' : ''}</td><td class="n">${tr.f1(r.planned)}</td><td class="n">${tr.f1(r.eqd2)}</td>${dcell(r.delta, tum)}<td class="n">${tr.sg(r.deltaPct)} %</td></tr>`;
+    const thresholds = thresholdDetails(p, o.course, 'thresholds');
     const byDay = [...RT.groupByDay(o.newFx).entries()].sort((a, b) => a[0] - b[0]);
     return `<div class="card" id="detail"><h2>${esc(L('detail'))}: ${esc(tr.optTitle(o))}</h2><p class="hint">${esc(m.text)}${refs(m.refs)}</p>
       <div class="split"><div>${calendarHtml(p, o, false)}${legend(['delivered', 'missed', 'new', 'bid', 'holiday', 'end'].concat(p.fixed.length ? ['bt'] : []))}</div>
-      <div class="grow"><dl class="kv"><dt>${esc(L('remaining'))}</dt><dd>${rem}</dd><dt>${esc(L('ends'))}</dt><dd>${esc(tr.date(o.end))} · ${esc(L('ot'))} ${o.T} ${esc(L('days'))} (${tr.sgi(o.ext)} ${esc(L('vs_plan'))})</dd>${lcHtml(o)}</dl>
+      <div class="grow"><dl class="kv"><dt>${esc(L('remaining'))}</dt><dd>${rem}</dd><dt>${esc(L('ends'))}</dt><dd>${esc(tr.date(o.end))} · ${esc(L('ot'))} ${o.T} ${esc(L('days'))} (${tr.sgi(o.ext)} ${esc(L('vs_plan'))})</dd>${lcHtml(o)}</dl>${thresholds}
       <details data-fold="tissueTable" ${printing ? 'open' : fold('tissueTable')}><summary>${esc(L('tissues'))} · EQD2</summary><div class="scroll" style="margin-top:10px"><table><thead><tr><th>${esc(L('tissues'))}</th><th>${esc(L('planned_c'))}</th><th>${esc(L('eqd2'))}</th><th>Δ Gy</th><th>Δ %</th></tr></thead><tbody>${row(o.tumour, true)}${o.levels.map((r) => row(r, true)).join('')}${o.oars.map((r) => row(r, false)).join('')}<tr><td>${esc(L('acute_row'))}</td><td class="n">${tr.f1(o.weeklyPlanned)}</td><td class="n">${tr.f1(o.weeklyPeak)}</td>${dcell(o.weeklyPeak - o.weeklyPlanned, false)}<td class="n">${tr.sg(o.weeklyInc)} %</td></tr></tbody></table></div></details><p class="small" style="margin:6px 0 0">${esc(L('acute_hint'))}</p></div></div>
       ${o.warnings.length ? `<ul class="warn">${o.warnings.map((w) => `<li>${esc(tr.reason(w))}${refs(w.refs)}</li>`).join('')}</ul>` : ''}
       <details style="margin-top:10px"><summary class="small">${esc(L('hand'))}</summary><p class="small">${esc(L('hand_hint'))}</p>${[p.tumour].concat(p.oars.slice(0, 1)).map((t) => `<div class="out" style="margin-top:6px">${esc(handText(p, o, t))}</div>`).join('')}</details>
@@ -714,7 +728,7 @@
       else lines.push(x.n + ' × ' + x.d.toFixed(2) + ' Gy: ' + x.n + '·' + x.d.toFixed(2) + '·(1 + ' + x.d.toFixed(2) + '/' + t.ab + ') = ' + x.bed.toFixed(2));
     }
     if (w.loss > 0 || w.K > 0) lines.push('− ' + L('hand_rep') + ': K·(T − Tk) = ' + w.K.toFixed(2) + '·(' + w.T + ' − ' + w.tk + ') = ' + w.loss.toFixed(2));
-    lines.push('BED = ' + w.bed.toFixed(2) + ' Gy' + t.ab + '   →   EQD2 = BED / (1 + 2/' + t.ab + ') = ' + w.eqd2.toFixed(2) + ' Gy');
+    lines.push('BED = ' + w.bed.toFixed(2) + ' Gy' + t.ab + '   →   ' + (RT.hasTime(t) ? L('eq_time') : 'EQD2') + ' = BED / ' + RT.referenceFactor(t.ab, w.dt).toFixed(4) + ' = ' + w.eqd2.toFixed(2) + ' Gy');
     if (w.terms.some((x) => x.m > 1 && x.theta)) lines.push('θ = exp(−ln2 · ' + w.bidH + ' h / ' + t.repairH + ' h) = ' + w.theta.toFixed(3));
     return lines.join('\n');
   }
@@ -799,7 +813,7 @@
     drawChart(); drawMap(); updateDock();
   }
   // ---- published estimates of the time factor for the chosen site (never applied by default)
-  const dpNow = () => { const t = state.tumour; if (t.rate == null || !(t.ab > 0)) return null; return t.mode === 'dp' ? t.rate : t.rate / (1 + 2 / t.ab); };
+  const dpNow = () => { const t = state.tumour; if (t.rate == null || !(t.ab > 0)) return null; return t.mode === 'dp' ? t.rate : RT.dprolifFromK(t.rate, t.ab, state.model === 'lql' ? state.lqlF * t.ab : null); };
   function ptfApplied(site) {
     const dp = dpNow(), tk = state.tumour.tk == null ? 0 : state.tumour.tk;
     return (site.published_time_factors || []).find((o) => o.kickoff_days === tk && (o.dprolif_eqd2_per_day == null || (dp != null && Math.abs(o.dprolif_eqd2_per_day - dp) < 5e-4))) || null;
@@ -982,12 +996,13 @@
     const nMiss = p.interruptions.reduce((a, x) => a + x[2], 0), same = !o || o === b;
     const cls = (bad) => (bad ? 'bad' : 'ok');
     const pair = (x0, x1, fmt, unit) => same ? `<b>${fmt(x0)}</b> ${unit}` : `<s>${fmt(x0)}</s> <span class="arr">→</span> <b>${fmt(x1)}</b> ${unit}`;
-    const late = o && o.oars.length ? o.oars.reduce((a, r) => (r.deltaPct > a.deltaPct ? r : a), o.oars[0]) : null;
-    const mx = p.rules.max != null ? p.rules.max : 0, cur = same ? b : o;
+    const mx = p.rules.max != null ? p.rules.max : 0, cur = o || b;
+    const late = cur.oars.length ? cur.oars.reduce((a, r) => r.deltaPct > a.deltaPct ? r : a) : null;
+    const factor = RT.referenceFactor(p.tumour.ab, RT.lqlDt(p.tumour));
     const tiles = [
+      [L('delta_tum_bed'), pair(b.tumour.delta * factor, cur.tumour.delta * factor, tr.sg, 'Gy<sub>' + esc(p.tumour.ab) + '</sub>'), tr.sg(cur.tumour.delta) + ' Gy · ' + (RT.hasTime(p.tumour) ? L('eq_time') : 'EQD2'), cls(cur.tumour.deltaPct < -1)],
       [L('kpi_missed'), `<b>${nMiss}</b> ${esc(L('fx'))}`, p.remaining + ' ' + L('kpi_left') + (p.doseErrors.length ? ' · ' + p.doseErrors.length + ' ' + L('lg_err') : ''), nMiss || p.doseErrors.length ? 'warn' : 'ok'],
       [L('kpi_ext'), pair(b.ext, cur.ext, tr.sgi, esc(L('days'))), L('allowance') + ' ≤ ' + mx + ' ' + L('days'), cur.ext > mx ? 'bad' : (cur.ext > (p.rules.ideal || 0) ? 'warn' : 'ok')],
-      [L('kpi_tum'), pair(b.tumour.delta, cur.tumour.delta, (x) => tr.sg(x), 'Gy'), tr.sg(cur.tumour.deltaPct) + ' % EQD2' + (RT.hasTime(p.tumour) ? '' : ' · ' + L('sum_notime')), cls(cur.tumour.deltaPct < -1)],
     ];
     if (late) tiles.push([L('kpi_late'), `<b>${tr.sg(late.deltaPct)}</b> %`, late.name + ' · ' + tr.sg(late.delta) + ' Gy', late.deltaPct > 5 ? 'bad' : (late.deltaPct > 1 ? 'warn' : 'ok')]);
     return `<div class="kpis">${tiles.map(([k, v, sub, c]) => `<div class="kpi ${c}"><span class="k">${esc(k)}</span><span class="v">${v}</span><span class="s">${esc(sub)}</span></div>`).join('')}</div>`;
@@ -1479,6 +1494,10 @@
     if (b === 'brachy.on' && v && !state.brachy.fx.length && model && model.p) state.brachy.fx = [0, 7, 14, 21].map((k) => ({ date: RT.iso(model.p.plannedEnd + 3 + k), dose: 7 }));
     if (b === 'site') { const d = siteDefaults(v); state.tumour = d.tumour; state.oars = d.oars; state.category = 'auto'; }
     if (['caseRef', 'calcBy', 'checkedBy', 'pdfLang'].includes(b)) { persist(); return; }
+    if (b === 'model') {
+      state.ui = state.ui || {};
+      state.ui.bio = true;
+    }
     const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'c.allow_bid' || b === 'multi' || b === 'brachy.on' || b === 'given.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
     clearTimeout(timer);
     if (struct || ev.type === 'change' && (t.type === 'checkbox' || t.tagName === 'SELECT' || t.type === 'date')) refresh(!!struct || b === 'holidays' || b === 'scen' || t.type === 'date');

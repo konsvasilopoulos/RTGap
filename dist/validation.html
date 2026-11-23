@@ -39,7 +39,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
 <div class="nums">
   <div><b id="n-self">–</b><span data-el="τιμές αυτοελέγχου σωστές σε αυτή τη συσκευή" data-en="self-test values correct on this device"></span></div>
   <div><b>928</b><span data-el="τυχαία περιστατικά όπου οι δύο μηχανές συμφωνούν" data-en="randomised cases on which the two engines agree"></span></div>
-  <div><b>77</b><span data-el="αυτόματα tests σε Python" data-en="automated Python tests"></span></div>
+  <div><b>81</b><span data-el="αυτόματα tests σε Python" data-en="automated Python tests"></span></div>
   <div><b id="n-rad">–</b><span data-el="σχήματα σε συμφωνία με το RadComp" data-en="schedules in agreement with RadComp"></span></div>
   <div><b id="n-lql">–</b><span data-el="σχήματα εντός ανοχής στο συγκρίσιμο μέγεθος" data-en="schedules within tolerance vs LQL-Equiv"></span></div>
 </div>
@@ -57,9 +57,9 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     <tr><td data-el="Περιστατικά" data-en="Cases"></td><td class="n">928</td></tr>
     <tr><td data-el="Σχήματα που συγκρίθηκαν (δόση ανά κλάσμα, EQD2 όγκου και οργάνων, λήξη, απόφαση)" data-en="Schedules compared (dose per fraction, tumour and organ EQD2, end date, decision)"></td><td class="n">6136</td></tr>
     <tr><td data-el="Διαφορές" data-en="Mismatches"></td><td class="n ok">0</td></tr>
-    <tr><td data-el="Αυτόματα tests Python (μοντέλο LQ, ημερολόγιο, κανόνες RCR, ιστορικό, LQ-L)" data-en="Automated Python tests (LQ model, calendar, RCR rules, history, LQ-L)"></td><td class="n">77</td></tr>
+    <tr><td data-el="Αυτόματα tests Python (μοντέλο LQ, ημερολόγιο, κανόνες RCR, ιστορικό, LQ-L)" data-en="Automated Python tests (LQ model, calendar, RCR rules, history, LQ-L)"></td><td class="n">81</td></tr>
   </tbody></table></div>
-  <p class="small" data-el="Τα περιστατικά καλύπτουν όλους τους εντοπισμούς, SIB και διαδοχικές φάσεις, βραχυθεραπεία, λάθη δόσης, πολλαπλές διακοπές, τις δύο εκδόσεις της οδηγίας και το LQ-L. Τελευταία εκτέλεση: 2026-11-17." data-en="The cases cover every site, SIB and sequential phases, brachytherapy, dose errors, several interruptions, both editions of the guidance and LQ-L. Last run: 2026-11-17."></p>
+  <p class="small" data-el="Τα περιστατικά καλύπτουν όλους τους εντοπισμούς, SIB και διαδοχικές φάσεις, βραχυθεραπεία, λάθη δόσης, πολλαπλές διακοπές, τις δύο εκδόσεις της οδηγίας και το LQ-L. Τελευταία εκτέλεση: 2026-11-23." data-en="The cases cover every site, SIB and sequential phases, brachytherapy, dose errors, several interruptions, both editions of the guidance and LQ-L. Last run: 2026-11-23."></p>
 </section>
 
 <section>
@@ -88,7 +88,12 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   </ul>
   <p style="margin-top:18px"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a> <a class="btn" href="https://github.com/konsvasilopoulos/RTGap/tree/main/validation" data-el="Αρχεία επικύρωσης στο GitHub" data-en="Validation files on GitHub"></a></p>
 </section>
-<footer>RTGap 1.11.0 · Konstantinos Vasilopoulos, PhD Candidate · <a href="mailto:kostasvasilopoulosgr@yahoo.com">kostasvasilopoulosgr@yahoo.com</a></footer>
+<section id="clinical-replay">
+<h2 data-en="Published clinical decisions" data-el="Δημοσιευμένες κλινικές αποφάσεις"></h2>
+<p data-en="MR-linac outage, July 2024. The replay compares three delivered target schedules with their prescriptions. Two reconstructed calendars show how department availability affects the RTGap decision." data-el="Διακοπή MR-linac, Ιούλιος 2024. Συγκρίναμε τρία χορηγηθέντα σχήματα με το αρχικό BED του όγκου. Σε δύο ανακατασκευασμένα ημερολόγια ελέγξαμε πώς αλλάζει η απόφαση του RTGap με τις δυνατότητες του τμήματος."></p>
+<a href="https://github.com/konsvasilopoulos/RTGap/blob/main/validation/clinical-replay.md" data-el="Περιστατικά, αποτελέσματα και παραδοχές" data-en="Cases, results and assumptions"></a>
+</section>
+<footer>RTGap 1.11.1 · Konstantinos Vasilopoulos, PhD Candidate · <a href="mailto:kostasvasilopoulosgr@yahoo.com">kostasvasilopoulosgr@yahoo.com</a></footer>
 </div>
 <script>
 /* rtgap engine (JavaScript port of the Python reference implementation).
@@ -97,7 +102,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
  * Cross-validated against the Python package (web/xval.mjs). */
 (function (root) {
   'use strict';
-  const VERSION = '1.11.0';
+  const VERSION = '1.11.1';
 
   // ------------------------------------------------------------------ dates
   const DAY = 86400000;
@@ -145,10 +150,11 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
 
   // ------------------------------------------------------------------ LQ
   const bed = (n, d, ab) => n * d * (1 + d / ab);
-  const eqd2FromBed = (b, ab) => b / (1 + 2 / ab);
+  const referenceFactor = (ab, dt) => 1 + quadTerm(2, dt) / (2 * ab);
+  const eqd2FromBed = (b, ab, dt) => b / referenceFactor(ab, dt);
   const eqd2 = (n, d, ab) => eqd2FromBed(bed(n, d, ab), ab);
-  const kFromDprolif = (dp, ab) => dp * (1 + 2 / ab);
-  const dprolifFromK = (k, ab) => k / (1 + 2 / ab);
+  const kFromDprolif = (dp, ab, dt) => dp * referenceFactor(ab, dt);
+  const dprolifFromK = (k, ab, dt) => eqd2FromBed(k, ab, dt);
   const repairFactor = (h, half) => Math.exp(-Math.LN2 * h / half);
   function solveQuadratic(a, b, target) {
     if (target <= 0) return 0;
@@ -192,11 +198,11 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     }
     if (hasTime(t)) {
       const own = fx.filter((f) => f.dose * tRatio(t, f.phase) > 0);
-      total -= kFromDprolif(t.dprolif, t.ab) * Math.max(0, overallTime(own) - t.tk);
+      total -= kFromDprolif(t.dprolif, t.ab, lqlDt(t)) * Math.max(0, overallTime(own) - t.tk);
     }
     return total;
   }
-  const tissueEqd2 = (t, fx, bidH) => eqd2FromBed(tissueBed(t, fx, bidH), t.ab);
+  const tissueEqd2 = (t, fx, bidH) => eqd2FromBed(tissueBed(t, fx, bidH), t.ab, lqlDt(t));
   const tissueBedNoTime = (t, fx, bidH) => tissueBed(Object.assign({}, t, { dprolif: 0 }), fx, bidH);
 
   // ------------------------------------------------------------------ rules / constraints
@@ -385,7 +391,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     return out;
   }
   /** EQD2 (no time factor) delivered to a tissue minus what was intended, over the delivered fractions. */
-  const errorEffect = (p, t) => { const bi = p.c.bid_interval_h; return eqd2FromBed(tissueBedNoTime(t, p.delivered, bi) - tissueBedNoTime(t, p.deliveredIntended, bi), t.ab); };
+  const errorEffect = (p, t) => { const bi = p.c.bid_interval_h; return eqd2FromBed(tissueBedNoTime(t, p.delivered, bi) - tissueBedNoTime(t, p.deliveredIntended, bi), t.ab, lqlDt(t)); };
   /** Generalised Joiner correction (BCR eq. 9.3–9.4): linear and quadratic dose sums L, Q still to give. */
   function joinerTarget(p) {
     const rest = p.remainingPhases.map((ph) => p.s0 * p.rx.refDose(ph));
@@ -396,7 +402,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   /** Largest EQD2 of the primary level (tumour α/β, no time factor) delivered within any 7 consecutive days. */
   function weeklyPeak(p, fx) {
     const t = p.tumour, per = new Map();
-    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(bedFraction(t, d), t.ab)); }
+    for (const f of fx) { const d = f.dose * tRatio(t, f.phase); per.set(f.day, (per.get(f.day) || 0) + eqd2FromBed(bedFraction(t, d), t.ab, lqlDt(t))); }
     const days = [...per.keys()].sort((a, b) => a - b); let best = 0;
     for (let i = 0; i < days.length; i++) { let tot = 0; for (let j = i; j < days.length && days[j] - days[i] <= 6; j++) tot += per.get(days[j]); if (tot > best) best = tot; }
     return best;
@@ -841,8 +847,8 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
       const fx = course.filter((f) => f.day <= d);
       const noTime = Object.assign({}, t, { dprolif: 0 });
       let b = tissueBed(noTime, fx, bi);
-      if (hasTime(t)) b -= kFromDprolif(t.dprolif, t.ab) * Math.max(0, d - start - t.tk);
-      pts.push({ day: d, y: eqd2FromBed(b, t.ab) });
+      if (hasTime(t)) b -= kFromDprolif(t.dprolif, t.ab, lqlDt(t)) * Math.max(0, d - start - t.tk);
+      pts.push({ day: d, y: eqd2FromBed(b, t.ab, lqlDt(t)) });
     }
     return pts;
   }
@@ -868,10 +874,10 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     terms.sort((a, b) => b.n - a.n);
     const noTime = terms.reduce((s, x) => s + x.bed, 0);
     const own = course.filter((f) => f.dose * tRatio(t, f.phase) > 0), T = overallTime(own);
-    const K = hasTime(t) ? kFromDprolif(t.dprolif, t.ab) : 0, loss = hasTime(t) ? K * Math.max(0, T - t.tk) : 0;
+    const K = hasTime(t) ? kFromDprolif(t.dprolif, t.ab, lqlDt(t)) : 0, loss = hasTime(t) ? K * Math.max(0, T - t.tk) : 0;
     const total = noTime - loss;
     if (Math.abs(total - tissueBed(t, course, bi)) > 1e-6) return null;
-    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab), ab: t.ab, theta, bidH: bi, dt: lqlDt(t) };
+    return { terms, noTime, T, K, tk: t.tk, loss, bed: total, eqd2: eqd2FromBed(total, t.ab, lqlDt(t)), ab: t.ab, theta, bidH: bi, dt: lqlDt(t) };
   }
 
   /** Built-in self-test against published worked examples (runs in the browser at start-up). */
@@ -995,16 +1001,16 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     if ('dprolif_eqd2_per_day' in ct) delete t.k_bed_per_day;
     if ('k_bed_per_day' in ct) delete t.dprolif_eqd2_per_day;
     const ab = +(t.alpha_beta == null ? 10 : t.alpha_beta);
-    const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab) : (+t.dprolif_eqd2_per_day || 0);
-    const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
-    const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
     const model = cfg.model || protocol.model || 'lq';
     if (!['lq', 'lql'].includes(model)) throw ValidationError([{ code: 'e_generic', p: { msg: 'model ' + model } }]);
+    const fac = model === 'lql' ? +(cfg.lql_dt_factor || protocol.lql_dt_factor || 2) : null;
     if (model === 'lql') {
-      const fac = +(cfg.lql_dt_factor || protocol.lql_dt_factor || 2);
       if (!(fac > 0)) throw ValidationError([{ code: 'e_generic', p: { msg: 'lql_dt_factor' } }]);
-      tumour.lql = fac; for (const o of oars) o.lql = fac;
     }
+    const dprolif = t.k_bed_per_day != null ? dprolifFromK(+t.k_bed_per_day, ab, fac == null ? null : fac * ab) : (+t.dprolif_eqd2_per_day || 0);
+    const tumour = mkTissue({ name: t.name || (site ? site.name : 'Tumour'), ab, dprolif, lql: fac, tk: t.kickoff_days, ratio: t.dose_ratio, repairH: t.repair_half_time_h });
+    const oars = cfg.oars && cfg.oars.length ? cfg.oars.map(oarFromCfg) : (site && site.oars ? site.oars.map(oarFromCfg) : [oarFromCfg({ name: 'Late (α/β 3)', alpha_beta: 3 })]);
+    for (const o of oars) o.lql = fac;
     const guidance = cfg.guidance || protocol.guidance || 'rcr2019';
     if (!GUIDANCES.includes(guidance)) throw ValidationError([{ code: 'e_generic', p: { msg: 'guidance ' + guidance } }]);
     let rx;
@@ -1114,7 +1120,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
     solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
-    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt };
+    allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt, referenceFactor, tRatio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1148,7 +1154,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     }
     document.getElementById('t-rep').innerHTML = REP.map(function (r) { var b = RT.bed(r[1], r[2], 10) - 0.9 * Math.max(0, r[3] - 28), e = RT.eqd2FromBed(b, 10);
       return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td>' + comparison(r[0], b, e, false) + '</tr>'; }).join('');
-    document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3]);
+    document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3], RT.lqlDt(tis));
       return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + RT.lqlDt(tis) + '</td>' + comparison(r[0], b, e, true) + '</tr>'; }).join('');
     document.getElementById('n-lql').textContent = passed + '/' + (REP.length + LQL.length);
   }

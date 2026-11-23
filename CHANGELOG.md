@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.11.1 — 2026-11-23
+* Calculate the 2 Gy reference fraction with the selected tissue model, including transitions below 2 Gy.
+* Show tumour BED change relative to the prescription, tissue-specific thresholds and parameter sources.
+* Add a reproducible retrospective comparison with delivered MR-linac schedules.
+
 ## 1.11.0 — 2026-11-17
 * Published estimates of the time factor per site, each with its numbered reference: head and neck
   (Withers 1988; Roberts 1994), non-small-cell lung (Koukourakis 1996), bladder (Maciejewski &

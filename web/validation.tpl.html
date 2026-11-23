@@ -88,6 +88,11 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
   </ul>
   <p style="margin-top:18px"><a class="btn pri" href="index.html" data-el="Άνοιγμα της εφαρμογής" data-en="Open the app"></a> <a class="btn" href="https://github.com/konsvasilopoulos/RTGap/tree/main/validation" data-el="Αρχεία επικύρωσης στο GitHub" data-en="Validation files on GitHub"></a></p>
 </section>
+<section id="clinical-replay">
+<h2 data-en="Published clinical decisions" data-el="Δημοσιευμένες κλινικές αποφάσεις"></h2>
+<p data-en="MR-linac outage, July 2024. The replay compares three delivered target schedules with their prescriptions. Two reconstructed calendars show how department availability affects the RTGap decision." data-el="Διακοπή MR-linac, Ιούλιος 2024. Συγκρίναμε τρία χορηγηθέντα σχήματα με το αρχικό BED του όγκου. Σε δύο ανακατασκευασμένα ημερολόγια ελέγξαμε πώς αλλάζει η απόφαση του RTGap με τις δυνατότητες του τμήματος."></p>
+<a href="https://github.com/konsvasilopoulos/RTGap/blob/main/validation/clinical-replay.md" data-el="Περιστατικά, αποτελέσματα και παραδοχές" data-en="Cases, results and assumptions"></a>
+</section>
 <footer>RTGap __VERSION__ · Konstantinos Vasilopoulos, PhD Candidate · <a href="mailto:kostasvasilopoulosgr@yahoo.com">kostasvasilopoulosgr@yahoo.com</a></footer>
 </div>
 <script>
@@ -122,7 +127,7 @@ footer { padding: 24px 0 40px; color: var(--mut); font-size: .88rem; border-top:
     }
     document.getElementById('t-rep').innerHTML = REP.map(function (r) { var b = RT.bed(r[1], r[2], 10) - 0.9 * Math.max(0, r[3] - 28), e = RT.eqd2FromBed(b, 10);
       return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td>' + comparison(r[0], b, e, false) + '</tr>'; }).join('');
-    document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3]);
+    document.getElementById('t-lql').innerHTML = LQL.map(function (r) { var tis = { ab: r[3], lql: 2 }, b = r[1] * RT.bedFraction(tis, r[2]), e = RT.eqd2FromBed(b, r[3], RT.lqlDt(tis));
       return '<tr><td class="n">' + r[0] + '</td><td>' + r[1] + ' × ' + r[2] + ' Gy</td><td class="n">' + r[3] + '</td><td class="n">' + RT.lqlDt(tis) + '</td>' + comparison(r[0], b, e, true) + '</tr>'; }).join('');
     document.getElementById('n-lql').textContent = passed + '/' + (REP.length + LQL.length);
   }

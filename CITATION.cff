@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Vasilopoulos
     given-names: Konstantinos
-version: 1.2.0
-date-released: 2026-11-14
+version: 1.11.1
+date-released: 2026-11-23
 license: AGPL-3.0-or-later
 repository-code: "https://github.com/konsvasilopoulos/RTGap"
 url: "https://konsvasilopoulos.github.io/RTGap/"

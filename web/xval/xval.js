@@ -45,6 +45,17 @@ if (RT.sha256('abc') !== 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff
     if (p.remaining) { const a = RT.monteCarlo(p, o, 300), b = RT.monteCarlo(p, o, 300);
       if (a.res[0].tq.join() !== b.res[0].tq.join()) fail(-1, 'monte carlo not deterministic');
       a.res.forEach((x, i) => { if (!(x.tq[0] - 1e-6 <= x.tq[1] && x.tq[1] <= x.tq[2] + 1e-6)) fail(-1, 'mc quantiles'); if (Math.abs(x.tq[1] - o[i].tumour.delta) > 1.5) fail(-1, 'mc median far from nominal'); }); } } }
+// The 2 Gy reference must use the selected model, even when it lies on the linear branch.
+for (const [ab, factor] of [[0.9, 2], [1.6, 1], [1, 2], [15, 2]]) {
+  const planner = RT.plannerFromCase({model: 'lql', lql_dt_factor: factor,
+    prescription: {start: '2024-07-15', n_fractions: 3, dose_per_fraction: 2},
+    tumour: {alpha_beta: ab, k_bed_per_day: 0.5, kickoff_days: 1}});
+  const t = planner.tumour, fx = planner.planned;
+  const reference = RT.bedFraction(t, 2);
+  if (Math.abs(RT.tissueEqd2(t, fx.slice(0, 1), 6) - 2) > 1e-9 ||
+      Math.abs(RT.tissueBed(t, fx, 6) - (3 * reference - 0.5)) > 1e-9)
+    fail(-1, 'reference dose or repopulation differs at threshold ' + RT.lqlDt(t));
+}
 const st = RT.selfTest(); st.forEach((s) => { if (!s.ok) fail(-1, 'selftest ' + s.id + ' got ' + s.got); }); console.log('self-test', st.filter((s) => s.ok).length + '/' + st.length);
 const j = RT.joiner(70, 2, 8, 4); if (Math.abs(j.d - 1.7419) > 1e-3 || j.n !== 36 || j.practical !== 1.72) fail(-1, 'joiner');
 console.log(`cases ${ref.length}, compared ${checked}, options compared ${nopts}, mismatches ${bad}`);

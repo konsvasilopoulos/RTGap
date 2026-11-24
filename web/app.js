@@ -155,7 +155,7 @@
       oars: s.oars.map((o) => { fixOar(o); const r = { name: o.name || 'OAR', alpha_beta: o.ab, dose_ratio: parseRatio(o.ratio), repair_half_time_h: o.repair || null }; if (o.limit != null) r.max_eqd2 = o.limit; if (s.brachy.on) r.brachy_ratio = o.bt; return r; }),
       gap: { missed_dates: s.missed.slice().sort() }, constraints: c };
     if (s.brachy.on && s.brachy.fx.length) out.brachy = { fractions: s.brachy.fx.filter((f) => f.date && f.dose > 0).map((f) => ({ date: f.date, dose: f.dose })) };
-    if (s.given && s.given.on && s.given._dates && s.given._dates.length) out.custom_options = [{ name: 'given', strategy: 'dose', dose: s.given.d, dates: s.given._dates, bid_dates: s.given._bid || [] }];
+    if (s.given && s.given.on && s.given._dates && s.given._dates.length) out.custom_options = [{ name: 'given', ...(s.given.autoDose ? { strategy: 'match_tumour' } : { strategy: 'dose', dose: s.given.d }), dates: s.given._dates, bid_dates: s.given._bid || [] }];
     if (s.resume) out.gap.resume_date = s.resume;
     if (s.cause) out.gap.cause = s.cause;
     if (s.unavailable.length) out.gap.unavailable_dates = s.unavailable.slice().sort();
@@ -202,22 +202,26 @@
     const cat = cfg.rules && 'category' in cfg.rules ? cfg.rules.category : ('category' in cfg ? cfg.category : undefined);
     if (cat !== undefined) s.category = cat == null ? 'none' : String(cat);
     const co = (cfg.custom_options || [])[0];
-    if (co && co.dates && co.dates.length && co.dose) s.given = { on: true, n: co.dates.length + (co.bid_dates || []).length, d: co.dose, sat: false, sun: false, bid: 0, dates: co.dates.map((d) => String(d).slice(0, 10)), bidDates: (co.bid_dates || []).map((d) => String(d).slice(0, 10)) };
+    if (co && co.dates && co.dates.length && (co.dose || co.strategy === 'match_tumour')) s.given = { on: true, n: co.dates.length + (co.bid_dates || []).length, autoDose: co.strategy === 'match_tumour', d: co.dose || null, sat: false, sun: false, bid: 0, dates: co.dates.map((d) => String(d).slice(0, 10)), bidDates: (co.bid_dates || []).map((d) => String(d).slice(0, 10)) };
     if (cfg.scenarios) { s.scen = true; s.scenDays = cfg.scenarios.days || 10; }
     return s;
   }
 
   // ------------------------------------------------------------------ compute
   function compute() {
+    if (state.given) { delete state.given._dates; delete state.given._bid; }
     const cfg = toCase(state), m = { cfg, error: null };
     try {
       if (!state.start) throw { validation: true, errors: [{ code: 'e_generic', p: { msg: 'start date' } }] };
       m.p = RT.plannerFromCase(cfg, {});
       let opts = RT.options(m.p); m.given = null;
       const gv = state.given;
-      if (gv && gv.on && m.p.remaining && (gv.d > 0) && (gv.dates || gv.n > 0)) {
+      if (gv && gv.on && m.p.remaining && (gv.autoDose || gv.d > 0) && (gv.dates || gv.n > 0)) {
         const slots = gv.dates ? gv.dates.map((d) => ({ day: RT.parseDate(d), slot: 0 })).concat((gv.bidDates || []).map((d) => ({ day: RT.parseDate(d), slot: 1 }))) : RT.customSlots(m.p, Math.round(gv.n), gv.sat, gv.sun, Math.round(gv.bid || 0));
-        if (slots.length) { m.given = RT.customOption(m.p, slots, gv.d); opts = opts.concat([m.given]); gv._dates = slots.filter((x) => !x.slot).map((x) => RT.iso(x.day)); gv._bid = slots.filter((x) => x.slot).map((x) => RT.iso(x.day)); m.cfg = toCase(state); }
+        if (slots.length && (!gv.autoDose || gv.dates || slots.length === gv.n)) {
+          m.given = gv.autoDose ? RT.customTumourMatch(m.p, slots) : RT.customOption(m.p, slots, gv.d);
+        }
+        if (m.given) { opts = opts.concat([m.given]); gv._dates = slots.filter((x) => !x.slot).map((x) => RT.iso(x.day)); gv._bid = slots.filter((x) => x.slot).map((x) => RT.iso(x.day)); m.cfg = toCase(state); }
       }
       m.dec = RT.decide(m.p, opts);
       m.rec0 = RT.recoverable(m.p, m.dec, 0.5); m.rec5 = RT.recoverable(m.p, m.dec, 5);
@@ -473,8 +477,13 @@
       <p class="small">${esc(L('preset_note'))}</p><button class="btn sm" type="button" data-act="add-reference">${esc(L('add_oar'))}</button></div></details>`;
   }
 
+  function givenResult() {
+    const o = model && model.given;
+    return o ? tr.t('given_result') + ' ' + o.d.toLocaleString(tr.lang, { maximumFractionDigits: 6 }) + ' Gy' : tr.t('given_no_solution');
+  }
   function givenSum() {
     const g = state.given; if (!g || !g.on) return tr.t('sum_none');
+    if (g.autoDose) return model && model.given ? model.given.nNew + ' × ' + model.given.d.toLocaleString(tr.lang, { maximumFractionDigits: 6 }) + ' Gy' : tr.t('given_no_solution');
     if (g.dates) return (g.dates.length + (g.bidDates || []).length) + ' × ' + g.d + ' Gy';
     return (g.n || '?') + ' × ' + (g.d || '?') + ' Gy';
   }
@@ -582,9 +591,14 @@
       <p class="small" style="margin:6px 0 0">${esc(L('tol_hint'))}</p>
     </details>
     <details class="card fold" id="sec-6" data-fold="given" ${fold('given')}><summary><h2>${esc(L('given'))}</h2><span class="fold-sum">${esc(givenSum())}</span></summary><p class="hint">${esc(L('given_hint'))}</p>
-      ${chk(L('given'), 'given.on', s.given.on)}
-      ${s.given.on ? (s.given.dates ? `<div class="fields" style="margin-top:8px">${fld(L('given_d'), 'given.d', s.given.d)}</div><div id="gbuild">${builderHtml()}</div>`
-        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div><div class="rowbtn"><button type="button" class="btn sm pri" data-act="given-cal">${esc(L('gb_open'))}</button>${hbtn('gbuild')}</div>`) : ''}
+      <label class="f"><span>${esc(L('given_mode'))}</span><select id="given-mode">
+        <option value="off" ${!s.given.on ? 'selected' : ''}>${esc(L('sum_none'))}</option>
+        <option value="manual" ${s.given.on && !s.given.autoDose ? 'selected' : ''}>${esc(L('given_enable'))}</option>
+        <option value="auto" ${s.given.on && s.given.autoDose ? 'selected' : ''}>${esc(L('given_auto'))}</option>
+      </select></label>
+      ${s.given.on && s.given.autoDose ? `<p class="hint" aria-live="polite" id="given-result">${esc(givenResult())}</p>` : ''}
+      ${s.given.on ? (s.given.dates ? `<div class="fields" style="margin-top:8px">${s.given.autoDose ? '' : fld(L('given_d'), 'given.d', s.given.d)}</div><div id="gbuild">${builderHtml()}</div>`
+        : `<div class="fields" style="margin-top:8px">${fld(L('given_n'), 'given.n', s.given.n, 'type="number" min="1" step="1" inputmode="numeric"')}${s.given.autoDose ? '' : fld(L('given_d'), 'given.d', s.given.d)}${fld(L('given_bid'), 'given.bid', s.given.bid, 'type="number" min="0" step="1" inputmode="numeric"')}</div><div class="sw" style="margin-top:8px">${chk(L('given_sat'), 'given.sat', s.given.sat)}${chk(L('given_sun'), 'given.sun', s.given.sun)}</div><div class="rowbtn"><button type="button" class="btn sm pri" data-act="given-cal">${esc(L('gb_open'))}</button>${hbtn('gbuild')}</div>`) : ''}
     </details>`;
     renderGapCal(); renderBioNote(); validateAll();
   }
@@ -1444,6 +1458,10 @@
   function refresh(full) {
     compute(); persist(); setTimeout(announce, 0);
     if (full) { renderStatic(); renderInputs(); } else { renderGapCal(); renderBioNote(); const ps = $('#proto-status'); if (ps) ps.innerHTML = protoStatus(); const ds = $('#dept-sum'); if (ds) ds.textContent = deptSum(); const bs = $('#bio-sum'); if (bs) bs.textContent = bioSum(); $('#rx-summary').textContent = prescriptionSummary(); const tt = $('#rx-total'); if (tt) tt.textContent = ((state.n || 0) * (state.d || 0)).toFixed(2) + ' Gy'; refreshSiteMeta(); }
+    const summary = document.querySelector('#sec-6 .fold-sum');
+    if (summary) summary.textContent = givenSum();
+    const result = $('#given-result');
+    if (result) result.textContent = givenResult();
     renderResults();
   }
   function refreshSiteMeta() { /* category pills depend on the planner; cheap to rebuild only on structural changes */ }
@@ -1455,6 +1473,19 @@
   }
   function onInput(ev) {
     const t = ev.target;
+    if (t.id === 'given-mode') {
+      if (ev.type !== 'change') return;
+      const g = state.given;
+      g.on = t.value !== 'off';
+      g.autoDose = t.value === 'auto';
+      if (g.on && model && model.p) {
+        if (!g.dates && !g.n) g.n = model.p.remaining;
+        if (!g.d) g.d = model.p.dRef;
+      }
+      refresh(true);
+      $('#given-mode').focus({ preventScroll: true });
+      return;
+    }
     if (t.id === 'calendar-action') {
       state.mark = t.value;
       $('#gap-instruction').textContent = tr.t(t.value === 'missed' ? 'gap_hint' : 'event_hint');
@@ -1490,7 +1521,7 @@
       if (b.endsWith('.name')) $('#oar-ref-' + i).innerHTML = referenceLine(oarReferences.find(r => r.name === o.name));
     }
     if (b === 'pc.on' && v && model && model.p && !state.pc.from) { state.pc.from = state.resume || (model.p.missed.length ? RT.iso(model.p.resume) : ''); state.pc.n = model.p.remaining; state.pc.d = +model.p.dCur.toFixed(3); }
-    if (b === 'given.on' && v && model && model.p && !state.given.dates) { if (!state.given.n) state.given.n = model.p.remaining; if (!state.given.d) state.given.d = model.p.dRef; }
+
     if (b === 'brachy.on' && v && !state.brachy.fx.length && model && model.p) state.brachy.fx = [0, 7, 14, 21].map((k) => ({ date: RT.iso(model.p.plannedEnd + 3 + k), dose: 7 }));
     if (b === 'site') { const d = siteDefaults(v); state.tumour = d.tumour; state.oars = d.oars; state.category = 'auto'; }
     if (['caseRef', 'calcBy', 'checkedBy', 'pdfLang'].includes(b)) { persist(); return; }
@@ -1498,7 +1529,7 @@
       state.ui = state.ui || {};
       state.ui.bio = true;
     }
-    const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'c.allow_bid' || b === 'multi' || b === 'brachy.on' || b === 'given.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
+    const struct = t.dataset.struct || t.type === 'checkbox' && (b === 'c.allow_bid' || b === 'multi' || b === 'brachy.on' || b === 'pc.on') || b === 'tumour.mode' || /levels\.\d+\.name$/.test(b) && ev.type === 'change';
     clearTimeout(timer);
     if (struct || ev.type === 'change' && (t.type === 'checkbox' || t.tagName === 'SELECT' || t.type === 'date')) refresh(!!struct || b === 'holidays' || b === 'scen' || t.type === 'date');
     else timer = setTimeout(() => refresh(false), 160);

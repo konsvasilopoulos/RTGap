@@ -847,6 +847,10 @@
   }
   const customOption = (p, slots, d) => evaluate(p, 'custom', 'custom', { base: 'custom' }, slots, d, 'custom');
 
+  function customTumourMatch(p, slots) {
+    return solved(p, 'custom', 'custom', { base: 'custom' }, slots, p.tumour, p.plannedTumour, 'match_tumour');
+  }
+
   // ------------------------------------------------------------------ Joiner error correction
   function joiner(P, pd, E, ed, rounding) {
     if (Math.min(P, pd, E, ed) <= 0) throw new Error('all doses must be > 0');
@@ -1020,7 +1024,7 @@
 
   const api = { VERSION, parseDate, iso, weekday, ymd, mkDate, orthodoxEaster, greekHolidays, holidayMap, bed, eqd2, eqd2FromBed, kFromDprolif, dprolifFromK,
     mkTissue, tissueBed, tissueEqd2, hasTime, mkRules, mkConstraints, CONSTRAINT_DEFAULTS, CATEGORY_DEFAULTS, mkRx, mkPlanner, variant, options, decide, evaluate,
-    solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, LC_LOSS_PER_DAY,
+    solveScale, monteCarlo, MC_SD, patternAccelerated, patternSameEnd, patternStandard, sensitivity, candidateResumeDates, resumeScenarios, timeline, joiner, worksheet, selfTest, weeklyPeak, lcLoss, recoverable, customSlots, customOption, customTumourMatch, LC_LOSS_PER_DAY,
     plannerFromCase, setSites, get SITES() { return SITES; }, groupByDay, overallTime, isRegular, sha256, checksum, DEFAULT_GRID,
     allocatePhases, joinerTarget, errorEffect, interruptions, tissueBedNoTime, currentOutageStart, GUIDANCES, quadTerm, bedFraction, lqlDt, referenceFactor, tRatio };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RT = api;
